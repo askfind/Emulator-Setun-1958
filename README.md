@@ -1,164 +1,61 @@
 SETUN-1958 VM
 =============
 
-Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
+A virtual machine of ternary computer Setun, also known as "Small Automatic Digital Machine" (in Russian: МЦВМ "
+Сетунь") written on C
 
-Create date: 01.11.2018
-Edit date:   11.02.2021
+# Using
 
-Version: 1.24
+Build and run
 
-
-ИДЕИ
-----
- -[] На основании описания архитектуры и этапов работы Сетунь-1958.
-     организовать структуру алгоритма SETUN-1958-VM.
-
-TODO
-====
- -[] electrified_typewriter() - реализовать вывод в stdout цвет и линию вверху.
-
-11.02.2021
-----------
- -[Х] Отладка операций +00, +0+.
- -[Х] Добавить вывод fram по адресам.
-
-
-07.02.2021
-----------
- -[x] Исправить ошибку записи в память FRAM.
-
-
-30.01.2021
-----------
- -[] Исправить интерпретацию K1.9 команда.
-
-27.01.2021
-----------
- -[*] Добавить точное описание реализации команд машины "Сетунь".
-
-
-11.07.2020
-----------
- -[*] Порядок в проекте и сопровождении.
- -[*] копия документации, книг
- -[*] копия троичных проектов
-
- -[x] int8_t execute_trs( trs_t addr, trs_t oper )
-   - для С(5) = -1 выполнить 2-раза страшей половине A(9:18) и сделать inc C
-   - copy_trit(&MR,&S); //TODO исправить копирование
-   - copy_trit(&MR,&R); //TODO исправить
-   - add  S = shift_trs(S,trit2dec(MR));
-
- -[x] main() ОТЛАДКА
-
- -[x] провереть необходимость
-     void arithmetic_trs( trs_t k ) {
-
- -[ ] int8_t execute_trs( trs_t addr, trs_t oper ) {
-     для С(5) = -1 выполнить 2-раза страшей половине A(9:18) и сделать inc C
-
- -[] FILE *file - планировать ввод/вывод
-
-
-05.07.2020
-----------
- -[x]  читать FRAM k9
- -[x]  выполнить contorl, execute
-
-29.06.2020
-----------
-26.06.2020
-----------
-22.06.2020
-----------
-17.06.2020
-----------
- -[x] Запустить. Проверить. Посмотреть коде.
-
-28.02.2020
-----------
-22.02.2020
-----------
- -[x] Отладка FRAM
-
-21.02.2020
-----------
- -[x] ~ void or_trs(trs_t *x, trs_t *y, trs_t *r)
- -[x] ~ void xor_trs(trs_t *x, trs_t *y, trs_t *r)
- -[x] ~ int not_trs(trs_t *x)
- -[x] ~ int not_trs(trs_t *x)
- -[x] ~ int neg_trs(trs_t *t)
- -[x] ~ int dec_trs(trs_t *t)
- -[x] ~ int mul_trs(trs_t *a, trs_t *b, trs_t *c)
- -[x] + dump_fram
- -[x] + dump_drum
-
-13.02.2020
-----------
- -[x] ver 3 Заменить на тип данных int регистры машины. execute_k
-
-10.02.2020
-----------
- -[x] Запустить. Проверить. Посмотреть коде.
-
-09.02.2020
-----------
- -[x] ver 2 Заменить на тип данных int регистры машины. execute_k
-
-
-07.02.2020
-----------
- -[x] execute_trs
-
-05.02.2020
-----------
- -[x] execute_trs
-  - проверить определения регистров машины.
-  - изменить наименование регистров.
-  - Функция читать код машина из памяти рег. С -счетчик команд A = FRAM(C).
-  - Выполнить безусловный переход.
-
-05.02.2020
-----------
- -[x] - Конспект книг Сетунь.
- -[x] - Выполнение команд K.
-
-04.02.2020
-----------
- -[x] - Опр. Троичный код 9 или 18 троичных разрядов.
- -[x] Опр. Ячейка памяти машины или один 18 длинный код, или два 9 коротких кода.
- -[x] photo input - фотосчитыватель ленточный
- -[x] AlphanumericPrintEUM - Устройство вывода буквенно-цифровой информации на печать
- -[x] - Инициализация регистров машины, памяти машины.
- -[x] - Выполнение команд K.
-
-02.11.2018
-----------
- -[x] сслыка на источники
- -[x] 1. Хосе
- -[x] 2. МЦВМ
-
- -[x] Тесты реализации and_t, or_t, xor_t, and_trs, or+trs, xor_trs
- -[x] В комментарии добавить таблицы истинности для троичных разрядов
- -[x] добавить возврат переполнения операций
-
-
-##…or create a new repository on the command line
-
-```sh
-echo "# Emulator-Setun-1958" >> README.md
-git init
-git add README.md
-git commit -m "first commit"
-git branch -M main
-git remote add origin https://github.com/askfind/Emulator-Setun-1958.git
-git push -u origin main
+```shell
+make
+./emu
 ```
-##…or push an existing repository from the command line
 
-```sh
-git remote add origin https://github.com/askfind/Emulator-Setun-1958.git
-git branch -M main
-git push -u origin main
+As a result you will see dump of register and memory structure of VM after run some tests:
+
+```shell
+...
+c=a-b: [00000000-1-1-1-1-1-1-1-1-1-1], (-29524), 0000ZWWWW0
+
+t18: test Oper=k6..8[+00] : (A*)=>(S)
+addr=: [00000], (0), X00
+ram[...] (  0: 0) =  hex = 0x021210 [10-1010-100], (5904), 1Z1Z0
+ram[...] (  0: 1) =  hex = 0x000080 [000001000], (27), 00030
+
+reg C = 00001
+K=: [000001000], (27), 00030
+A*=[00000], (   0),    k6..8[+00] : (A*)=>(S)
+ret_exec = 0
+
+[ Registers Setun-1958: ]
+ K: [000001000], (27), 00030
+ F: [00000], (0), 000
+ C: [00010], (3), 003
+ W: [1], (1), Y
+ S: [10-1010-100000000000], (116208432), 1Z1Z000000
+ R: [000000000000000000], (0), 0000000000
+ MB: [0000], (0), 000
+...
 ```
+
+## Notes
+
+* `lpt0`, `ptp0` ... `ur0`, `ur1` folders - virtual device files like tty and others
+* `Documentation` folder contains collection of documentation and program (`Programming` folder) examples
+
+# Links
+
+- <https://en.wikipedia.org/wiki/Ternary_computer>
+- <https://en.wikipedia.org/wiki/Setun>
+- <https://habr.com/en/post/46688/>
+
+# Contributing
+
+Everybody is invited and welcome to contribute to Setun VM.
+
+# History
+
+- Current version: 1.24
+- Create date: 01.11.2018
