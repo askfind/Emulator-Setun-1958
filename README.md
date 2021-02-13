@@ -1,14 +1,8 @@
 SETUN-1958 VM
 =============
 
-A virtual machine of ternary computer Setun, also known as "Small Automatic Digital Machine"  (in Russian: МЦВМ "
-Сетунь")  written on C
-
-# Building
-
-```shell
-make
-```
+A virtual machine of ternary computer Setun, also known as "Small Automatic Digital Machine" (in Russian: МЦВМ "
+Сетунь") written on C
 
 # Using
 
@@ -56,6 +50,10 @@ ret_exec = 0
 - <https://en.wikipedia.org/wiki/Ternary_computer>
 - <https://en.wikipedia.org/wiki/Setun>
 - <https://habr.com/en/post/46688/>
+
+# Contributing
+
+Everybody is invited and welcome to contribute to Setun VM.
 
 # History
 
