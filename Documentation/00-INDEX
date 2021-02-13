@@ -1,0 +1,17 @@
+This is a brief list of all the files in
+
+Following translations are available on the WWW:
+
+   - Russian
+
+00-INDEX
+	- this file.
+
+/
+	- info on kernel <-> userspace ABI and relative interface stability.
+
+/
+	- info on kernel <-> userspace ABI and relative interface stability.
+
+TODO.md - Сделать
+
