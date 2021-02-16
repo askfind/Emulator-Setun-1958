@@ -47,9 +47,9 @@ ret_exec = 0
 
 # Links
 
-- <https://en.wikipedia.org/wiki/Ternary_computer>
-- <https://en.wikipedia.org/wiki/Setun>
-- <https://habr.com/en/post/46688/>
+*Materials on ternary computer science* - <http://ternarycomp.cs.msu.su/>
+*Emulator of the first ternary Soviet "Setun"* - <http://trinary.su/projects/>
+*Unique Setun based on the ternary code* - <https://habr.com/ru/company/ua-hosting/blog/273929/>
 
 # Contributing
 
