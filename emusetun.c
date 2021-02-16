@@ -4,9 +4,9 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   11.02.2021
+* Edit date:   16.02.2021
 *
-* Version: 1.24
+* Version: 1.26
 */
 
 /**
@@ -710,10 +710,25 @@ trs_t sub_trs(trs_t x, trs_t y) {
  * Троичное умножение тритов
  */
 trs_t mul_trs(trs_t a, trs_t b) {
+	int8_t i;
+	int8_t l;
 	trs_t r;
-	//TODO реализовать
-	b.l = 0;
-	b.tb = 0;
+	
+	l = b.l;
+	r.tb = 0;
+	r.l = 18;
+	for(i=0;i<l;i++) {		
+		if( trit2bit( b ) > 0 ) {
+			r = add_trs(r,shift_trs(a,-i));			
+		}
+		else if( trit2bit( b )  < 0 ) {
+			r = sub_trs(r,shift_trs(a,-i));					
+		}
+		else{
+
+		}
+		b.tb >>= 2;
+	}
 	return r;
 }
 
@@ -1201,9 +1216,11 @@ void st_fram( trs_t ea, trs_t v ) {
 		mem_fram[rind][zind + 1] = (trishort)v.tb & (trishort)0x3FFFF;
 	}
 	else if( eap5 == 0 ) {		
-		mem_fram[rind][zind] = (trishort)(v.tb & (trishort)0x3FFFF);
+		trilong r;				
+		r =  shift_trs(v,9).tb;			
+		mem_fram[rind][zind] = (trishort)r & (trishort)0x3FFFF;
 	}
-	else { /* eap5 > 0 */		
+	else { /* eap5 > 0 */
 		mem_fram[rind][zind] = (trishort)(v.tb & (trishort)0x3FFFF);
 	}
 }
@@ -2635,10 +2652,6 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			case (+1*9 +0*3 -1):  { // +0- : Вычитание в S	(S)-(A*)=>(S)
 				printf("   k6..8[+0-] : (S)-(A*)=>(S)\n");
 				MR = ld_fram(k1_5);
-				
-				view_short_reg(&S,"S - =");
-				view_short_reg(&MR,"MR=");
-
 				S = sub_trs(S,MR);				
 				W = sgn_trs(S);
 				if( over(S) > 0 ) {					
@@ -2650,7 +2663,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				printf("   k6..8[++0] : (S)=>(R); (A*)(R)=>(S)\n");
 				copy_trs(&S,&R);				
 				MR = ld_fram(k1_5);				
-				//S = mul_trs(MR,R); //TODO
+				S = mul_trs(MR,R);
 				W = sgn_trs(S);
 				if( over(S) > 0 ) {
 					goto error_over;
@@ -2660,8 +2673,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			case (+1*9 +1*3 +1):  { // +++ : Умножение +	(S)+(A*)(R)=>(S)
 				printf("   k6..8[+++] : (S)+(A*)(R)=>(S)\n");
 				MR = ld_fram(k1_5);				
-				//R = mul_trs(MR,R); //TODO реализовать
-				S = add_trs(S,R);
+				S = add_trs(mul_trs(MR,R),S);				
 				W = sgn_trs(S);
 				if( over(S) > 0 ) {
 					goto error_over;
@@ -2690,7 +2702,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			} break;
 			case (+0*9 +1*3 +0):  { // 0+0 : Условный переход -	A*=>(C) при w=0
 				printf("   k6..8[0+-] : A*=>(C) при w=0\n");
-				uint8_t w;
+				int8_t w;
 				w = sgn(W);
 				if( w==0 ) {
 					copy_trs(&k1_5,&C); 
@@ -2701,7 +2713,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			} break;
 			case (+0*9 +1*3 +1):  { // 0+1 : Условный переход -	A*=>(C) при w=0
 				printf("   k6..8[0+-] : A*=>(C) при w=+1\n");
-				uint8_t w;
+				int8_t w;
 				w = sgn(W);
 				if( w==1 ) {
 					copy_trs(&k1_5,&C); 
@@ -2712,7 +2724,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			} break;
 			case (+0*9 +1*3 -1):  { // 0+- : Условный переход -	A*=>(C) при w=-
 				printf("   k6..8[0+-] : A*=>(C) при w=-1\n");
-				uint8_t w;
+				int8_t w;
 				w = sgn(W);
 				if( w<0 ) {
 					copy_trs(&k1_5,&C); 
@@ -2765,8 +2777,8 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				* ячейке Л*, т. е. N = (А*). Сдвиг производится влево при N > 0 и вправо
 				* при N < 0. При N = 0 содержимое регистра 5 не изменяется.
 				*/
-				MR = ld_fram(k1_5);
-				//TODO add  S = shift_trs(S,trit2dec(MR));				
+				MR = ld_fram(k1_5);				
+				S = shift_trs(S,trs_to_digit(&MR));				
 				W = sgn_trs(S);
 				C = next_address(C);
 			} break;
@@ -2779,18 +2791,51 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			case (-1*9 +1*3 -1):  { // -+- : Нормализация	Норм.(S)=>(A*); (N)=>(S)
 				printf("   k6..8[-+-] : Норм.(S)=>(A*); (N)=>(S)\n");
 				/*
-				* Операция нормализации производит сдвиг (S) при (5) =£= 0 в таком
-				* направлении и на такое число разрядов |iV|, чтобы результат, посылаемый
-				* в ячейку ,4*, был но модулю больше V , но меньше / , т. е. чтобы в д в у х
-				* старших разрядах результата была записана комбинация троичных цифр
-				* 01 или 0 1 . При этом в регистр S посылается число N (5-разрядный код),
-				* знак которого определяется направлением сдвига, а именно: N > 0 при
-				* сдвиге вправо и N < 0 при сдвиге влево. П р и (S) = 0 или при
-				* / <|(*S)| < / в ячейку А* посылается (5), а в регистр S посылается N = 0.				
-				*/
-				//TODO описание операции
-				//
-				W = sgn_trs(S); 
+				* Операция нормализации производит сдвиг (S) при (S) != 0 в таком направлении и на такое число
+				* разрядов |N|, чтобы результат, посылаемый в ячейку A*, был но модулю больше 1/2 , но меньше 3/2,
+				* т.е. чтобы в двух старших разрядах результата была записана комбинация троичных цифр 01 или 0-1.
+				* При этом в регистр S посылается число N (5-разрядный код), знак которого определяется 
+				* направлением сдвига, а именно: N > 0 при сдвиге вправо и N < 0 при сдвиге влево. При (S) = 0 или при
+	    		* 1/2 <|(S)| < 3/2 в ячейку А* посылается (S), а в регистр S посылается N = 0.
+				*/ 				
+				/* Определить знак S */				
+				int8_t w;
+				W = sgn_trs(S); 				
+				w = sgn(W);
+				if(w != 0) {
+					/* Сдвиг S */
+					if( get_trit_int(S,1) != 0 ) {						
+						S = shift_trs(S,1);
+						st_fram(k1_5,S);
+						S.tb = 0;
+						set_trit(&S,18,1);
+					}
+					else if( get_trit_int(S,2) == 0 )  {
+						uint8_t n = 0;
+						for(uint8_t i=0;i<16;i++) {
+							S = shift_trs(S,-1);
+							view_short_reg(&S," shif S=");
+							n++;
+							if( get_trit_int(S,2) != 0 ) { 
+								break;
+							}	
+						}
+						st_fram(k1_5,S);
+						S.tb = 0;
+						for(uint8_t i=0;i<n;i++) {
+							dec_trs(&S);
+						}
+					} 
+					else {
+						st_fram(k1_5,S);
+						S.tb = 0;
+					} 					
+				}
+				else {
+					/* S == 0 */
+					st_fram(k1_5,S);
+					S.tb = 0;
+				}
 				C = next_address(C);				
 			} break;
 			case (-1*9 +0*3 +0):  { // -00 : Не задействована	Стоп
@@ -2799,10 +2844,12 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			} break;
 			case (-1*9 +0*3 +1):  { // -0+ : Запись на МБ	(Фа*)=>(Мд*)
 				printf("   k6..8[-0+] : (Фа*)=>(Мд*)\n");
+				//TODO 
 				C = next_address(C);
 			} break;
 			case (-1*9 +0*3 -1):  { // -0- : Считывание с МБ	(Мд*)=>(Фа*)
 				printf("   k6..8[-0-] : (Мд*)=>(Фа*)\n");
+				//TODO 
 				C = next_address(C);
 			} break;
 			case (-1*9 -1*3 +0):  { // --0 : Не задействована	Стоп
@@ -3641,6 +3688,133 @@ void Setun_test_Opers( void ) {
 	printf("ret_exec = %i\r\n",ret_exec);
 	printf("\n");
 
+	ad1 = smtr("000-0");
+	ad2 = smtr("00+-0");	
+	dumpf(ad1,ad2);
+
+	view_short_regs();
+
+	//t20 test mul_trs()
+
+	trs_t res;
+	res.l  = 18;
+	res.tb = 0;
+	
+	S = smtr("0000000-0000000+++");
+	R = smtr("000000000-00+000-");
+	res = mul_trs(S,R); 	 	
+	
+	view_short_reg(&S," S");
+	view_short_reg(&R," R");
+	view_short_reg(&res,"res = S*R");
+
+	//t21 test Oper=k6..8[+00] : (A*)=>(S)
+	printf("\nt19: test Oper=k6..8[+00] : (A*)=>(S)\n");	
+	
+	reset_setun_1958(); 
+
+	F = smtr("000++"); 	
+		
+	addr = smtr("000++");
+	view_short_reg(&addr,"addr=");
+	m0 = smtr("0++++++++"); 	
+	st_fram(addr,m0); 
+
+	addr = smtr("000--");
+	view_short_reg(&addr,"addr=");
+	m0 = smtr("0++++++++"); 	
+	st_fram(addr,m0); 
+
+	addr = smtr("000-0");
+	view_short_reg(&addr,"addr=");
+	m0 = smtr("0--------"); 	
+	st_fram(addr,m0); 
+
+	addr = smtr("00000");
+	view_short_reg(&addr,"addr=");
+	m0 = smtr("+0-0+0-00"); 	
+	st_fram(addr,m0); 
+	
+	addr = smtr("0000+"); 
+	m1 = smtr("00000++00"); 
+	st_fram(addr,m1); 
+
+	S = smtr("000000000-00+000-+");	
+
+	/* Begin address fram */ 	
+	C = smtr("0000+");	
+	
+	printf("\nreg C = 00001\n"); 
+	
+	/** 
+	* work VM Setun-1958
+	*/
+	K = ld_fram(C);	
+	exK = control_trs(K);	
+	view_short_reg(&K,"K=");
+	oper = slice_trs(K,6,8);
+	ret_exec = execute_trs(exK,oper);
+	printf("ret_exec = %i\r\n",ret_exec);
+	printf("\n");
+
+	//views
+	ad1 = smtr("000-0");
+	ad2 = smtr("00+-0");	
+	dumpf(ad1,ad2);
+
+	view_short_regs();
+
+	//t22 test Oper=k6..8[-+-] : Норм.(S)=>(A*); (N)=>(S)
+	printf("\nt22: test Oper=k6..8[-+-] : Норм.(S)=>(A*); (N)=>(S)\n");	
+	
+	reset_setun_1958(); 
+
+	F = smtr("000++"); 	
+		
+	addr = smtr("000++");
+	view_short_reg(&addr,"addr=");
+	m0 = smtr("0++++++++"); 	
+	st_fram(addr,m0); 
+
+	addr = smtr("000--");
+	view_short_reg(&addr,"addr=");
+	m0 = smtr("0++++++++"); 	
+	st_fram(addr,m0); 
+
+	addr = smtr("000-0");
+	view_short_reg(&addr,"addr=");
+	m0 = smtr("0--------"); 	
+	st_fram(addr,m0); 
+
+	addr = smtr("00000");
+	view_short_reg(&addr,"addr=");
+	m0 = smtr("+0-0+0-00"); 	
+	st_fram(addr,m0); 
+	
+	addr = smtr("0000+"); 
+	m1 = smtr("00000-+-0"); 
+	st_fram(addr,m1); 
+
+	S = smtr("000000000-00+000-+");	
+	view_short_reg(&S,"S=");
+
+	/* Begin address fram */ 	
+	C = smtr("0000+");	
+	
+	printf("\nreg C = 00001\n"); 
+	
+	/** 
+	* work VM Setun-1958
+	*/
+	K = ld_fram(C);	
+	exK = control_trs(K);	
+	view_short_reg(&K,"K=");
+	oper = slice_trs(K,6,8);
+	ret_exec = execute_trs(exK,oper);
+	printf("ret_exec = %i\r\n",ret_exec);
+	printf("\n");
+
+	//views
 	ad1 = smtr("000-0");
 	ad2 = smtr("00+-0");	
 	dumpf(ad1,ad2);
