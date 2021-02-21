@@ -4,9 +4,9 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   16.02.2021
+* Edit date:   21.02.2021
 *
-* Version: 1.26
+* Version: 1.27
 */
 
 /**
@@ -83,9 +83,9 @@
 /**
  * Описание магнитного барабана DRUM
  */
-#define SIZE_TRIT_DRUM			(3888)	/* количество хранения коротких слов из 9-тритов */
+#define SIZE_TRIT_DRUM			(1944)	/* количество хранения коротких слов из 9-тритов */
 #define SIZE_ZONE_TRIT_DRUM		(54)	/* количество 9-тритных слов в зоне */
-#define NUMBER_ZONE_DRUM		(72)	/* количество зон на магнитном барабане */
+#define NUMBER_ZONE_DRUM		(36)	/* количество зон на магнитном барабане */
 
 /**
  * Тип данных троичного числа
@@ -209,8 +209,8 @@ void st_fram( trs_t ea, trs_t v );
  */
 void clean_drum(void);
 
-trs_t ld_drum( trs_t ea );
-void st_drum( trs_t ea, trs_t v );
+trs_t ld_drum( trs_t ea, uint8_t ind );
+void st_drum( trs_t ea, uint8_t ind, trs_t v );
 
 /**
  * Устройства структуры машины Сетунь-1958
@@ -901,26 +901,19 @@ int16_t addr_trit2addr_index(trs_t t) {
  * Дешифратор тритов в индекс адреса памяти
  */
 uint8_t zone_drum_to_index(trs_t z) {
-   int8_t r = NUMBER_ZONE_DRUM >> 1;
-   r += get_trit_int(z,1)*1;
-   return r;   
-}
-
-/**
- * Дешифратор тритов в индекс адреса памяти
- */
-uint8_t row_drum_to_index(trs_t z) {
-
-   uint8_t r = 40;   
-   r += get_trit_int(z,4)*1;
-   r += get_trit_int(z,3)*3;
-   r += get_trit_int(z,2)*9;
-   r += get_trit_int(z,1)*27;
    
-   //r = (r+1) * 2 / 3;
-   //r -= 1;
+   int8_t r;
 
-   return r;
+   r = trs_to_digit(&z) - 1;
+   
+   if( r > NUMBER_ZONE_DRUM-1 ) {    
+	r = NUMBER_ZONE_DRUM-1;
+   }
+   else if( r < 0 ) {    
+	   r = 0;	
+   }
+   
+   return r;   
 }
 
 /**
@@ -1031,60 +1024,6 @@ void clean_drum(void) {
 	}
 }
 
-#if 0
-/**
- * Функция "Читать троичное число из ферритовой памяти"
- */
-trs_t ld_fram_ver1( trs_t ea ) {	
-    
-	uint8_t zind; 
-	uint8_t rind; 
-	int8_t eap5;
-	trs_t zr;
-	trs_t rr;
-	trishort r;
-	trs_t res;
-
-	/* Зона памяти FRAM */
-	zr.l = 1;
-	zr = slice_trs(ea,1,1);
-	zind = zone_fram_to_index(zr);
-
-	/* Индекс строки в зоне памяти FRAM */
-	rr.l = 4; 
-	rr = slice_trs(ea,2,5);	
-	
-	res.tb ^= res.tb; /* 0 */	
-	
-	eap5 = get_trit_int(ea,5);
-	if(  eap5 < 0 ) {
-		/* Прочитать 18-тритное число */
-		set_trit(&rr,4,0);
-		rind = row_fram_to_index(rr);
-		r = mem_fram[zind+1][rind+1]; /* прочитать 10...18 младшую часть 18-тритного числа */
-		res.tb = r;		
-		r = mem_fram[zind][rind];	  /* прочитать 1...9 старшую часть 18-тритного числа */			
-		res.tb |= ((trilong)r)<<18 & 0xFFFFC0000ul;
-		res.l  = 18;
-	}
-	if( eap5 == 0 ) {
-		/* Прочитать старшую часть 18-тритного числа */
-		rind = row_fram_to_index(rr);
-		r = mem_fram[zind][rind];
-		res.tb = r & 0x3FFFFul;
-		res.l  = 9;		
-	}
-	else { /* eap5 > 0 */
-		/* Прочитать младшую часть 18-тритного числа */
-		rind = row_fram_to_index(rr);
-		r = mem_fram[zind][rind];		/* read low part trits */
-		res.tb = r & 0x3FFFF;
-		res.l  = 9;		
-	}	 
-
-	return res;
-}
-#endif
 
 /**
  * Функция "Читать троичное число из ферритовой памяти"
@@ -1135,57 +1074,6 @@ trs_t ld_fram( trs_t ea ) {
 	return res;
 }
 
-#if 0
-/**
- * Функция "Записи троичного числа в ферритовую память"
- */
-void st_fram_ver_1( trs_t ea, trs_t v ) {	
-	
-	uint8_t zind;
-	uint8_t rind;
-	int8_t eap5;
-	trs_t zr;
-	trs_t rr;
-
-	/* Зона памяти FRAM */
-	zr.l = 1;
-	zr = slice_trs(ea,1,1);
-	zind = zone_fram_to_index(zr);
-	view_short_reg(&zr," zr");
-
-	/* Индекс строки в зоне памяти FRAM */
-	rr.l = 4; 
-	rr = slice_trs(ea,2,5);	
-
-	eap5 = get_trit_int(ea,5);
-	if( eap5 < 0 ) {
-		/* Зпаисать 18-тритное число */
-		set_trit(&rr,4,0);		
-		rind = row_fram_to_index(rr);		
-		view_short_reg(&rr," eap5 < 0 rr");
-		printf(" z=%d, ind=%d\r\n",zind, rind);
-		mem_fram[zind][rind+1] = (trishort)(v.tb & 0x3FFFFul);
-		mem_fram[zind][rind]   = (trishort)(v.tb>>18 & 0x3FFFFul);
-	}
-	if( eap5 == 0 ) {		
-		rind = row_fram_to_index(rr);
-		view_short_reg(&rr," eap5 == 0 rr");
-		printf(" z=%d, ind=%d\r\n",zind, rind);
-		mem_fram[zind][rind]   = (trishort)(v.tb & 0x3FFFFul);
-	}
-	else { /* eap5 > 0 */
-		rind = row_fram_to_index(rr);
-		view_short_reg(&rr," eap5 > 0 rr");
-		printf(" z=%d, ind=%d\r\n",zind, rind);
-		mem_fram[zind][rind] = (trishort)(v.tb & 0x3FFFFul);
-	}
-}
-#endif
-
-
-
-
-
 /**
  * Функция "Записи троичного числа в ферритовую память"
  */
@@ -1228,25 +1116,25 @@ void st_fram( trs_t ea, trs_t v ) {
 /**
  * Операция чтения в память магнитного барабана
  */  
-trs_t ld_drum( trs_t ea ) {
-	//TODO
-	uint8_t zind; 
-	uint8_t rind; 
+trs_t ld_drum( trs_t ea, uint8_t ind ) {
+		
+	uint8_t zind; 	
 	trs_t zr;
 	trs_t rr;
 	trs_t res;
 
-	zr = slice_trs(ea,1,1);	
-	zr.l = 1; 
+	zr = slice_trs(ea,1,4);	
+	zr.l = 4; 
 	zind = zone_drum_to_index(zr);
 
-	rr = slice_trs(ea,2,5);	
-	rr.l = 4; 
-
-	res.tb = 0;
+	if( ind > SIZE_ZONE_TRIT_DRUM-1 ) {
+		ind = SIZE_ZONE_TRIT_DRUM - 1;
+	}
+	else if( ind < 0 ) {
+		ind = 0;
+	}
 	
-	rind = row_fram_to_index(rr);
-	res.tb = mem_drum[zind][rind] & 0x3FFFF;
+	res.tb = mem_drum[zind][ind] & 0x3FFFF;
 	res.l  = 9;
 
 	return res;
@@ -1255,43 +1143,26 @@ trs_t ld_drum( trs_t ea ) {
 /**
  * Операция записи в память магнитного барабана
  */
-void st_drum( trs_t ea, trs_t v ) {
-	//TODO
+void st_drum( trs_t ea, uint8_t ind,  trs_t v ) {
+	
 	uint8_t zind; 
 	uint8_t rind; 
 	trs_t zr;
 	trs_t rr;
 
-	zr.l = 1; 
-	zr = slice_trs(ea,1,1);
-	zind = zone_drum_to_index(zr);
 
-	rr.l = 4; 
-	rr = slice_trs(ea,2,5);	
+	zr = slice_trs(ea,1,4);
+	zr.l = 4; 
+	zind = zone_drum_to_index(zr);	
 
-	rind = row_drum_to_index(rr);
-	mem_drum[zind][rind] = v.tb & 0x3FFFF;
-}
+	if( ind > SIZE_ZONE_TRIT_DRUM-1 ) {
+		ind = SIZE_ZONE_TRIT_DRUM - 1;
+	}
+	else if( ind < 0 ) {
+		ind = 0;
+	}
 
-/**
- * Операция записи в память магнитного барабана
- */
-void set_drum( trs_t ea, trs_t v ) {
-	//TODO
-	uint8_t zind; 
-	uint8_t rind; 
-	trs_t zr;
-	trs_t rr;
-
-	zr.l = 1; 
-	zr = slice_trs(ea,1,1);
-	zind = zone_drum_to_index(zr);
-
-	rr.l = 4; 
-	rr = slice_trs(ea,2,5);	
-
-	rind = row_drum_to_index(rr);
-	mem_drum[zind][rind] = v.tb & 0x3FFFF;
+	mem_drum[zind][ind] = v.tb & 0x3FFFF;
 }
 
 /** ***********************************************
@@ -2418,6 +2289,56 @@ void dump_fram(void) {
 }
 
 /**
+ * Печать короткого слова BRUM машины Сетунь-1958 
+ */
+void view_drum(trs_t zone) {
+	
+	int8_t j;
+	
+	trs_t zr;
+	uint8_t zind; 
+	uint8_t rind; 
+	
+	trs_t tv;
+	trishort r;
+	trishort t;
+	
+	/* Зона памяти FRAM */
+	zr = slice_trs(zone,1,4);
+	zr.l = 4;
+	zind = zone_drum_to_index(zr);
+
+	view_short_reg(&zr," zr = ");
+
+	printf("\n[ BRUM Zone = %2i ]\n", zind + 1);	
+
+	for(uint8_t i=0;i<SIZE_ZONE_TRIT_DRUM;i++) {
+
+		// Читать короткое словао
+		r = ld_drum(zr,i).tb & (trishort)(0x3FFFF);
+
+		printf("drum[% 3i:% 3i ] ", zind, i);		
+		/* Вывод короткого троичного слова */
+		j = 0;	 	 		
+		do {		  
+			printf("%i",tb2int(r >> (9-1-j)*2));          		    		  
+			j++;          
+		} while( j < 9 );
+		
+		printf("], ");			
+		printf("(%li), ",(long int)tb_to_digit(r));	 	 	 		
+
+		tv.l = 9;
+		tv.tb = r & 0x3FFFF; 			
+		trit_to_str(tv);
+		printf("\n");		  		 		 
+	
+	} /* for() */
+
+	
+}
+
+/**
  * Печать памяти DRUM машины Сетунь-1958 
  */
 void dump_drum(void) {
@@ -2425,8 +2346,11 @@ void dump_drum(void) {
 	int8_t zone;
 	int8_t row;
 	int8_t j;
+	trs_t tv;
 	trishort r;
 	trishort t;
+
+	printf("\n[ BRUM Setun-1958 ]\n");
 
 	for(zone=0; zone < NUMBER_ZONE_DRUM; zone++) {
 		for(row=0; row < SIZE_ZONE_TRIT_DRUM; row++) {
@@ -2434,7 +2358,7 @@ void dump_drum(void) {
 			r = mem_drum[zone][row];			
 			t = r;
 			
-			printf("drum[% 4i]  (%3d:%3d) = [", zone*SIZE_ZONE_TRIT_DRUM + row,zone-36,row-26);
+			printf("drum[%3i:%3i] = [", zone,row-SIZE_ZONE_TRIT_DRUM/2);
 	 		
 			j = 0;	 
 	 		do {		  
@@ -2443,7 +2367,12 @@ void dump_drum(void) {
 			} while( j < 9 );
 	 		
 			printf("], ");
-	 		printf("(%li),\t",(long int)tb_to_digit(t));	 	 
+	 		printf("(%li), ",(long int)tb_to_digit(t));	 	 
+
+			tv.l = 9;
+			tv.tb = r & 0x3FFFF; 			
+			trit_to_str(tv);			
+
 	 		printf("\n");		  		 		 
 		}
 	}
@@ -3385,14 +3314,6 @@ void Triniti_tests( void ) {
 	set_trit(&zd,4,1);
 	printf(" - zone_drum_to_index()=%i\r\n",zone_drum_to_index(zd) );
 
-	trs_t rd;
-	rd.l = 4;
-	set_trit(&rd,1,1);
-	set_trit(&rd,2,1);
-	set_trit(&rd,3,1);
-	set_trit(&rd,4,1);
-	printf(" - row_drum_to_index()=%i\r\n",row_drum_to_index(rd) );
-
 	trs_t zr;
 	zr.l = 1;
 	set_trit(&zr,1,-1);
@@ -3821,6 +3742,63 @@ void Setun_test_Opers( void ) {
 
 	view_short_regs();
 
+	//t22 test DRUM
+	printf("t22 test zone for drum()\n");
+	uint32_t nz;	
+	
+	printf(" ad1 ='000+'");
+	ad1 = smtr("000+");	
+	nz = zone_drum_to_index(ad1);
+	printf(" nz = %i\r\n",nz);
+
+	printf(" ad1 ='00+-2'");
+	ad1 = smtr("00+-");	
+	nz = zone_drum_to_index(ad1);
+	printf(" nz = %i\r\n",nz);
+
+	printf(" ad1 ='00+0'");
+	ad1 = smtr("00+0");
+	nz = zone_drum_to_index(ad1);
+	printf(" nz = %i\r\n",nz);
+
+	printf("t23 test zone for view_brum()\n");
+
+	printf(" z ='000+'");
+	ad1 = smtr("000+");
+	view_drum(ad1);
+
+	printf(" z ='0+++'");
+	ad1 = smtr("0+++");
+	view_drum(ad1);
+
+	printf("\nt24 test DRUN fill index and view \n");
+	
+	trs_t inr;
+	inr.l=9;
+	inr = smtr("000000000");
+
+	trs_t zi;
+	zi.l=4;
+	zi = smtr("000+"); //-17
+
+	for(uint8_t zz=0;zz<NUMBER_ZONE_DRUM;zz++) {						
+		for(uint8_t mm=0;mm<SIZE_ZONE_TRIT_FRAM;mm++) {			
+			st_drum(zi,mm,inr);
+			inc_trs(&inr);			
+		}		
+		inc_trs(&zi);
+	}
+
+	//ad1 = smtr("000+");
+	//view_drum(ad1);
+	
+	dump_drum();
+
+	printf("\n");
+
+	//dump_fram();
+
+
 }	
 
 /** -------------------------------
@@ -3879,7 +3857,7 @@ int main ( int argc, char *argv[] )
 	}
 	printf(" --- EOF 'test-1.txs' --- \r\n\r\n");
 
-	dump_fram(); // test Ok'
+	dump_fram();
 
 	//dump_drum(); //TODO dbg
 
