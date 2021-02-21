@@ -6,7 +6,7 @@
 * Create date: 01.11.2018
 * Edit date:   21.02.2021
 *
-* Version: 1.27
+* Version: 1.28
 */
 
 /**
@@ -211,6 +211,9 @@ void clean_drum(void);
 
 trs_t ld_drum( trs_t ea, uint8_t ind );
 void st_drum( trs_t ea, uint8_t ind, trs_t v );
+
+void fram_to_drum( trs_t ea );
+void drum_to_fram( trs_t ea );
 
 /**
  * Устройства структуры машины Сетунь-1958
@@ -996,6 +999,31 @@ trs_t next_address(trs_t c) {
 }
 
 /**
+ * Новый адрес кода машины
+ */
+trs_t next_ind(trs_t c) {
+	
+	trs_t r;	
+	r = c;
+	
+	if( get_trit_int(r,5) == 0 ) {
+		/* 0 */		
+		inc_trs(&r);	
+	}
+	else if(get_trit_int(r,5) >= 1 ) {
+		/* + */
+		inc_trs(&r);
+		inc_trs(&r);
+	}	
+	else if( get_trit_int(r,5) <= -1 ) {
+		/* - */
+		inc_trs(&r);		
+	}
+	
+	return r;
+}
+
+/**
  * Операция очистить память ферритовую
  */
 void clean_fram(void) {
@@ -1101,17 +1129,55 @@ void st_fram( trs_t ea, trs_t v ) {
 		trilong r;				
 		r =  shift_trs(v,9).tb;		
 		mem_fram[rind][zind] = (trishort)r & (trishort)0x3FFFF;		
-		mem_fram[rind][zind + 1] = (trishort)v.tb & (trishort)0x3FFFF;
+		mem_fram[rind][zind + 1] = (trishort)(v.tb & (trishort)0x3FFFF);
 	}
 	else if( eap5 == 0 ) {		
-		trilong r;				
-		r =  shift_trs(v,9).tb;			
-		mem_fram[rind][zind] = (trishort)r & (trishort)0x3FFFF;
-	}
-	else { /* eap5 > 0 */
 		mem_fram[rind][zind] = (trishort)(v.tb & (trishort)0x3FFFF);
 	}
+	else { /* eap5 > 0 */		
+		mem_fram[rind][zind] = (trishort)(v.tb & (trishort)0x3FFFF);
+	}
+	
 }
+
+/**
+ * Копировать страницу из память fram на магнитного барабана brum
+ */
+void fram_to_drum( trs_t ea ) {
+	
+	int8_t sng;	
+	trs_t fram_inc;
+	trs_t k1;
+	trs_t k2_k5;
+	trs_t mr;
+
+	/* Номер зоны FRAM */
+	k1 = slice_trs(ea,1,1);
+	sng = trit2bit(k1);
+	
+	/* Номер зоны DRUM */
+	k2_k5 = slice_trs(ea,2,5);
+
+	/* Какая страница FRAM */
+	if( sng < 0 ) {
+		fram_inc = smtr("----0");
+	}
+	else if( sng == 0  ) {
+		fram_inc = smtr("0---0");
+	}
+	else {
+		fram_inc = smtr("+---0");
+	}
+
+	/* Копировать страницу */
+	for(uint8_t m=0;m<SIZE_ZONE_TRIT_FRAM;m++) {						
+			mr = ld_fram(fram_inc);
+			st_drum(k2_k5,m,mr);
+			fram_inc = next_address(fram_inc);									
+	}
+
+}
+
 
 /**
  * Операция чтения в память магнитного барабана
@@ -1128,7 +1194,7 @@ trs_t ld_drum( trs_t ea, uint8_t ind ) {
 	zind = zone_drum_to_index(zr);
 
 	if( ind > SIZE_ZONE_TRIT_DRUM-1 ) {
-		ind = SIZE_ZONE_TRIT_DRUM - 1;
+		ind = SIZE_ZONE_TRIT_DRUM-1;
 	}
 	else if( ind < 0 ) {
 		ind = 0;
@@ -1164,6 +1230,48 @@ void st_drum( trs_t ea, uint8_t ind,  trs_t v ) {
 
 	mem_drum[zind][ind] = v.tb & 0x3FFFF;
 }
+
+/**
+ * Копировать страницу с магнитного барабана в память fram
+ */
+void drum_to_fram( trs_t ea ) {
+	
+	int8_t sng;	
+	trs_t zram;
+	trs_t fram_inc;
+	
+	trs_t k1;
+	trs_t k2_k5;
+	trs_t mr;
+	
+	fram_inc.l = 4;
+	fram_inc.tb = 0;
+
+	/* Номер зоны FRAM */
+	k1 = slice_trs(ea,1,1);
+	sng = trit2bit(k1);
+	
+	/* Номер зоны DRUM */	
+	k2_k5 = slice_trs(ea,2,5);
+	k2_k5.l = 4;
+
+	if( sng < 0 ) {
+		fram_inc = smtr("----0");
+	}
+	else if( sng == 0  ) {
+		fram_inc = smtr("0---0");
+	}
+	else {
+		fram_inc = smtr("+---0");
+	}
+	/* Копировать страницу */
+	for(uint8_t m=0; m<SIZE_ZONE_TRIT_FRAM; m++) {									
+			mr = ld_drum(k2_k5,m);			
+			st_fram(fram_inc, mr );			
+			fram_inc = next_address(fram_inc);			
+	}
+}
+
 
 /** ***********************************************
  *  Алфавит троичной симметричной системы счисления
@@ -2308,8 +2416,6 @@ void view_drum(trs_t zone) {
 	zr.l = 4;
 	zind = zone_drum_to_index(zr);
 
-	view_short_reg(&zr," zr = ");
-
 	printf("\n[ BRUM Zone = %2i ]\n", zind + 1);	
 
 	for(uint8_t i=0;i<SIZE_ZONE_TRIT_DRUM;i++) {
@@ -2772,13 +2878,13 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				return STOP_ERROR;
 			} break;
 			case (-1*9 +0*3 +1):  { // -0+ : Запись на МБ	(Фа*)=>(Мд*)
-				printf("   k6..8[-0+] : (Фа*)=>(Мд*)\n");
-				//TODO 
+				printf("   k6..8[-0+] : (Фа*)=>(Мд*)\n");				
+				fram_to_drum(k1_5);
 				C = next_address(C);
 			} break;
 			case (-1*9 +0*3 -1):  { // -0- : Считывание с МБ	(Мд*)=>(Фа*)
-				printf("   k6..8[-0-] : (Мд*)=>(Фа*)\n");
-				//TODO 
+				printf("   k6..8[-0-] : (Мд*)=>(Фа*)\n");				
+				drum_to_fram(k1_5);
 				C = next_address(C);
 			} break;
 			case (-1*9 -1*3 +0):  { // --0 : Не задействована	Стоп
@@ -3789,16 +3895,53 @@ void Setun_test_Opers( void ) {
 		inc_trs(&zi);
 	}
 
-	//ad1 = smtr("000+");
-	//view_drum(ad1);
+	printf("\nt25 test oper='-0-' '-0+' \n");
 	
-	dump_drum();
+	addr = smtr("0000+"); 
+	m1 = smtr("0000+-0-0"); //-0-
+	st_fram(addr,m1); 
 
+	S = smtr("000000000-00+000-+");	
+	view_short_reg(&S,"S=");
+
+	/* Begin address fram */ 	
+	C = smtr("0000+");
+	
+	printf("\nreg C = 00001\n");
+	
+	/** 
+	* work VM Setun-1958
+	*/
+	K = ld_fram(C);	
+	exK = control_trs(K);	
+	view_short_reg(&K,"K=");
+	oper = slice_trs(K,6,8);
+	ret_exec = execute_trs(exK,oper);
+	printf("ret_exec = %i\r\n",ret_exec);	
+
+	C = smtr("0000+");
+	addr = smtr("0000+"); 
+	m1 = smtr("000+--0+0"); //-0+
+	st_fram(addr,m1); 
+
+	K = ld_fram(C);	
+	exK = control_trs(K);	
+	view_short_reg(&K,"K=");
+	oper = slice_trs(K,6,8);
+	ret_exec = execute_trs(exK,oper);
+	printf("ret_exec = %i\r\n",ret_exec);	
+
+	printf("BRUM zone='000+'");
+	ad1 = smtr("000+");
+	view_drum(ad1);
 	printf("\n");
 
-	//dump_fram();
+	dump_fram();
 
-
+	printf("BRUM zone='00+-'");
+	ad1 = smtr("00+-");
+	view_drum(ad1);
+	printf("\n");	
 }	
 
 /** -------------------------------
@@ -3827,10 +3970,9 @@ int main ( int argc, char *argv[] )
 	Triniti_tests();	
 #endif
 
+#if (TRI_TEST == 2)
 	Setun_test_Opers();
-	
-	return 0;
-
+#endif
 
 	printf("\r\n --- EMULATOR SETUN-1958 --- \r\n");		
 
@@ -3838,7 +3980,6 @@ int main ( int argc, char *argv[] )
 	printf("\r\n --- Reset Setun-1958 --- \r\n");		
 	reset_setun_1958(); 	
 	view_short_regs();
-
 
 	/**
 	 * Загрузить из файла тест-программу
