@@ -1,5 +1,19 @@
 # Changelog
 
+## 21.02.2021
+
+- [x] Уточнение описания магнитного барабана DRUM
+- [x] Уточнение модели памяти барабана mem_drum[]
+- [X] Отладка zone_drum_to_index()
+- [X] Отладка clean_drum() 
+- [X] Отладка clean_drum() 
+- [X] Отладка ld_drum( trs_t ea );
+- [X] Отладка st_drum( trs_t ea, trs_t v );
+- [X] Отладка st_drum( trs_t ea, trs_t v );
+- [X] Удалить row_drum_to_index
+- [X] Добавить вывод страницы view_drum()
+- [X] Отладка dump_drum()
+
 ## 16.02.2021
 
 - [X] Отладка операций +0-.
