@@ -4,7 +4,7 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   22.02.2021
+* Edit date:   23.02.2021
 *
 * Version: 1.30
 */
@@ -2728,17 +2728,18 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 					goto error_over;
 				} 
 				C = next_address(C);
-			} break;
-			case (+1*9 +1*3 -1):  { // ++- : Умножение -	(A*)+(S)(R)=>(S)
+			} break;			
+			case (+1*9 +1*3 -1):  { // ++- : Умножение - (A*)+(S)(R)=>(S)
 				printf("   k6..8[++-] : (A*)+(S)(R)=>(S)\n");
-				MR = ld_fram(k1_5);
-				S = add_trs(mul_trs(S,R),MR);
+				MR = ld_fram(k1_5);				
+				S = add_trs(mul_trs(S,R),MR);				
 				W = sgn_trs(S);
 				if( over(S) > 0 ) {
 					goto error_over;
-				}
+				} 
 				C = next_address(C);
-			} break; 			case (+1*9 -1*3 +0):  { // +-0 : Поразрядное умножение	(A*)[x](S)=>(S)
+			} break;
+			case (+1*9 -1*3 +0):  { // +-0 : Поразрядное умножение	(A*)[x](S)=>(S)
 				printf("   k6..8[+-0] : (A*)[x](S)=>(S)\n");
 				MR = ld_fram(k1_5);
 				S = xor_trs(MR,S);
@@ -2913,20 +2914,23 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			} break;
 			case (-1*9 -1*3 +0):  { // --0 : Не задействована	Стоп
 				printf("   k6..8[--0] : STOP BREAK\n");
+				view_short_reg(&k6_8,"   k6..8="); 
 				return STOP_ERROR;
 			} break;
 			case (-1*9 -1*3 +1):  { // --+ : Не задействована	Стоп
 				printf("   k6..8[--+] : STOP BREAK\n");
+				view_short_reg(&k6_8,"   k6..8="); 
 				return STOP_ERROR;
 			} break;
 			case (-1*9 -1*3 -1):  { // --- : Не задействована	Стоп
 				printf("   k6..8[---] : STOP BREAK\n");
+				view_short_reg(&k6_8,"   k6..8="); 
 				return STOP_ERROR;
 			} break;
 			default: {				// Не допустимая команда машины
 				printf("   k6..8 =[]   : STOP! NO OPERATION\n");
-                                view_short_reg(&k6_8,"k6..8 = ");
-                                return STOP_ERROR;
+				view_short_reg(&k6_8,"   k6..8="); 
+				return STOP_ERROR;
 			} 
 			break;
 		}	
@@ -4059,13 +4063,10 @@ int main ( int argc, char *argv[] )
 		}		
 	}
 	printf("\n");
-	printf(" - ret_exec = %i\r\n",ret_exec);
-	printf(" - opers    = %d\r\n",10000);
-	printf("\r\n");
 
+	//Prints REGS and FRAM  
 	view_short_regs();
-	
-	dump_fram();
+	//dump_fram();
 
 	printf("\r\n[ Stop Setun-1958 ]\r\n");
 
