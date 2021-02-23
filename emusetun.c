@@ -6,7 +6,7 @@
 * Create date: 01.11.2018
 * Edit date:   23.02.2021
 *
-* Version: 1.30
+* Version: 1.31
 */
 
 /**
@@ -2873,8 +2873,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 					else if( get_trit_int(S,2) == 0 )  {
 						uint8_t n = 0;
 						for(uint8_t i=0;i<16;i++) {
-							S = shift_trs(S,-1);
-							view_short_reg(&S," shif S=");
+							S = shift_trs(S,-1);							
 							n++;
 							if( get_trit_int(S,2) != 0 ) { 
 								break;
@@ -2898,9 +2897,10 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				}
 				C = next_address(C);				
 			} break;
-			case (-1*9 +0*3 +0):  { // -00 : Не задействована	Стоп
-				printf("   k6..8[-00] : STOP\n");
-				return STOP_ERROR;
+			case (-1*9 +0*3 +0):  { // -00 : Ввод в Фа* - Вывод из Фа*
+				printf("   k6..8[-00] : Ввод в Фа* - Вывод из Фа*\n");
+				//TODO добавить реализацию
+				C = next_address(C);
 			} break;
 			case (-1*9 +0*3 +1):  { // -0+ : Запись на МБ	(Фа*)=>(Мд*)
 				printf("   k6..8[-0+] : (Фа*)=>(Мд*)\n");				
@@ -4047,7 +4047,7 @@ int main ( int argc, char *argv[] )
 	/** 
 	* work VM Setun-1958
 	*/
-	for(uint16_t jj=1;jj<10000;jj++) {
+	for(uint16_t jj=1;jj<100;jj++) {
 		
 		K = ld_fram(C);
 		addr = control_trs(K);
