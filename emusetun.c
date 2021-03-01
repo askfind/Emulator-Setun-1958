@@ -4,9 +4,9 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   23.02.2021
+* Edit date:   01.03.2021
 *
-* Version: 1.31
+* Version: 1.32
 */
 
 /**
@@ -2710,9 +2710,10 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			} break;
 			case (+1*9 +1*3 +0):  { // ++0 : Умножение 0	(S)=>(R); (A*)(R)=>(S)
 				printf("   k6..8[++0] : (S)=>(R); (A*)(R)=>(S)\n");
-				copy_trs(&S,&R);				
+				copy_trs(&S,&R);
+				S.tb = 0;			
 				MR = ld_fram(k1_5);				
-				S = mul_trs(MR,R);
+				S = slice_trs(mul_trs(MR,R),1,9);
 				W = sgn_trs(S);
 				if( over(S) > 0 ) {
 					goto error_over;
@@ -2722,7 +2723,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			case (+1*9 +1*3 +1):  { // +++ : Умножение +	(S)+(A*)(R)=>(S)
 				printf("   k6..8[+++] : (S)+(A*)(R)=>(S)\n");
 				MR = ld_fram(k1_5);				
-				S = add_trs(mul_trs(MR,R),S);				
+				S = add_trs(slice_trs(mul_trs(MR,R),1,9),S);				
 				W = sgn_trs(S);
 				if( over(S) > 0 ) {
 					goto error_over;
@@ -2732,7 +2733,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			case (+1*9 +1*3 -1):  { // ++- : Умножение - (A*)+(S)(R)=>(S)
 				printf("   k6..8[++-] : (A*)+(S)(R)=>(S)\n");
 				MR = ld_fram(k1_5);				
-				S = add_trs(mul_trs(S,R),MR);				
+				S = add_trs(slice_trs(mul_trs(S,R),1,9),MR);				
 				W = sgn_trs(S);
 				if( over(S) > 0 ) {
 					goto error_over;
