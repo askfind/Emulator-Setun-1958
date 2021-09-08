@@ -4,10 +4,12 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   01.03.2021
+* Edit date:   08.09.2021
 *
-* Version: 1.32
+* Version: 1.33
 */
+//TODO изменить комментарии в файле с кодом проекта
+//TODO изменить функции для нового типа данных троичных чисел
 
 /**
  *  Заголовочные файла
@@ -18,7 +20,9 @@
 #include <string.h>
 #include <math.h>
 
-/** ******************************
+#include "emusetun.h"
+
+/*********************************
  *  Виртуальная машина Сетунь-1958
  * -------------------------------
  */
@@ -37,6 +41,8 @@
 #define TRIT9_MIN	(-9841)
 #define TRIT18_MAX	(+193710244L)
 #define TRIT18_MIN	(-193710244L)
+
+#define SIZE_TRITS_MAX  (32)	/* максимальная количество тритов троичного числа */
 
 /* *******************************************
  * Реализация виртуальной машины "Сетунь-1958"
@@ -98,8 +104,9 @@ typedef uint64_t trilong;
 typedef uintptr_t addr;
 
 typedef struct trs { 
-	uint8_t  l;			/* длина троичного числа в тритах			*/
-	trilong tb; 		/* двоичное битовое поле троичного числа 	*/
+	uint8_t  l;		/* длина троичного числа в тритах			*/
+        uint32_t t1;            /* троичное число FALSE,TRUE */
+        uint32_t t0; 		/* троичное число NIL */
 } trs_t;
 
 
@@ -144,7 +151,7 @@ trs_t MR; /* временный регистр для обмена троичн�
  *  --------------------------------------------------
  */
 int32_t pow3( int8_t x); 
-int8_t trit2bit(trs_t t);	
+int8_t trit2int(trs_t t);	
 trs_t bit2trit(int8_t b);
 int32_t trs_to_digit( trs_t *x );
 
@@ -157,18 +164,17 @@ void or_t(int8_t *a, int8_t *b, int8_t *s );
 void sum_t(int8_t *a, int8_t *b, int8_t *p0, int8_t *s, int8_t *p1 );
 
 /**
- * Операции с полями тритов
+ * Операции с троичныыми числами из тритов
  */
 void clear(trs_t *t);
+void clear_full(trs_t *t);
 
-uint8_t get_trit( trs_t t, int8_t pos) ;
-int8_t get_trit_int( trs_t t, int8_t pos) ;
-void set_trit( trs_t *t, int8_t pos, int8_t v);
-uint8_t bit2tb(int8_t b);
+int8_t get_trit( trs_t t, uint8_t pos) ;
+trs_t set_trit( trs_t t, uint8_t pos, int8_t trit);
 
-int8_t sgn(trs_t t);
-int8_t inc_trs(trs_t *t);
-int8_t dec_trs(trs_t *t);
+void inc_trs(trs_t *t);
+void dec_trs(trs_t *t);
+
 trs_t shift_trs(trs_t t, int8_t s);
 trs_t add_trs(trs_t a, trs_t b);
 trs_t and_trs(trs_t a, trs_t b);
@@ -250,87 +256,36 @@ int32_t pow3( int8_t x ) {
 
 
 /**
- * Преобразование int в битое поле f0 как [b1b0]
- */
-uint8_t bit2tb(int8_t b) {	
-	if (b > 0) {		
-		return 2; /* +1 */
-	}
-	if (b < 0) {		
-		return 1; /* -1 */
-	}	
-	/* b == 0 */
-	return 0;
-}
-
-/**
  * Преобразование младшего трита в битое поле f0=[b1b0]
  */
-int8_t trit2bit(trs_t t) {
-	switch ( t.tb & (uint8_t)3 ) {
-		case 0:				/* f0 = [b1b0] = [00] */
-		case 3: return 0; 	/* f0 = [b1b0] = [11] */
-			break;
-		case 2: return 1; 	/* f0 = [b1b0] = [10] */
-			break;
-		case 1: return -1; 	/* f0 = [b1b0] = [01] */
-			break;
-	}
+int8_t trit2int(trs_t t) {
+	
+	if( (t.t0 & 1)>0 ) {
+		if( (t.t1 & 1)>0 ) {
+			return 1;
+		}
+		else {
+			return -1;
+		}	
+	} 
 	return 0;
 }
 
 /**
- * Преобразование поля f0=[b1b0] трита в число со знаком
+ * Очистить поле битов троичного числа
  */
-int8_t tb2int(uint8_t tb) {
-	switch ( tb & (uint8_t)3 ) {
-		case 0:
-		case 3: return 0; 
-			break;
-		case 2: return 1; 	
-			break;
-		case 1: return -1; 	
-	}
-	return 0;	
-}
-
-/**
- * Преобразование младшего трита в челое число битого поля
- */
-uint8_t trit2low(trs_t t) {
-	switch ( t.tb & (trilong)03 ) {
-		case 0:
-		case 3: return 0; break;
-		case 2: return 2; break;
-		case 1: return 1;break; 	
-	}
-	return 0;	
-}
-
-/**
- * Преобразование числа со знаком в битовое поле f0 в троичное число
- */
-trs_t bit2trit(int8_t b) {
-	trs_t r;	
-	if (b > 0) {
-		r.tb = 2;
-		return r;
-	}
-	if (b < 0) {
-		r.tb = 1;
-		return r;
-	}
-	/* b == 0 */
-	r.tb = 0;
-	return r;		
+void clear(trs_t *t) {
+	t->t1 = 0;
+        t->t0 = 0;
 }
 
 /**
  * Очистить длину троичного числа и поле битов троичного числа
  */
-void clear(trs_t *t) {	
+void clear_full(trs_t *t) {
 	t->l  = 0;
-	t->tb = 0;
+	t->t1 = 0;
+        t->t0 = 0;
 }
 
 /** 
@@ -432,62 +387,22 @@ void or_t(int8_t *a, int8_t *b, int8_t *s ) {
 }
 
 /**
- * Операция получить челое со знаком SGN троичного числа
+ * Операция знак SGN троичного числа
  */
-int8_t sgn(trs_t x) {
-    int8_t i = sizeof(x.tb)*8;    
-    while (1) {		
-		if( ( (x.tb & 0x3) << (x.l<<2) ) > 0  ) {				
-			break;
-		}			
-		if( i <= 0) {			
-			break; 
-		}			
-		i -= 2;			
-		x.tb = x.tb << 2;		
-	};
-
-	if ( (x.tb & (0x1 << (x.l<<2))) && (x.tb & (0x2 << (x.l<<2)))  ) {
-		return 0; /* '+' */
-	}
-    else if ( x.tb & (0x1 << (x.l<<2)) ) {
-		return -1; /* '-' */
-	}
-	else if ( x.tb & (0x2 << (x.l<<2)) ) {
-		return 1; /* '+' */
-	}
-    	return 0; /* '0' */
-}
-
-/**
- * Операция получить знак SGN троичного числа
- */
-trs_t sgn_trs(trs_t x) {	
-	trs_t r;
-    int8_t i;			
-    uint8_t sg = 0;			
-
-	for(i=0;i<x.l;i++) {		
-		sg = x.tb>>((x.l-1-i)<<1) & 3;
-		if( sg>0 ) {
-			break; 
-		} 
-	}
-		
-	r.l = 1;
-	
-    if ( sg == 1 ) {
-		set_trit(&r,1,-1);		
-		return r; /* '-' */
-	}
-	else if ( sg == 2 ) {
-		set_trit(&r,1,1);		
-		return r; /* '+' */
-	}
-	else {	
-		set_trit(&r,1,0);	
-    	return r; /* '0' */
-	}
+int8_t sgn_trs(trs_t x) {
+    int8_t i; 
+	x.l = min(x.l,SIZE_TRITS_MAX);        
+	for (i=sizeof(x.t1)*8;i>0;i--) {
+		if( (x.t0 & (1<<i)) > 0) {
+			if( (x.t1 & (1<<i)) > 0 ) { 
+				return 1;
+			} 
+			else {
+				return -1;
+			}
+		}
+	}    
+	return 0;
 }
 
 /**
@@ -500,19 +415,22 @@ trs_t or_trs(trs_t x, trs_t y) {
 	int8_t i,j;
 	int8_t a,b,s;
 
+	x.l = min(x.l,SIZE_TRITS_MAX);
+	y.l = min(y.l,SIZE_TRITS_MAX);
 	if( x.l >= y.l) {
-		j = x.l;
+		j = x.l;		  
 	} 
 	else {
 		j = y.l;
 	}
-			
-	for(i = 0; i < j; i++) {
-		r.tb <<= 2;
-		a = trit2bit(x);
-		b = trit2bit(y);
+	
+	r.l = j;		
+	
+	for(i = 0; i < j; i++) {		
+		a = get_trit(x,i);
+		b = get_trit(y,i);
 		and_t(&a, &b, &s);
-		r.tb |= bit2tb(s); 		
+		r = set_trit(x,i,s);
 	}
 
 	return r;	
@@ -527,19 +445,22 @@ trs_t xor_trs(trs_t x, trs_t y) {
 	int8_t i,j;
 	int8_t a,b,s;
 
+	x.l = min(x.l,SIZE_TRITS_MAX);
+	y.l = min(y.l,SIZE_TRITS_MAX);
 	if( x.l >= y.l) {
-		j = x.l;
+		j = x.l;		  
 	} 
 	else {
 		j = y.l;
 	}
-			
-	for(i = 0; i < j; i++) {
-		r.tb <<= 2;
-		a = trit2bit(x);
-		b = trit2bit(y);
+	
+	r.l = j;		
+	
+	for(i = 0; i < j; i++) {		
+		a = get_trit(x,i);
+		b = get_trit(y,i);
 		xor_t(&a, &b, &s);
-		r.tb |= bit2tb(s); 		
+		r = set_trit(x,i,s);
 	}
 
 	return r;	
@@ -549,23 +470,12 @@ trs_t xor_trs(trs_t x, trs_t y) {
  * Операция NOT trs 
  */
 trs_t not_trs(trs_t x) {
-	int8_t i;
-	int8_t s;
-	trs_t r;
+
+	trs_t r = x;
+	x.l = min(x.l,SIZE_TRITS_MAX);
+	r.l = x.l;		
 	
-	clear(&r);
-
-	r.l = x.l;
-	if( x.l <= 0) {
-		return r;
-	}
-
-	for(i = 0; i < r.l; i++) {
-		r.tb <<= 2;
-		s = trit2bit(x);
-		s = -s;				
-		r.tb |= bit2tb(s); 		
-	}
+	r.t1 = ~r.t1;
 
 	return r;
 }
@@ -580,42 +490,23 @@ trs_t neg_trs(trs_t t) {
 /** 
  * Троичный INC trs
  */
-int8_t inc_trs(trs_t *t) {
-
-	 int8_t res;
-	 int8_t pos;
-	 trs_t m;
-	 trs_t n;
-	 trs_t y;
-
-	 n = *t;	
-	 
-	 clear(&m);
-	 m.l=t->l;	 
-	 pos = m.l;
-	 set_trit(&m,pos,1);	 
-	 y = add_trs(n,m);	 
-	 *t = y; 
-
-	 return 0;	 
+void inc_trs(trs_t *t) {
+	 trs_t x;
+	 x.l = t->l;	 	 
+	 x = set_trit(x,0,1);
+	 x = add_trs(*t,x);	 	 
+	 *t = x;		 
 }
 
 /**
  * Операция DEC trs
  */
-int8_t dec_trs(trs_t *t) {
-
-	int8_t s;
-	trs_t m;
-	trs_t n;
-	
-	clear(&m);
-	m.l=t->l;	
-	set_trit(&m,m.l,1);	 
-	m = sub_trs(*t,m);
-	*t = m;
-
-	return 0;
+void dec_trs(trs_t *t) {
+	 trs_t x;
+	 x.l = t->l;	 	 
+	 x = set_trit(x,0,-1);
+	 x = add_trs(*t,x);	 	 
+	 *t = x;		 
 }
 
 /**
@@ -627,49 +518,44 @@ int8_t dec_trs(trs_t *t) {
  * Возврат: Троичное число 
  */
 trs_t shift_trs(trs_t t, int8_t d) {
-	trs_t r;
-	r=t;	
-	if( d>0 ) {
-		r.l = t.l;
-		r=t;
-		r.tb >>= d*2;		
+	if( d > 0 ) {
+		t.t1 >>= d;
+		t.t0 >>= d;
+	} else if( d < 0 ) {
+		t.t1 <<= -d;
+		t.t0 <<= -d;
 	}
-	else if( d<0 ) {
-		r.l = t.l;
-		r=t;
-		r.tb <<= (-d)*2;
-	}
-	return r;
+	return t;
 } 
 
 /**
  * Троичное сложение тритов
  */
 trs_t add_trs(trs_t x, trs_t y) {
+	
 	int8_t i,j;
 	int8_t a,b,s,p0,p1;
 	trs_t r;
 
+	x.l = min(x.l,SIZE_TRITS_MAX);
+	y.l = min(y.l,SIZE_TRITS_MAX);
 	if( x.l >= y.l) {
 		j = x.l;
 	} 
 	else {
 		j = y.l;
-	}
+	}	
 	
 	r.l = j;
-	r.tb = 0;
 
 	p0 = 0;
 	p1 = 0;
-			
-	for(i = 0; i < j; i++) {
-		a = trit2bit(x);
-		b = trit2bit(y);
-		sum_t(&a, &b, &p0, &s, &p1);
-		x.tb >>= 2;
-		y.tb >>= 2;
-		r.tb |= (trilong)(bit2tb(s) & 0x03) << (i*2);
+
+	for(i = 0; i < j; i++) {		
+		a = get_trit(x,i);
+		b = get_trit(y,i);
+		sum_t(&a, &b, &p0, &s, &p1);		
+		r = set_trit(x,i,s);
 		p0 = p1;
 	}
 
@@ -684,27 +570,26 @@ trs_t sub_trs(trs_t x, trs_t y) {
 	int8_t a,b,s,p0,p1;
 	trs_t r;
 
+	x.l = min(x.l,SIZE_TRITS_MAX);
+	y.l = min(y.l,SIZE_TRITS_MAX);
 	if( x.l >= y.l) {
 		j = x.l;
 	} 
 	else {
 		j = y.l;
-	}
+	}	
 	
 	r.l = j;
-	r.tb = 0;
 
 	p0 = 0;
 	p1 = 0;
-			
-	for(i = 0; i < j; i++) {
-		a = trit2bit(x);
-		b = trit2bit(y);
+
+	for(i = 0; i < j; i++) {		
+		a = get_trit(x,i);
+		b = get_trit(y,i);
 		b = -b;
-		sum_t(&a, &b, &p0, &s, &p1);
-		x.tb >>= 2;
-		y.tb >>= 2;
-		r.tb |= (trilong)(bit2tb(s) & 0x03) << (i*2) ;
+		sum_t(&a, &b, &p0, &s, &p1);		
+		r = set_trit(x,i,s);
 		p0 = p1;
 	}
 	
@@ -719,20 +604,28 @@ trs_t mul_trs(trs_t a, trs_t b) {
 	int8_t l;
 	trs_t r;
 	
-	l = b.l;
-	r.tb = 0;
-	r.l = 18;
+	a.l = min(a.l,SIZE_TRITS_MAX);
+	b.l = min(b.l,SIZE_TRITS_MAX);
+
+	if (a.l >= b.l) {
+		l = a.l;		
+	}
+	else {
+		l = b.l;	
+	}
+	
+	r.l = l * 2;	
+
 	for(i=0;i<l;i++) {		
-		if( trit2bit( b ) > 0 ) {
+		if( get_trit(b,i) > 0 ) {
 			r = add_trs(r,shift_trs(a,-i));			
 		}
-		else if( trit2bit( b )  < 0 ) {
+		else if( trit2int( b )  < 0 ) {
 			r = sub_trs(r,shift_trs(a,-i));					
 		}
 		else{
-
-		}
-		b.tb >>= 2;
+			r = r;
+		}		
 	}
 	return r;
 }
@@ -744,26 +637,27 @@ trs_t div_trs(trs_t a, trs_t b) {
 	trs_t r;
 	//TODO реализовать
 	r.l  = 0;
-	r.tb = 0;
+	r.t1 = 0;
+	r.t0 = 0;
 	return r;
 }
 
 /**
  * Проверить на переполнение 18-тритного числа
  */
-int8_t over(trs_t x) {
+int8_t over_word_long(trs_t x) {
+	
+	int8_t p1;
+	int8_t p2;
 
-	int8_t r;
+    p1 = get_trit(x,19);
+	p2 = get_trit(x,18);
+	
+	ph1 = set_trit(ph1,0,p1);
+    ph2 = set_trit(ph2,0,p2);
 
-        x = shift_trs(x,2);
-
-        ph1 = slice_trs(x,1,1);
-        ph2 = slice_trs(x,2,2);
-
-	r = get_trit_int(ph1,1);
-        r += get_trit_int(ph2,1);
-
-	if( r != 0 ) {
+	//TODO test
+	if( get_trit(ph1,0) != 0 ) {
 		return 1; /* OVER Error  */
 	}
 	else {
@@ -771,69 +665,49 @@ int8_t over(trs_t x) {
 	}
 }
 
-
-/** 
- * Получить бинарное поле трита в позиции 
- * троичного числа
- */
-uint8_t get_trit( trs_t t, int8_t pos) {
-	if( pos<=0 || pos>t.l || t.l==0 ) 
-			return 0;
-	t.tb = t.tb >> ( t.l - pos )*2;
-	return trit2low(t);
-}
-
 /**
  * Получить целое со знаком трита в позиции 
  * троичного числа
  */
-int8_t get_trit_int( trs_t t, int8_t pos) {
-	if( pos<=0 || pos>t.l || t.l==0 ) { 
-		return 0;
-	}				
-	t.tb >>= (t.l - pos )*2;
-	return tb2int( trit2low(t) );
+int8_t get_trit( trs_t t, uint8_t pos) {
+	t.l = min(t.l,SIZE_TRITS_MAX);
+	pos = min(pos,SIZE_TRITS_MAX);
+	if( (t.t0 & (1<<pos)) > 0) {
+		if( (t.t1 & (1<<pos)) > 0) { 
+			return 1;
+		} 
+		else {
+			return -1;
+		}
+	}	
+	return 0;
 }
 
-/** 
- * Установить трит как целое со знаком в позиции 
- * троичного числа
+/**
+ * Установить трит в троичном числе 
  */
-void set_trit( trs_t *t, int8_t pos, int8_t v) {
-	trilong bt;
-	if( pos<=0 || pos>t->l || t->l==0 ) 
-			return;
-	bt = ~((trilong)3 << (t->l - pos )*2); 
-	t->tb &= bt;
-	t->tb |= (trilong)(bit2tb(v)) << (t->l - pos )*2;
-}
-
-/** 
- * Оперция присваивания троичных чисел в регистры
- */
-void _copy_trit( trs_t *src, trs_t *dst) {
-	//TODO по размеру числа выполнить правильное размещение позиций тритов
-	view_short_reg(src,"src=");
-	view_short_reg(dst,"dst=");
-
-	if( src->l == dst->l ) {
-		dst->tb = src->tb;
+trs_t set_trit( trs_t t, uint8_t pos, int8_t trit) {
+	trs_t r = t;
+	t.l = min(t.l,SIZE_TRITS_MAX);
+	pos = min(pos,SIZE_TRITS_MAX);	
+	if( trit > 0) {
+		r.t1 |= 1<<pos;
+		r.t0 |= 1<<pos;
+	} else if( trit < 0 ) {
+		r.t1 &= ~(1<<pos);
+		r.t0 |= 1<<pos;
 	}
-	else if ( src->l < dst->l ) {
-		dst->tb = 0;
-		dst->tb	|= src->tb<<(dst->l - src->l);  
-	}
-	else { /* src->l > dst->l */
-		dst->tb = 0;
-		dst->tb	|= src->tb>>(src->l - dst->l);  
-	} 		
+	r.t1 &= ~(1<<pos);
+	r.t0 &= ~(1<<pos);
+
+	return r;
 }
 
 /** 
  * Оперция присваивания троичных чисел в регистры
  */
 void copy_trs( trs_t *src, trs_t *dst) {
-	
+	//TODO ~
 	if( dst->l == src->l ) {
 		*dst = *src;
 		dst->l = src->l;
@@ -841,13 +715,14 @@ void copy_trs( trs_t *src, trs_t *dst) {
 	else if( dst->l > src->l ) {
 		trs_t t;
 		t = slice_trs(*src,1,src->l);
-		t.tb <<= 2*(dst->l - src->l);
+		t.t1 <<= (dst->l - src->l);
+		t.t0 <<= (dst->l - src->l);
 		t.l = dst->l;
 		*dst = t;
 		
 	}
 	else { /* dst->l < src->l */
-		dst->tb = src->tb << 2*(dst->l - src->l);
+		dst->t1 = src->t1 << (dst->l - src->l);
 	}
 	
 }
@@ -857,7 +732,7 @@ void copy_trs( trs_t *src, trs_t *dst) {
  * Получить часть тритов из троичного числа
  */
 trs_t slice_trs( trs_t t, int8_t p1, int8_t p2) {
-
+	//TODO ~
 	int8_t i,n;
 	trs_t r;
 
@@ -872,8 +747,9 @@ trs_t slice_trs( trs_t t, int8_t p1, int8_t p2) {
 	}
 	
 	for(i=p1;i<=p2;i++) {
-		r.tb <<= 2;
-		r.tb |= get_trit(t,i);		
+		r.t1 <<= 1;
+		r.t1 |= get_trit(t,i);
+		r.t0 |= 1;		
 	} 	
 	r.l=p2-p1+1;
 	
@@ -883,14 +759,14 @@ trs_t slice_trs( trs_t t, int8_t p1, int8_t p2) {
 /**
  * Преобразование трита в номер зоны
  */
-int8_t trit2zone(trs_t t) {
-	switch ( t.tb & (trilong)3 ) {
-		case 0:
-		case 3: return 0;
-			break;
-		case 2: return 2;
-			break;
-		case 1: return 1;
+int8_t trit2zone(trs_t t) {	
+	if( (t.t0 & (1<<0)) > 0) {
+		if( (t.t1 & (1<<0)) > 0 ) {
+			return 1;
+		}
+		else {
+			return -1;
+		}
 	}
 	return 0;
 }
@@ -899,12 +775,12 @@ int8_t trit2zone(trs_t t) {
  *  Дешифратор тритов в индекс строки зоны памяти
  */
 int16_t addr_trit2addr_index(trs_t t) {
-
+	//TODO ~
 	int8_t i;
 	int8_t n;
 
-	t.tb &= (trilong)0x3FFFF;
-	return t.tb >>= 2;
+	t.t1 &= (trilong)0x3FFFF;
+	return t.t1 >>= 1;
 }
 
 /**
@@ -933,7 +809,7 @@ uint8_t zone_fram_to_index_ver_1(trs_t z) {
    
    int8_t r = NUMBER_ZONE_FRAM >> 1;   
    
-   r += get_trit_int(z,1)*1;
+   r += get_trit(z,1)*1;
    
    if( r == 0) {
 	   return 0; /* Зона 0,1  для чтения 18-трит */ 
@@ -953,7 +829,7 @@ uint8_t zone_fram_to_index(trs_t z) {
    
    int8_t r;   
    
-   r = get_trit_int(z,1)*1;
+   r = get_trit(z,1)*1;
    
    if( r < 0) {
 	   return 0;
@@ -972,10 +848,10 @@ uint8_t zone_fram_to_index(trs_t z) {
 uint8_t row_fram_to_index(trs_t z) {
   
    int8_t r = 40;      
-   r += get_trit_int(z,4)*1;
-   r += get_trit_int(z,3)*3;
-   r += get_trit_int(z,2)*9;
-   r += get_trit_int(z,1)*27;   
+   r += get_trit(z,4)*1;
+   r += get_trit(z,3)*3;
+   r += get_trit(z,2)*9;
+   r += get_trit(z,1)*27;   
    
    return (uint8_t)r;
 }
@@ -988,16 +864,16 @@ trs_t next_address(trs_t c) {
 	trs_t r;	
 	r = c;
 	
-	if( get_trit_int(r,5) == 0 ) {
+	if( get_trit(r,5) == 0 ) {
 		/* 0 */		
 		inc_trs(&r);	
 	}
-	else if(get_trit_int(r,5) >= 1 ) {
+	else if(get_trit(r,5) >= 1 ) {
 		/* + */
 		inc_trs(&r);
 		inc_trs(&r);
 	}	
-	else if( get_trit_int(r,5) <= -1 ) {
+	else if( get_trit(r,5) <= -1 ) {
 		/* - */
 		inc_trs(&r);		
 	}
@@ -1013,16 +889,16 @@ trs_t next_ind(trs_t c) {
 	trs_t r;	
 	r = c;
 	
-	if( get_trit_int(r,5) == 0 ) {
+	if( get_trit(r,5) == 0 ) {
 		/* 0 */		
 		inc_trs(&r);	
 	}
-	else if(get_trit_int(r,5) >= 1 ) {
+	else if(get_trit(r,5) >= 1 ) {
 		/* + */
 		inc_trs(&r);
 		inc_trs(&r);
 	}	
-	else if( get_trit_int(r,5) <= -1 ) {
+	else if( get_trit(r,5) <= -1 ) {
 		/* - */
 		inc_trs(&r);		
 	}
@@ -1083,27 +959,28 @@ trs_t ld_fram( trs_t ea ) {
 	rr.l = 4; 
 	rind = row_fram_to_index(rr);
 	
-	res.tb = 0;
+	res.t1 = 0;
+	res.t0 = 0;
 	
-	eap5 = get_trit_int(ea,5);
+	eap5 = get_trit(ea,5);
 	if(  eap5 < 0 ) {
 		/* Прочитать 18-тритное число */
 		r = mem_fram[rind][zind+1]; /* прочитать 10...18 младшую часть 18-тритного числа */
-		res.tb = r;		
+		res.t1 = r;		
 		r = mem_fram[rind][zind];	  /* прочитать 1...9 старшую часть 18-тритного числа */			
-		res.tb |= ((trilong)r)<<18 & (trilong)0xFFFFC0000;
+		res.t1 |= ((trilong)r)<<18 & (trilong)0xFFFFC0000;
 		res.l  = 18;
 	}
 	else if( eap5 == 0 ) {
 		/* Прочитать старшую часть 18-тритного числа */
 		r = mem_fram[rind][zind];
-		res.tb = r & (trishort)0x3FFFF;
+		res.t1 = r & (trishort)0x3FFFF;
 		res.l  = 9;
 	}
 	else { /* eap5 > 0 */
 		/* Прочитать младшую часть 18-тритного числа */
 		r = mem_fram[rind][zind];		/* read low part trits */
-		res.tb = r & (trishort)0x3FFFF;
+		res.t1 = r & (trishort)0x3FFFF;
 		res.l  = 9;		
 	}	 	
 	return res;
@@ -1130,19 +1007,19 @@ void st_fram( trs_t ea, trs_t v ) {
 	rr.l = 4;
 	rind = row_fram_to_index(rr);
 
-	eap5 = get_trit_int(ea,5);	
+	eap5 = get_trit(ea,5);	
 	if( eap5 < 0 ) {		
 		/* Записать 18-тритное число */
 		trilong r;				
-		r =  shift_trs(v,9).tb;		
+		r =  shift_trs(v,9).t1;		
 		mem_fram[rind][zind] = (trishort)r & (trishort)0x3FFFF;		
-		mem_fram[rind][zind + 1] = (trishort)(v.tb & (trishort)0x3FFFF);
+		mem_fram[rind][zind + 1] = (trishort)(v.t1 & (trishort)0x3FFFF);
 	}
 	else if( eap5 == 0 ) {		
-		mem_fram[rind][zind] = (trishort)(v.tb & (trishort)0x3FFFF);
+		mem_fram[rind][zind] = (trishort)(v.t1 & (trishort)0x3FFFF);
 	}
 	else { /* eap5 > 0 */		
-		mem_fram[rind][zind] = (trishort)(v.tb & (trishort)0x3FFFF);
+		mem_fram[rind][zind] = (trishort)(v.t1 & (trishort)0x3FFFF);
 	}
 	
 }
@@ -1160,7 +1037,7 @@ void fram_to_drum( trs_t ea ) {
 
 	/* Номер зоны FRAM */
 	k1 = slice_trs(ea,1,1);
-	sng = trit2bit(k1);
+	sng = trit2int(k1);
 	
 	/* Номер зоны DRUM */
 	k2_k5 = slice_trs(ea,2,5);
@@ -1207,7 +1084,7 @@ trs_t ld_drum( trs_t ea, uint8_t ind ) {
 		ind = 0;
 	}
 	
-	res.tb = mem_drum[zind][ind] & 0x3FFFF;
+	res.t1 = mem_drum[zind][ind] & 0x3FFFF;
 	res.l  = 9;
 
 	return res;
@@ -1235,7 +1112,7 @@ void st_drum( trs_t ea, uint8_t ind,  trs_t v ) {
 		ind = 0;
 	}
 
-	mem_drum[zind][ind] = v.tb & 0x3FFFF;
+	mem_drum[zind][ind] = v.t1 & 0x3FFFF;
 }
 
 /**
@@ -1252,11 +1129,11 @@ void drum_to_fram( trs_t ea ) {
 	trs_t mr;
 	
 	fram_inc.l = 4;
-	fram_inc.tb = 0;
+	fram_inc.t1 = 0;
 
 	/* Номер зоны FRAM */
 	k1 = slice_trs(ea,1,1);
-	sng = trit2bit(k1);
+	sng = trit2int(k1);
 	
 	/* Номер зоны DRUM */	
 	k2_k5 = slice_trs(ea,2,5);
@@ -1373,7 +1250,7 @@ trs_t smtr(uint8_t * s) {
 
       for(i=0;i<lenmax;i++){
          trit = symtrs2numb( *(s+(len-i-1)) );
-         set_trit(&t,len-i,trit);
+         t = set_trit(t,len-i,trit);
       }
       return t;
 }
@@ -1429,7 +1306,7 @@ uint8_t trit_to_lt( int8_t v )  {
  *
  */
 int32_t trs_to_digit( trs_t *tr )  {
-
+	//TODO ~
 	int32_t l;    
     int8_t i;
     trs_t x;
@@ -1438,8 +1315,8 @@ int32_t trs_to_digit( trs_t *tr )  {
     x = *tr;	
     for( i=0; i<x.l ; i++ ) {		    						
 			x = *tr;
-			x.tb >>= (i*2);		
-			l += trit2bit(x) * pow3(i);
+			x.t1 >>= (i);		
+			l += trit2int(x) * pow3(i);
     }
     
 	return l;
@@ -1451,13 +1328,13 @@ int32_t trs_to_digit( trs_t *tr )  {
  *  С символами: Ж, Х, У, Ц, 0, 1, 2, 3, 4. 
  */
 int32_t tb_to_digit( trishort tb )  {
-
+	//TODO ~
 	int32_t l;    
     int8_t i;
 
     l = 0;   
     for( i=0; i<9 ; i++ ) {		    						
-			l += tb2int(tb >> (i*2)) * pow3(i);
+			//l += get_trit() * pow3(i);
     }
     
 	return l;
@@ -1473,7 +1350,8 @@ void cmd_str_2_trs( uint8_t * syms, trs_t * r )  {
 
 	if( strlen(syms) != 5) {
 		r->l  = 9;
-		r->tb = 0;
+		r->t1 = 0;
+		r->t0 = 0;
 		printf(" --- ERROR syms\r\n");
 		return;
 	}	
@@ -1487,7 +1365,7 @@ void cmd_str_2_trs( uint8_t * syms, trs_t * r )  {
 		);	
 
 	for(i=1;i<10;i++) {
-		set_trit(r,i,symtrs2numb(symtrs_str[i]));		
+		*r = set_trit(*r,i,symtrs2numb(symtrs_str[i]));		
 	}		
 }
 
@@ -1504,10 +1382,10 @@ void trit_to_str(trs_t t) {
 
 	for (i=0;i<n;i+=2) {
 		x = t;	
-		x.tb >>= (n-2-i)*2 ;
-		t0 = trit2bit(x);
-		x.tb >>= 2;
-		t1 = trit2bit(x);
+		x.t1 >>= (n-2-i) ;
+		t0 = trit2int(x);
+		x.t1 >>= 1;
+		t1 = trit2int(x);
 
 		printf("%c",trit_to_lt( t1*3 + t0 ));	
 	}
@@ -1528,8 +1406,8 @@ void trit_to_symtrs(trs_t t) {
 
 	for (i=0;i<n;i++) {
 		x = t;					
-		x.tb >>= 2*(n-1-i);
-		t0 = trit2bit(x);
+		x.t1 >>= (n-1-i);
+		t0 = trit2int(x);
 		printf("%c", numb2symtrs(t0));
 	}	
 	return;
@@ -1554,7 +1432,7 @@ void trit2linetape(trs_t v, uint8_t * lp) {
 uint8_t linetape2trit(uint8_t * lp, trs_t * v) {
 	trs_t r;
 	r.l  = 0;
-	r.tb = 0;
+	r.t1 = 0;
 	*v = r;
 	return 0; /* OK' */
 }
@@ -1586,9 +1464,9 @@ void view_short_reg(trs_t *t, uint8_t *ch) {
 	 i=0;	 
 	 do {
 		  tv = *t;
-		  tv.tb >>= (l-1-i)*2 ; 
-		  printf("%i",trit2bit(tv));          		    		  
-		  //switch(trit2bit(tv)) {
+		  tv.t1 >>= (l-1-i) ; 
+		  printf("%i",trit2int(tv));          		    		  
+		  //switch(trit2int(tv)) {
 		  //	  case -1: printf("-"); break;
 		  //	  case  0: printf("0"); break;
 		  //	  case  1: printf("+"); break;
@@ -2329,7 +2207,7 @@ void view_fram(trs_t ea) {
 	
 	j = 0;	 	 		
 	do {		  
-		printf("%i",tb2int(r >> (9-1-j)*2));          		    		  
+		//viv- old code  printf("%i",tb2int(r >> (9-1-j)*2));          		    		  
 		j++;          
 	} while( j < 9 );
 	
@@ -2337,7 +2215,7 @@ void view_fram(trs_t ea) {
 	printf("(%li), ",(long int)tb_to_digit(t));	 	 	 		
 
 	tv.l = 9;
-	tv.tb = r & 0x3FFFF; 			
+	tv.t1 = r & 0x3FFFF; 			
 	trit_to_str(tv);
 	printf("\n");		  		 		 
 	
@@ -2353,11 +2231,11 @@ void dumpf( trs_t addr1, trs_t addr2) {
 
 	if( (a2 >= a1) && ( a2 >= ZONE_M_FRAM_BEG && a2 <= ZONE_P_FRAM_END ) && ( a2 >= ZONE_M_FRAM_BEG && a2 <= ZONE_P_FRAM_END ) ) {		
 		for( uint16_t i=0; i<(abs(a2-a1)); i++ ) {
-			if( trit2bit(ad1)>=0 ) {
+			if( trit2int(ad1)>=0 ) {
 				view_fram(ad1);
 			}
 			inc_trs(&ad1);
-			if( trit2bit(ad1)<0 ) {
+			if( trit2int(ad1)<0 ) {
 				inc_trs(&ad1);
 				i += 1;
 			}
@@ -2391,7 +2269,7 @@ void dump_fram(void) {
 			
 			j = 0;	 	 		
 			do {		  
-		  		printf("%i",tb2int(r >> (9-1-j)*2));          		    		  
+		  		//viv- old code  printf("%i",tb2int(r >> (9-1-j)*2));          		    		  
 		  		j++;          
 			} while( j < 9 );
 	 		
@@ -2399,7 +2277,7 @@ void dump_fram(void) {
 	 		printf("(%li), ",(long int)tb_to_digit(t));	 	 	 		
 
 			tv.l = 9;
-			tv.tb = r & 0x3FFFF; 			
+			tv.t1 = r & 0x3FFFF; 			
 			trit_to_str(tv);
 			printf("\n");		  		 		 
 		}
@@ -2431,13 +2309,13 @@ void view_drum(trs_t zone) {
 	for(uint8_t i=0;i<SIZE_ZONE_TRIT_DRUM;i++) {
 
 		// Читать короткое словао
-		r = ld_drum(zr,i).tb & (trishort)(0x3FFFF);
+		r = ld_drum(zr,i).t1 & (trishort)(0x3FFFF);
 
 		printf("drum[% 3i:% 3i ] ", zind, i);		
 		/* Вывод короткого троичного слова */
 		j = 0;	 	 		
 		do {		  
-			printf("%i",tb2int(r >> (9-1-j)*2));          		    		  
+			//viv- old code  printf("%i",tb2int(r >> (9-1-j)*2));          		    		  
 			j++;          
 		} while( j < 9 );
 		
@@ -2445,7 +2323,7 @@ void view_drum(trs_t zone) {
 		printf("(%li), ",(long int)tb_to_digit(r));	 	 	 		
 
 		tv.l = 9;
-		tv.tb = r & 0x3FFFF; 			
+		tv.t1 = r & 0x3FFFF; 			
 		trit_to_str(tv);
 		printf("\n");		  		 		 
 	
@@ -2478,7 +2356,7 @@ void dump_drum(void) {
 	 		
 			j = 0;	 
 	 		do {		  
-		  		printf("%i",tb2int(r >> (9-1-j)*2));          		    		  
+		  		//viv- old code  printf("%i",tb2int(r >> (9-1-j)*2));          		    		  
 		  		j++;          
 			} while( j < 9 );
 	 		
@@ -2486,7 +2364,7 @@ void dump_drum(void) {
 	 		printf("(%li), ",(long int)tb_to_digit(t));	 	 
 
 			tv.l = 9;
-			tv.tb = r & 0x3FFFF; 			
+			tv.t1 = r & 0x3FFFF; 			
 			trit_to_str(tv);			
 
 	 		printf("\n");		  		 		 
@@ -2544,20 +2422,20 @@ trs_t control_trs( trs_t a ) {
 
 		k1_5 = slice_trs(a,1,5);
 		/* Признак модификации адремной части K(9) */
-		k9 = trit2bit(a); 
+		k9 = trit2int(a); 
 		
 		/* Модицикация адресной части K(1:5) */
 		if( k9 >= 1 ) { 	/* A(1:5) = A(1:5) + F(1:5) */ 			
 			cn = add_trs(k1_5,F);
-			cn.tb <<= 4*2;
-			r.tb = a.tb & 0xFF; 		/* Очистить неиспользованные триты */
-			r.tb |= cn.tb & 0x3FF00 ;
+			cn.t1 <<= 4;
+			r.t1 = a.t1 & 0xFF; 		/* Очистить неиспользованные триты */
+			r.t1 |= cn.t1 & 0x3FF00 ;
 		}
 		else if( k9 <= -1 ) {	/* A(1:5) = A(1:5) - F(1:5) */
 			cn = sub_trs(k1_5,F);
-			cn.tb <<= 4*2;
-			r.tb = a.tb & 0xFF; 		/* Очистить неиспользованные триты */
-			r.tb |= cn.tb & 0x3FF00 ;
+			cn.t1 <<= 4;
+			r.t1 = a.t1 & 0xFF; 		/* Очистить неиспользованные триты */
+			r.t1 |= cn.t1 & 0x3FF00 ;
 		} 
 		else {					/* r = K(1:9) */
 			r = a;
@@ -2619,9 +2497,9 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 		k6_8 = oper;
 		k6_8.l = 3;
 
-		codeoper = get_trit_int(k6_8,1)*9 +
-		           get_trit_int(k6_8,2)*3 +
-				   get_trit_int(k6_8,3);		
+		codeoper = get_trit(k6_8,1)*9 +
+		           get_trit(k6_8,2)*3 +
+				   get_trit(k6_8,3);		
 		
 		/* ---------------------------------------
 		*  Выполнить операцию машины "Сетунь-1958"
@@ -2685,15 +2563,15 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				printf("   k6..8[+00] : (A*)=>(S)\n");
 				MR = ld_fram(k1_5);
 				copy_trs(&MR,&S);
-				W = sgn_trs(S);
+				W = set_trit(W,0,sgn_trs(S));
 				C = next_address(C);								
 			} break;
 			case (+1*9 +0*3 +1):  { // +0+ : Сложение в S	(S)+(A*)=>(S)
 				printf("   k6..8[+0+] : (S)+(A*)=>(S)\n");
 				MR = ld_fram(k1_5);				
 				S = add_trs(S,MR);
-				W = sgn_trs(S);
-				if( over(S) > 0 ) {					
+				W = set_trit(W,0,sgn_trs(S));
+				if( over_word_long(S) > 0 ) {					
 					goto error_over;
 				}
 				C = next_address(C);
@@ -2702,8 +2580,8 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				printf("   k6..8[+0-] : (S)-(A*)=>(S)\n");
 				MR = ld_fram(k1_5);
 				S = sub_trs(S,MR);				
-				W = sgn_trs(S);
-				if( over(S) > 0 ) {					
+				W = set_trit(W,0,sgn_trs(S));
+				if( over_word_long(S) > 0 ) {					
 					goto error_over;
 				}
 				C = next_address(C);
@@ -2711,11 +2589,11 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			case (+1*9 +1*3 +0):  { // ++0 : Умножение 0	(S)=>(R); (A*)(R)=>(S)
 				printf("   k6..8[++0] : (S)=>(R); (A*)(R)=>(S)\n");
 				copy_trs(&S,&R);
-				S.tb = 0;			
+				S.t1 = 0;			
 				MR = ld_fram(k1_5);				
 				S = slice_trs(mul_trs(MR,R),1,9);
-				W = sgn_trs(S);
-				if( over(S) > 0 ) {
+				W = set_trit(W,0,sgn_trs(S));
+				if( over_word_long(S) > 0 ) {
 					goto error_over;
 				} 
 				C = next_address(C);
@@ -2724,8 +2602,8 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				printf("   k6..8[+++] : (S)+(A*)(R)=>(S)\n");
 				MR = ld_fram(k1_5);				
 				S = add_trs(slice_trs(mul_trs(MR,R),1,9),S);				
-				W = sgn_trs(S);
-				if( over(S) > 0 ) {
+				W = set_trit(W,0,sgn_trs(S));
+				if( over_word_long(S) > 0 ) {
 					goto error_over;
 				} 
 				C = next_address(C);
@@ -2734,8 +2612,8 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				printf("   k6..8[++-] : (A*)+(S)(R)=>(S)\n");
 				MR = ld_fram(k1_5);				
 				S = add_trs(slice_trs(mul_trs(S,R),1,9),MR);				
-				W = sgn_trs(S);
-				if( over(S) > 0 ) {
+				W = set_trit(W,0,sgn_trs(S));
+				if( over_word_long(S) > 0 ) {
 					goto error_over;
 				} 
 				C = next_address(C);
@@ -2744,14 +2622,14 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				printf("   k6..8[+-0] : (A*)[x](S)=>(S)\n");
 				MR = ld_fram(k1_5);
 				S = xor_trs(MR,S);
-				W = sgn_trs(S);
+				W = set_trit(W,0,sgn_trs(S));
 				C = next_address(C);
 			} break;
 			case (+1*9 -1*3 +1):  { // +-+ : Посылка в R	(A*)=>(R)
 				printf("   k6..8[+-+] : (A*)=>(R)\n");
 				MR = ld_fram(k1_5);
 				copy_trs(&MR,&R);
-				W = sgn_trs(S);
+				W = set_trit(W,0,sgn_trs(S));
 				C = next_address(C);
 			} break;
 			case (+1*9 -1*3 -1):  { // +-- : Останов	Стоп; (A*)=>(R)
@@ -2763,7 +2641,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			case (+0*9 +1*3 +0):  { // 0+0 : Условный переход -	A*=>(C) при w=0
 				printf("   k6..8[0+-] : A*=>(C) при w=0\n");
 				int8_t w;
-				w = sgn(W);
+				w = sgn_trs(W);
 				if( w==0 ) {
 					copy_trs(&k1_5,&C); 
 				}
@@ -2774,7 +2652,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			case (+0*9 +1*3 +1):  { // 0+1 : Условный переход -	A*=>(C) при w=0
 				printf("   k6..8[0+-] : A*=>(C) при w=+1\n");
 				int8_t w;
-				w = sgn(W);
+				w = sgn_trs(W);
 				if( w==1 ) {
 					copy_trs(&k1_5,&C); 
 				}
@@ -2785,7 +2663,7 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			case (+0*9 +1*3 -1):  { // 0+- : Условный переход -	A*=>(C) при w=-
 				printf("   k6..8[0+-] : A*=>(C) при w=-1\n");
 				int8_t w;
-				w = sgn(W);
+				w = sgn_trs(W);
 				if( w<0 ) {
 					copy_trs(&k1_5,&C); 
 				}
@@ -2805,28 +2683,28 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 			case (+0*9 +0*3 -1):  { // 00- : Запись из F	(F)=>(A*)
 				printf("   k6..8[00-] : (F)=>(A*)\n");
 				st_fram(k1_5,F);
-				W = sgn_trs(F); 
+				W = set_trit(W,0,sgn_trs(F)); 
 				C = next_address(C);
 			} break;
 			case (+0*9 -1*3 +0):  { // 0-0 : Посылка в F	(A*)=>(F)
 				printf("   k6..8[0-0] : (A*)=>(F)\n");
 				MR = ld_fram(k1_5);
 				copy_trs(&MR,&F);
-				W = sgn_trs(F);
+				W = set_trit(W,0,sgn_trs(F));
 				C = next_address(C);
 			} break;
 			case (+0*9 -1*3 +1):  { // 0-+ : Сложение в F c (C)	(C)+(A*)=>F
 				printf("   k6..8[0-+] : (C)+(A*)=>F\n");
 				MR = ld_fram(k1_5);
 				F = add_trs(C,MR);
-				W = sgn_trs(F);
+				W = set_trit(W,0,sgn_trs(F));
 				C = next_address(C);
 			} break;
 			case (+0*9 -1*3 -1):  { // 0-- : Сложение в F	(F)+(A*)=>(F)
 				printf("   k6..8[0--] : (F)+(A*)=>(F)\n");
 				MR = ld_fram(k1_5);
-				F = add_trs(F,MR);
-				W = sgn_trs(F);
+				F = add_trs(F,MR);				
+				W = set_trit(W,0,sgn_trs(F));
 				C = next_address(C);
 			} break;
 			case (-1*9 +1*3 +0):  { // -+0 : Сдвиг	Сдвиг (S) на (A*)=>(S)
@@ -2839,14 +2717,14 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				*/
 				MR = ld_fram(k1_5);				
 				S = shift_trs(S,trs_to_digit(&MR));								
-				S.tb &= ~(((trilong)0xFF)<<(SIZE_WORD_LONG*2));				
-				W = sgn_trs(S);
+				S.t1 &= ~(((trilong)0xFF)<<(SIZE_WORD_LONG*2));				
+				W = set_trit(W,0,sgn_trs(S));
 				C = next_address(C);
 			} break;
 			case (-1*9 +1*3 +1):  { // -++ : Запись из S	(S)=>(A*)
 				printf("   k6..8[-++] : (S)=>(A*)\n");
 				st_fram(k1_5,S);
-				W = sgn_trs(S);
+				W = set_trit(W,0,sgn_trs(S));
 				C = next_address(C);
 			} break;
 			case (-1*9 +1*3 -1):  { // -+- : Нормализация	Норм.(S)=>(A*); (N)=>(S)
@@ -2861,40 +2739,40 @@ int8_t execute_trs( trs_t addr, trs_t oper ) {
 				*/ 				
 				/* Определить знак S */				
 				int8_t w;
-				W = sgn_trs(S); 				
-				w = sgn(W);
+				W = set_trit(W,0,sgn_trs(S)); 				
+				w = sgn_trs(W);
 				if(w != 0) {
 					/* Сдвиг S */
-					if( get_trit_int(S,1) != 0 ) {						
+					if( get_trit(S,1) != 0 ) {						
 						S = shift_trs(S,1);
 						st_fram(k1_5,S);
-						S.tb = 0;
-						set_trit(&S,18,1);
+						S.t1 = 0;
+						S = set_trit(S,18,1);
 					}
-					else if( get_trit_int(S,2) == 0 )  {
+					else if( get_trit(S,2) == 0 )  {
 						uint8_t n = 0;
 						for(uint8_t i=0;i<16;i++) {
 							S = shift_trs(S,-1);							
 							n++;
-							if( get_trit_int(S,2) != 0 ) { 
+							if( get_trit(S,2) != 0 ) { 
 								break;
 							}	
 						}
 						st_fram(k1_5,S);
-						S.tb = 0;
+						S.t1 = 0;
 						for(uint8_t i=0;i<n;i++) {
 							dec_trs(&S);
 						}
 					} 
 					else {
 						st_fram(k1_5,S);
-						S.tb = 0;
+						S.t1 = 0;
 					} 					
 				}
 				else {
 					/* S == 0 */
 					st_fram(k1_5,S);
-					S.tb = 0;
+					S.t1 = 0;
 				}
 				C = next_address(C);				
 			} break;
@@ -2977,26 +2855,23 @@ void Triniti_tests( void ) {
 	printf("\nt3 --- POW3\n");
 	printf("pow3(3)=%li\n", (int32_t)pow3(3));
 
-	//t4 trit2bit
-	printf("\nt4 --- trit2bit()\n");
+	//t4 trit2int
+	printf("\nt4 --- trit2int()\n");
 	trs_t k;
-	k.tb = 0;
-	printf("trit2bit(0)=%i\n", trit2bit(k));
-	k.tb = 1;
-	printf("trit2bit(1)=%i\n", trit2bit(k));
-	k.tb = 2;
-	printf("trit2bit(2)=%i\n", trit2bit(k));
-	k.tb = 3;
-	printf("trit2bit(3)=%i\n", trit2bit(k));
+	k.t1 = 0;
+	printf("trit2int(0)=%i\n", trit2int(k));
+	k.t1 = 1;
+	printf("trit2int(1)=%i\n", trit2int(k));
+	k.t1 = 2;
+	printf("trit2int(2)=%i\n", trit2int(k));
+	k.t1 = 3;
+	printf("trit2int(3)=%i\n", trit2int(k));
 
 	//t5
 	printf("\nt5 --- bit2trit()\n");
-	k = bit2trit(0);
-	printf("bit2trit(0)=%lu\n", k.tb);
-	k = bit2trit(1);
-	printf("bit2trit(1)=%lu\n", k.tb);
-	k = bit2trit(-1);
-	printf("bit2trit(-1)=%lu\n", k.tb);
+	printf("bit2trit(0)=%lu\n", k.t1);
+	printf("bit2trit(1)=%lu\n", k.t1);
+	printf("bit2trit(-1)=%lu\n", k.t1);
 
 	//t6
 	printf("\nt6 --- printf long int\n");
@@ -3010,26 +2885,26 @@ void Triniti_tests( void ) {
 
 	//t7
 	printf("\nt7 --- sng()\n");
-	k.tb = 0;
-	printf("k.tb = 0\n");
-	printf("sgn(k)=%i\n",sgn(k));
-	k.tb = 1;
-	printf("k.tb = 1\n");
-	printf("sgn(k)=%i\n",sgn(k));
-	k.tb = 2;
-	printf("k.tb = 2\n");
-	printf("sgn(k)=%i\n",sgn(k));
-	k.tb = 3;
-	printf("k.tb = 3\n");
-	printf("sgn(k)=%i\n",sgn(k));
+	k.t1 = 0;
+	printf("k.t1 = 0\n");
+	printf("sgn(k)=%i\n",sgn_trs(k));
+	k.t1 = 1;
+	printf("k.t1 = 1\n");
+	printf("sgn(k)=%i\n",sgn_trs(k));
+	k.t1 = 2;
+	printf("k.t1 = 2\n");
+	printf("sgn(k)=%i\n",sgn_trs(k));
+	k.t1 = 3;
+	printf("k.t1 = 3\n");
+	printf("sgn(k)=%i\n",sgn_trs(k));
 
 	//t8	
 	printf("\nt8 --- st_fram()\n");
 	C.l = 5;
-	C.tb = 0;
+	C.t1 = 0;
 	//	
 	k.l = 9;
-	k.tb = 4;
+	k.t1 = 4;
 	//
 	view_short_reg(&C,"C =");
 	view_short_reg(&k,"k =");
@@ -3039,22 +2914,24 @@ void Triniti_tests( void ) {
 	//t9	
 	printf("\nt9 --- control_trs()\n");
 	C.l = 5;
-	C.tb = 0;
+	C.t1 = 0;
 
 	C.l = 5;
-	C.tb = 0;
+	C.t1 = 0;
 
 	//t control
 	trs_t anw;
 	anw.l = 9;
-	anw.tb = 0;
+	anw.t1 = 0;
 	//
 	F.l = 5;
-	F.tb = 2;
+	F.t1 = 2;
+	F.t0 = 2;
 	//	
 	k.l = 9;
-	k.tb = 2<<8;
-	k.tb |= 2;
+	k.t1 = 1<<8;
+	k.t0 = 1<<8;
+	k.t1 |= 2;
 	view_short_reg(&k,"k");
 	anw = control_trs( k );
 	view_short_reg(&C,"C");
@@ -3104,11 +2981,12 @@ void Triniti_tests( void ) {
 	printf("\nt12 --- set_trit()\n");
 	trs_t H;
 	H.l=9;
-	H.tb = 0;
-	set_trit( &H, 1, 1);
-	set_trit( &H, 2, -1);
-	set_trit( &H, 3, 0);
-	set_trit( &H, 9, -1);
+	H.t1 = 0;
+	H.t0 = 0;
+	H = set_trit( H, 1, 1);
+	H = set_trit( H, 2, -1);
+	H = set_trit( H, 3, 0);
+	H = set_trit( H, 9, -1);
 	view_short_reg(&H,"H");
 
 	//t13 fram
@@ -3129,15 +3007,15 @@ void Triniti_tests( void ) {
 	trs_t v;
 	clear(&v);
 	v.l = 9;
-	set_trit(&v,1,-1);
-	set_trit(&v,5,1);
-	set_trit(&v,9,0);
+	v = set_trit(v,1,-1);
+	v = set_trit(v,5,1);
+	v = set_trit(v,9,0);
 	//
 	st_fram( ea,v );
 	v.l = 9;
-	set_trit(&v,1,0);
-	set_trit(&v,5,-1);
-	set_trit(&v,9,10);
+	v = set_trit(v,1,0);
+	v = set_trit(v,5,-1);
+	v = set_trit(v,9,10);
 	inc_trs(&ea);
 	st_fram( ea,v );
 
@@ -3148,10 +3026,10 @@ void Triniti_tests( void ) {
 	clear(&R);
 
 	ea.l = 5;
-	set_trit(&ea,5,1);
+	ea = set_trit(ea,5,1);
 	R.l = 18;
-	set_trit(&R,1,1);
-	set_trit(&R,18,-1);
+	R = set_trit(R,1,1);
+	R = set_trit(R,18,-1);
 
 	view_short_reg(&ea,"st ea");
 	view_short_reg(&R,"st R");
@@ -3164,8 +3042,8 @@ void Triniti_tests( void ) {
 	//t15 fram
 	printf("\nt15 --- st_fram() ld_fram\n");
 
-	set_trit(&R,1,1);
-	set_trit(&R,10,-1);
+	R = set_trit(R,1,1);
+	R = set_trit(R,10,-1);
 	inc_trs(&ea);
 	view_short_reg(&ea,"ea=");
 	view_short_reg(&R,"R=");	
@@ -3197,7 +3075,7 @@ void Triniti_tests( void ) {
 	in = shift_trs(X, 5);
 	view_short_reg(&in,"in");
 
-	set_trit(&X,9,-1);
+	X = set_trit(X,9,-1);
 	in = shift_trs(X, -1);
 	view_short_reg(&in,"in");
 	in = shift_trs(X, -2);
@@ -3219,13 +3097,13 @@ void Triniti_tests( void ) {
 
 	clear(&in);
 	in.l=9;
-	set_trit(&in,9,-1);
+	in = set_trit(in,9,-1);
 	view_short_reg(&in," in");
 	view_short_reg(&X," X");
 	in = add_trs(X, in);
 	view_short_reg(&in,"add in");
 
-	set_trit(&in,9,-1);
+	in = set_trit(in,9,-1);
 
 	view_short_reg(&in," in");
 	view_short_reg(&X," X");
@@ -3260,16 +3138,16 @@ void Triniti_tests( void ) {
 	clear(&X);
 	clear(&in);
 	X.l  = 18;
-	set_trit(&X,18,-1);
-	set_trit(&X,1,-1);
+	X = set_trit(X,18,-1);
+	X = set_trit(X,1,-1);
 	in = smtr("00011");
 
 	st_fram(in,X);
-	set_trit(&in,1,0);
-	set_trit(&in,2,0);
-	set_trit(&in,3,0);
-	set_trit(&in,4,1);
-	set_trit(&in,5,0);
+	in = set_trit(in,1,0);
+	in = set_trit(in,2,0);
+	in = set_trit(in,3,0);
+	in = set_trit(in,4,1);
+	in = set_trit(in,5,0);
 	st_fram(in,X);
 
 	view_short_reg(&in," in");
@@ -3282,20 +3160,20 @@ void Triniti_tests( void ) {
 	clear(&X);
 	clear(&in);
 	X.l  = 18;
-	set_trit(&X,1,-1);
-	set_trit(&X,18,-1);
+	X = set_trit(X,1,-1);
+	X = set_trit(X,18,-1);
 	in.l = 5;
-	set_trit(&in,1,-1);
-	set_trit(&in,2,-1);
-	set_trit(&in,3,-1);
-	set_trit(&in,4,-1);
-	set_trit(&in,5,-1);
+	in = set_trit(in,1,-1);
+	in = set_trit(in,2,-1);
+	in = set_trit(in,3,-1);
+	in = set_trit(in,4,-1);
+	in = set_trit(in,5,-1);
 
 	printf("\nst_fram(in,X)\r\n");
 
 	for(l=-121;l<=+121;l++) { //TRIT5_MIN TRIT5_MAX
 
-		if( get_trit_int(in,5) == -1 ) {
+		if( get_trit(in,5) == -1 ) {
 			view_short_reg(&in," addr");
 			st_fram(in,X);
 		}
@@ -3317,15 +3195,15 @@ void Triniti_tests( void ) {
 
 	clear(&k);
 	k.l = 9;
-	set_trit(&k,1,-1);
-	set_trit(&k,2,-1);
-	set_trit(&k,3,-1);
-	set_trit(&k,4,-1);
-	set_trit(&k,5,-1);
-	set_trit(&k,6,-1);
-	set_trit(&k,7,-1);
-	set_trit(&k,8,-1);
-	set_trit(&k,9,-1);
+	k = set_trit(k,1,-1);
+	k = set_trit(k,2,-1);
+	k = set_trit(k,3,-1);
+	k = set_trit(k,4,-1);
+	k = set_trit(k,5,-1);
+	k = set_trit(k,6,-1);
+	k = set_trit(k,7,-1);
+	k = set_trit(k,8,-1);
+	k = set_trit(k,9,-1);
 
 	//view_short_reg(&k," k");
 	//C = control_trs(k);
@@ -3350,20 +3228,20 @@ void Triniti_tests( void ) {
 	trs_t cp;
 	clear(&cp);
 	cp.l = 3;
-	set_trit(&cp,1,-1);
-	set_trit(&cp,2,-1);
-	set_trit(&cp,3,-1);
+	cp = set_trit(cp,1,-1);
+	cp = set_trit(cp,2,-1);
+	cp = set_trit(cp,3,-1);
 
 	uint8_t cc;
 
-	set_trit(&cp,1,1);
-	set_trit(&cp,2,1);
-	set_trit(&cp,3,0);
+	cp = set_trit(cp,1,1);
+	cp = set_trit(cp,2,1);
+	cp = set_trit(cp,3,0);
 	electrified_typewriter(cp,0);
 
-	set_trit(&cp,1,-1);
-	set_trit(&cp,2,-1);
-	set_trit(&cp,3,-1);
+	cp = set_trit(cp,1,-1);
+	cp = set_trit(cp,2,-1);
+	cp = set_trit(cp,3,-1);
 	for(cc=0;cc<27;cc++) {
 		if( trs_to_digit(&cp) != 12 || trs_to_digit(&cp) != 11 ) {
 			electrified_typewriter(cp,0);
@@ -3371,14 +3249,14 @@ void Triniti_tests( void ) {
 		inc_trs(&cp);
 	}
 
-	set_trit(&cp,1,1);
-	set_trit(&cp,2,1);
-	set_trit(&cp,3,-1);
+	cp = set_trit(cp,1,1);
+	cp = set_trit(cp,2,1);
+	cp = set_trit(cp,3,-1);
 	electrified_typewriter(cp,0);
 
-	set_trit(&cp,1,-1);
-	set_trit(&cp,2,-1);
-	set_trit(&cp,3,-1);
+	cp = set_trit(cp,1,-1);
+	cp = set_trit(cp,2,-1);
+	cp = set_trit(cp,3,-1);
 	for(cc=0;cc<27;cc++) {
 		if( trs_to_digit(&cp) != 12 || trs_to_digit(&cp) != 11 ) {
 			electrified_typewriter(cp,0);
@@ -3386,14 +3264,14 @@ void Triniti_tests( void ) {
 		inc_trs(&cp);
 	}
 
-	set_trit(&cp,1,1);
-	set_trit(&cp,2,1);
-	set_trit(&cp,3,0);
+	cp = set_trit(cp,1,1);
+	cp = set_trit(cp,2,1);
+	cp = set_trit(cp,3,0);
 	electrified_typewriter(cp,1);
 
-	set_trit(&cp,1,-1);
-	set_trit(&cp,2,-1);
-	set_trit(&cp,3,-1);
+	cp = set_trit(cp,1,-1);
+	cp = set_trit(cp,2,-1);
+	cp = set_trit(cp,3,-1);
 	for(cc=0;cc<27;cc++) {
 		if( trs_to_digit(&cp) != 12 || trs_to_digit(&cp) != 11 ) {
 			electrified_typewriter(cp,1);
@@ -3401,14 +3279,14 @@ void Triniti_tests( void ) {
 		inc_trs(&cp);
 	}
 
-	set_trit(&cp,1,1);
-	set_trit(&cp,2,1);
-	set_trit(&cp,3,-1);
+	cp = set_trit(cp,1,1);
+	cp = set_trit(cp,2,1);
+	cp = set_trit(cp,3,-1);
 	electrified_typewriter(cp,1);
 
-	set_trit(&cp,1,-1);
-	set_trit(&cp,2,-1);
-	set_trit(&cp,3,-1);
+	cp = set_trit(cp,1,-1);
+	cp = set_trit(cp,2,-1);
+	cp = set_trit(cp,3,-1);
 	for(cc=0;cc<27;cc++) {
 		if( trs_to_digit(&cp) != 12 || trs_to_digit(&cp) != 11 ) {
 			electrified_typewriter(cp,1);
@@ -3421,14 +3299,14 @@ void Triniti_tests( void ) {
 	//uint8_t cmd[20];
 	//trs_t dst;
 	//dst.l = 9;
-	//dst.tb = 0;
+	//dst.t1 = 0;
 	trs_t inr;
 	inr.l = 5;
-	set_trit(&inr,1,-1);
-	set_trit(&inr,2,-1);
-	set_trit(&inr,3,-1);
-	set_trit(&inr,4,-1);
-	set_trit(&inr,5,0);
+	inr = set_trit(inr,1,-1);
+	inr = set_trit(inr,2,-1);
+	inr = set_trit(inr,3,-1);
+	inr = set_trit(inr,4,-1);
+	inr = set_trit(inr,5,0);
 
 	uint8_t mm;
 	for(mm=1;mm<=54;mm++) {
@@ -3444,55 +3322,55 @@ void Triniti_tests( void ) {
 
 	trs_t zd;
 	zd.l = 4;
-	set_trit(&zd,1,1);
-	set_trit(&zd,2,1);
-	set_trit(&zd,3,1);
-	set_trit(&zd,4,1);
+	zd = set_trit(zd,1,1);
+	zd = set_trit(zd,2,1);
+	zd = set_trit(zd,3,1);
+	zd = set_trit(zd,4,1);
 	printf(" - zone_drum_to_index()=%i\r\n",zone_drum_to_index(zd) );
 
 	trs_t zr;
 	zr.l = 1;
-	set_trit(&zr,1,-1);
+	zr = set_trit(zr,1,-1);
 	printf(" - zone_fram_to_index()=%i\r\n",zone_fram_to_index(zr) );
-	set_trit(&zr,1,0);
+	zr = set_trit(zr,1,0);
 	printf(" - zone_fram_to_index()=%i\r\n",zone_fram_to_index(zr) );
-	set_trit(&zr,1,1);
+	zr = set_trit(zr,1,1);
 	printf(" - zone_fram_to_index()=%i\r\n",zone_fram_to_index(zr) );
 
 	trs_t rr;
 	rr.l = 4;
 
-	set_trit(&rr,1,-1);
-	set_trit(&rr,2,-1);
-	set_trit(&rr,3,-1);
-	set_trit(&rr,4,0);
+	rr = set_trit(rr,1,-1);
+	rr = set_trit(rr,2,-1);
+	rr = set_trit(rr,3,-1);
+	rr = set_trit(rr,4,0);
 	printf(" - row_fram_to_index()=%i\r\n",row_fram_to_index(rr) );
 
-	set_trit(&rr,1,0);
-	set_trit(&rr,2,0);
-	set_trit(&rr,3,0);
-	set_trit(&rr,4,0);
+	rr = set_trit(rr,1,0);
+	rr = set_trit(rr,2,0);
+	rr = set_trit(rr,3,0);
+	rr = set_trit(rr,4,0);
 	printf(" - row_fram_to_index()=%i\r\n",row_fram_to_index(rr) );
 
-	set_trit(&rr,1,1);
-	set_trit(&rr,2,1);
-	set_trit(&rr,3,1);
-	set_trit(&rr,4,1);
+	rr = set_trit(rr,1,1);
+	rr = set_trit(rr,2,1);
+	rr = set_trit(rr,3,1);
+	rr = set_trit(rr,4,1);
 	printf(" - row_fram_to_index()=%i\r\n",row_fram_to_index(rr) );
-
 
 	printf(" - 1. \r\n");
 	trs_t aa;
 	aa.l = 5;
-	set_trit(&aa,1,-1);
-	set_trit(&aa,2,-1);
-	set_trit(&aa,3,1);
-	set_trit(&aa,4,1);
-	set_trit(&aa,5,-1);
+	aa = set_trit(aa,1,-1);
+	aa = set_trit(aa,2,-1);
+	aa = set_trit(aa,3,1);
+	aa = set_trit(aa,4,1);
+	aa = set_trit(aa,5,-1);
 
-	R.tb = 0;
-	set_trit(&R,1,-1);
-	set_trit(&R,18,-1);
+	R.t1 = 0;
+	R.t0 = 0;
+	R = set_trit(R,1,-1);
+	R = set_trit(R,18,-1);
 	view_short_reg(&R,"R");
 
 	st_fram(aa,R);
@@ -3501,11 +3379,11 @@ void Triniti_tests( void ) {
 	view_short_reg(&R,"R");
 
 	printf(" - 2. \r\n");
-	set_trit(&aa,1,-1);
-	set_trit(&aa,2,-1);
-	set_trit(&aa,3,-1);
-	set_trit(&aa,4,-1);
-	set_trit(&aa,5,-1);
+	aa = set_trit(aa,1,-1);
+	aa = set_trit(aa,2,-1);
+	aa = set_trit(aa,3,-1);
+	aa = set_trit(aa,4,-1);
+	aa = set_trit(aa,5,-1);
 
 	st_fram(aa,aa);
 	R = ld_fram(aa);
@@ -3526,11 +3404,11 @@ void Triniti_tests( void ) {
 	view_short_reg(&aa,"aa");
 	view_short_reg(&R,"R");
 
-	set_trit(&aa,1,1);
-	set_trit(&aa,2,1);
-	set_trit(&aa,3,1);
-	set_trit(&aa,4,1);
-	set_trit(&aa,5,1);
+	aa = set_trit(aa,1,1);
+	aa = set_trit(aa,2,1);
+	aa = set_trit(aa,3,1);
+	aa = set_trit(aa,4,1);
+	aa = set_trit(aa,5,1);
 	st_fram(aa,aa);
 	R = ld_fram(aa);
 	view_short_reg(&aa,"aa");
@@ -3755,7 +3633,8 @@ void Setun_test_Opers( void ) {
 
 	trs_t res;
 	res.l  = 18;
-	res.tb = 0;
+	res.t1 = 0;
+	res.t0 = 0;
 	
 	S = smtr("0000000-0000000+++");
 	R = smtr("000000000-00+000-");
