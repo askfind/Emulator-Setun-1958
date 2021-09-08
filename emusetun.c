@@ -26,7 +26,7 @@
  *  Виртуальная машина Сетунь-1958
  * -------------------------------
  */
-#define TRI_TEST (1)
+#define TEST_NUMBER (1)
 
 #define POW3_ARG_MAX (1290)
 
@@ -182,7 +182,7 @@ trs_t   sub_trs(trs_t a, trs_t b);
 trs_t   mul_trs(trs_t a, trs_t b);
 trs_t   div_trs(trs_t a, trs_t b);
 trs_t   slice_trs(trs_t t, int8_t p1, int8_t p2);
-int32_t trits2digit(trs_t t);
+int32_t trs2digit(trs_t t);
 
 /**
  * Определить следующий адрес
@@ -1555,29 +1555,20 @@ uint8_t trit_to_lt(int8_t v)
  */
 int32_t trs_to_digit(trs_t *tr)
 {
-	//TODO ~
-	int32_t l;
-	int8_t i;
-	trs_t x;
-
-	l = 0;
-	x = *tr;
-	for (i = 0; i < x.l; i++)
+	//TODO dbg 
+	uint8_t i;	
+	int32_t l = 0;
+	for (i = 0; i < 9; i++)
 	{
-		x = *tr;
-		x.t1 >>= (i);
-		l += trit2int(x) * pow3(i);
-	}
-
+		l += get_trit(*tr,i) * pow3(i);
+	}	
 	return l;
 }
 
 /**
  * Троичный код в девятеричной системы 
- *
- *  С символами: Ж, Х, У, Ц, 0, 1, 2, 3, 4. 
  */
-int32_t trits2digit(trs_t t)
+int32_t trs2digit(trs_t t)
 {
 	uint8_t i;	
 	int32_t l = 0;
@@ -1593,7 +1584,6 @@ int32_t trits2digit(trs_t t)
  */
 void cmd_str_2_trs(uint8_t *syms, trs_t *r)
 {
-
 	uint8_t i;
 	uint8_t symtrs_str[40];
 
@@ -1622,7 +1612,7 @@ void cmd_str_2_trs(uint8_t *syms, trs_t *r)
 /**
  * Печать троичного числа в строку
  */
-void trit_to_str(trs_t t)
+void trit2str(trs_t t)
 {
 
 	int8_t i, j, n;
@@ -1648,7 +1638,7 @@ void trit_to_str(trs_t t)
 /**
  * Печать троичного числа в строку
  */
-void trit_to_symtrs(trs_t t)
+void trit2symtrs(trs_t t)
 {
 
 	int8_t i, j, n;
@@ -1675,6 +1665,7 @@ void trit_to_symtrs(trs_t t)
  */
 void trit2linetape(trs_t v, uint8_t *lp)
 {
+	//TODO add code
 }
 
 /**
@@ -1686,6 +1677,7 @@ void trit2linetape(trs_t v, uint8_t *lp)
  */
 uint8_t linetape2trit(uint8_t *lp, trs_t *v)
 {
+	//TODO add code
 	trs_t r;
 	r.l = 0;
 	r.t1 = 0;
@@ -1737,7 +1729,7 @@ void view_short_reg(trs_t *t, uint8_t *ch)
 	printf("], ");
 	printf("(%li), ", (long int)trs_to_digit(t));
 	tv = *t;
-	trit_to_str(tv);
+	trit2str(tv);
 	printf("\n");
 }
 
@@ -2553,11 +2545,11 @@ void view_fram(trs_t ea)
 	} while (j < 9);
 
 	printf("], ");
-	//TODO error printf("(%li), ", (long int)trits2digit(t));
+	//TODO error printf("(%li), ", (long int)trs2digit(t));
 
 	tv.l = 9;
 	tv.t1 = r & 0x3FFFF;
-	trit_to_str(tv);
+	trit2str(tv);
 	printf("\n");
 }
 
@@ -2621,11 +2613,11 @@ void dump_fram(void)
 			} while (j < 9);
 
 			printf("], ");
-			//TODO error printf("(%li), ", (long int)trits2digit(t));
+			//TODO error printf("(%li), ", (long int)trs2digit(t));
 
 			tv.l = 9;
 			tv.t1 = r & 0x3FFFF;
-			trit_to_str(tv);
+			trit2str(tv);
 			printf("\n");
 		}
 	}
@@ -2668,11 +2660,11 @@ void view_drum(trs_t zone)
 		} while (j < 9);
 
 		printf("], ");
-		//TODO error printf("(%li), ", (long int)trits2digit(r));
+		//TODO error printf("(%li), ", (long int)trs2digit(r));
 
 		tv.l = 9;
 		tv.t1 = r & 0x3FFFF;
-		trit_to_str(tv);
+		trit2str(tv);
 		printf("\n");
 
 	} /* for() */
@@ -2709,11 +2701,11 @@ void dump_drum(void)
 			} while (j < 9);
 
 			printf("], ");
-			//TODO error printf("(%li), ", (long int)trits2digit(t));
+			//TODO error printf("(%li), ", (long int)trs2digit(t));
 
 			tv.l = 9;
 			tv.t1 = r & 0x3FFFF;
-			trit_to_str(tv);
+			trit2str(tv);
 
 			printf("\n");
 		}
@@ -2909,7 +2901,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		*/
 
 	printf("A*=[");
-	trit_to_symtrs(k1_5);
+	trit2symtrs(k1_5);
 	printf("]");
 	printf(", (% 4li), ", (long int)trs_to_digit(&k1_5));
 
@@ -3250,95 +3242,92 @@ error_over:
 }
 
 /** *********************************************
- *  Тестирование виртуальной машины "Сетунь-1958"
- *  типов данных, функции
+ *  Тестирование функций операций с тритами 
  *  ---------------------------------------------
  */
-void Triniti_tests(void)
+void Test1_Opers_Trits(void)
 {
 
-	printf("\n --- START Triniti tests VM SETUN-1958 --- \n");
+	printf("\n --- TEST #1  Operations trits for VM SETUN-1958 --- \n");
 
-	printf("pR=%08p\n", &R);
+	//t1.1 POW3
+	printf("\nt1.1 --- POW3(...)\n");
+	printf("pow3(3) =%li\n", (int32_t)pow3(3));
+	printf("pow3(18)=%li\n", (int32_t)pow3(18));
 
-	//t1 Point address
-	printf("\nt1 --- Point type addr\n");
+	//t1.2 Point address
+	printf("\nt1.2 --- Point address\n");
 	addr pM;
 	pM = 0xffffffff;
 	printf("pM = 0xffffffff [%ji]\n", pM);
 
-	//t2 XOR-троичная двоичными операциями
-	printf("\nt2 --- XOR\n");
-	int16_t a, b, c;
-	printf("a = 0x10\n");
-	printf("b = 0x10\n");
-	printf("c = a | b\n");
-	printf("c = c ^ 0x11\n");
-	a = (int16_t)0x10;
-	b = (int16_t)0x10;
-	c = a | b;
-	c = c ^ (int16_t)0x11;
-	printf("a xor b = c  0x%x\n", (int8_t)c);
-
-	//t3 POW3
-	printf("\nt3 --- POW3\n");
-	printf("pow3(3)=%li\n", (int32_t)pow3(3));
-
-	//t4 trit2int
-	printf("\nt4 --- trit2int()\n");
+	//t1.3 trit2int
+	printf("\nt1.3 --- trit2int()\n");
 	trs_t k;
-	k.t1 = 0;
+	k.t1 = 0; // -1
+	k.t0 = 1;
+	printf("trit2int(-1)=%i\n", trit2int(k));
+	k.t1 = 1; // +1
+	k.t0 = 1;
+	printf("trit2int(+1)=%i\n", trit2int(k));
+	k.t1 = 0; // 0
+	k.t0 = 0;
 	printf("trit2int(0)=%i\n", trit2int(k));
-	k.t1 = 1;
-	printf("trit2int(1)=%i\n", trit2int(k));
-	k.t1 = 2;
-	printf("trit2int(2)=%i\n", trit2int(k));
-	k.t1 = 3;
-	printf("trit2int(3)=%i\n", trit2int(k));
 
-	//t5
-	printf("\nt5 --- bit2trit()\n");
-	printf("bit2trit(0)=%lu\n", k.t1);
-	printf("bit2trit(1)=%lu\n", k.t1);
-	printf("bit2trit(-1)=%lu\n", k.t1);
-
-	//t6
-	printf("\nt6 --- printf long int\n");
+	//t1.4
+	printf("\nt1.4 --- printf long int\n");
 	long int ll = 0x00000001lu;
-	printf("long int ll = 	0x00000001lu\n");
+	printf("long int ll = 0x00000001lu\n");
 	printf("ll=%lu\n", ll);
-	ll <<= 2;
+	ll <<= 1;
 	printf("ll=%lu\n", ll);
 	ll <<= 1;
 	printf("ll=%lu\n", ll);
 
-	//t7
-	printf("\nt7 --- sng()\n");
-	k.t1 = 0;
-	printf("k.t1 = 0\n");
-	printf("sgn(k)=%i\n", sgn_trs(k));
-	k.t1 = 1;
-	printf("k.t1 = 1\n");
-	printf("sgn(k)=%i\n", sgn_trs(k));
-	k.t1 = 2;
-	printf("k.t1 = 2\n");
-	printf("sgn(k)=%i\n", sgn_trs(k));
-	k.t1 = 3;
-	printf("k.t1 = 3\n");
-	printf("sgn(k)=%i\n", sgn_trs(k));
+	//t1.5
+	printf("\nt1.5 --- sgn_trs()\n");
+	k.t1 = 0; // -1
+	k.t0 = 1;
+	printf("k = -1\n");
+	printf("sgn_trs(k)=%i\n", sgn_trs(k));
+	k.t1 = 1; // +1
+	k.t0 = 1;
+	printf("k = 1\n");
+	printf("sgn_trs(k)=%i\n", sgn_trs(k));
+	k.t1 = 0; // 0
+	k.t0 = 0;
+	printf("k = 0\n");
+	printf("sgn_trs(k)=%i\n", sgn_trs(k));
 
-	//t8
-	printf("\nt8 --- st_fram()\n");
+	//t1.6
+	printf("\nt1.6 --- view_short_reg()\n");
+	C.l = 5;
+	C.t1 &= ~(1<<0);
+	C.t0 |= (1<<0);
+	//
+	k.l = 9;
+	k.t1 = 1<<3;
+	k.t0 = 1<<3;
+	//
+	view_short_reg(&C, "C =");
+	view_short_reg(&k, "k =");
+	printf("TODO dbg view_short_reg(...)\n");
+
+	//t1.7
+	printf("\nt1.7 --- st_fram()\n");
 	C.l = 5;
 	C.t1 = 0;
 	//
 	k.l = 9;
-	k.t1 = 4;
+	k.t1 = 1<<3;
+	k.t0 = 1<<3;
 	//
-	view_short_reg(&C, "C =");
-	view_short_reg(&k, "k =");
-	printf("st_fram(C,k)\n");
-	st_fram(C, k);
+	//view_short_reg(&C, "C =");
+	//view_short_reg(&k, "k =");
+	printf("TODO dbg st_fram(C,k)\n");
+	//TODO dbg st_fram(C, k);
+
+	return ; //dbg
 
 	//t9
 	printf("\nt9 --- control_trs()\n");
@@ -3874,7 +3863,7 @@ void Triniti_tests(void)
  *  типов данных, функции
  *  ---------------------------------------------
  */
-void Setun_test_Opers(void)
+void Test_Setun_Opers(void)
 {
 
 	trs_t exK;
@@ -4293,13 +4282,13 @@ int main(int argc, char *argv[])
 	trs_t oper;
 	uint8_t ret_exec;
 
-#if (TRI_TEST == 1)
-	/* Выполнить тесты */
-	Triniti_tests();
+#if (TEST_NUMBER == 1)
+	/* Тест операции с тритами */
+	Test1_Opers_Trits();
 #endif
 
-#if (TRI_TEST == 2)
-	Setun_test_Opers();
+#if (TEST_NUMBER == 2)
+	Test_Setun_Opers();
 #endif
 
 	return 0; //viv+ deb 
