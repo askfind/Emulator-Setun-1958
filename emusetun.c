@@ -2553,7 +2553,7 @@ void view_fram(trs_t ea)
 	} while (j < 9);
 
 	printf("], ");
-	printf("(%li), ", (long int)trits2digit(t));
+	//TODO error printf("(%li), ", (long int)trits2digit(t));
 
 	tv.l = 9;
 	tv.t1 = r & 0x3FFFF;
@@ -2621,7 +2621,7 @@ void dump_fram(void)
 			} while (j < 9);
 
 			printf("], ");
-			printf("(%li), ", (long int)trits2digit(t));
+			//TODO error printf("(%li), ", (long int)trits2digit(t));
 
 			tv.l = 9;
 			tv.t1 = r & 0x3FFFF;
@@ -2668,7 +2668,7 @@ void view_drum(trs_t zone)
 		} while (j < 9);
 
 		printf("], ");
-		printf("(%li), ", (long int)trits2digit(r));
+		//TODO error printf("(%li), ", (long int)trits2digit(r));
 
 		tv.l = 9;
 		tv.t1 = r & 0x3FFFF;
@@ -2709,7 +2709,7 @@ void dump_drum(void)
 			} while (j < 9);
 
 			printf("], ");
-			printf("(%li), ", (long int)trits2digit(t));
+			//TODO error printf("(%li), ", (long int)trits2digit(t));
 
 			tv.l = 9;
 			tv.t1 = r & 0x3FFFF;
