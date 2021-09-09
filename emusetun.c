@@ -4440,8 +4440,8 @@ void Test_Setun_Opers(void)
 
 int usage(const char *argv0)
 {
-	printf("usage: %s [options] FILE SCRIPT(s)...\n", argv0);
-	printf("\t--test : number test VM Setun-1958)\n");
+	printf("usage: %s [options] FILE PROGRAM VM SETUN-1958(s)...\n", argv0);
+	printf("\t--test n : number test VM Setun-1958)\n");
 	exit(0);
 }
 /** -------------------------------
