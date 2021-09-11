@@ -87,7 +87,7 @@
 #define SIZE_ZONE_TRIT_FRAM (54) /* количнество коротких 9-тритных слов в зоне */
 #define SIZE_ALL_TRIT_FRAM (162) /* всего количество коротких 9-тритных слов */
 
-#define SIZE_PAGES_FRAM (2)		 /* количнество коротких 9-тритных слов в зоне */
+#define SIZE_PAGES_FRAM (2)		 /* количнество страниц в FRAM */
 #define SIZE_PAGE_TRIT_FRAM (81) /* количнество коротких 9-тритных слов в зоне */
 
 /**
@@ -119,6 +119,13 @@ typedef struct trs
 	uint32_t t0; /* троичное число NIL */
 } trs_t;
 
+typedef struct mem_elm
+{
+	uint16_t l;  /* длина троичного числа в тритах */
+	uint16_t m1; /* троичное число FALSE,TRUE */
+	uint16_t m0; /* троичное число NIL */
+} mem_elm_t;
+
 /**
  * Статус выполнения операции  "Сетунь-1958"
  */
@@ -135,8 +142,8 @@ enum
 /**
  * Определение памяти машины "Сетунь-1958"
  */
-uint32_t mem_fram[SIZE_PAGE_TRIT_FRAM][SIZE_PAGES_FRAM];  /* оперативное запоминающее устройство на ферритовых сердечниках */
-uint32_t mem_drum[NUMBER_ZONE_DRUM][SIZE_ZONE_TRIT_DRUM]; /* запоминающее устройство на магнитном барабане */
+trs_t mem_fram[SIZE_PAGE_TRIT_FRAM][SIZE_PAGES_FRAM];  /* оперативное запоминающее устройство на ферритовых сердечниках */
+trs_t mem_drum[NUMBER_ZONE_DRUM][SIZE_ZONE_TRIT_DRUM]; /* запоминающее устройство на магнитном барабане */
 
 /** ***********************************
  *  Определение регистров "Сетунь-1958"
@@ -182,9 +189,9 @@ void sum_t(int8_t *a, int8_t *b, int8_t *p0, int8_t *s, int8_t *p1);
  *
  */
 int8_t get_trit(trs_t t, uint8_t pos);
-trs_t  set_trit(trs_t t, uint8_t pos, int8_t trit);
-trs_t  slice_trs(trs_t t, int8_t p1, int8_t p2);
-void   copy_trs(trs_t *src, trs_t *dst);
+trs_t set_trit(trs_t t, uint8_t pos, int8_t trit);
+trs_t slice_trs(trs_t t, int8_t p1, int8_t p2);
+void copy_trs(trs_t *src, trs_t *dst);
 
 /**  -------------------------------------------------------------
  *   Троичные числа регистров Setun-1958
@@ -195,10 +202,9 @@ void   copy_trs(trs_t *src, trs_t *dst);
  *   SETUN-T18 = [s1...s18]
  */
 int8_t get_trit_setun(trs_t t, uint8_t pos);
-trs_t  set_trit_setun(trs_t t, uint8_t pos, int8_t trit);
-trs_t  slice_trs_setun(trs_t t, int8_t p1, int8_t p2);
-void   copy_trs_setun(trs_t *src, trs_t *dst);
-
+trs_t set_trit_setun(trs_t t, uint8_t pos, int8_t trit);
+trs_t slice_trs_setun(trs_t t, int8_t p1, int8_t p2);
+void copy_trs_setun(trs_t *src, trs_t *dst);
 
 /**
  * Общие функции для троичных чисел из тритов
@@ -227,7 +233,6 @@ trs_t smtr(uint8_t *s);
 void trit2linetape(trs_t v, uint8_t *lp);
 uint8_t linetape2trit(uint8_t *lp, trs_t *v);
 
-
 /* Операции с ферритовой памятью машины FRAM */
 void clean_fram(void);
 trs_t ld_fram(trs_t ea);
@@ -243,7 +248,7 @@ void fram_to_drum(trs_t ea);
 void drum_to_fram(trs_t ea);
 
 /* Функции троичной машины Сетунь-1958 */
-void reset_setun_1958(void);						/* Сброс машины */
+void reset_setun_1958(void);				/* Сброс машины */
 trs_t control_trs(trs_t a);					/* Устройство управления */
 trs_t next_address(trs_t c);				/* Определить следующий адрес */
 int8_t execute_trs(trs_t addr, trs_t oper); /* Выполнение кодов операций */
@@ -666,7 +671,7 @@ void dec_trs(trs_t *t)
 	x.t0 = 0;
 	x = set_trit(x, 0, -1);
 	x = add_trs(*t, x);
-	*t = x;	
+	*t = x;
 }
 
 /* Троичное сложение тритов */
@@ -818,18 +823,21 @@ trs_t div_trs(trs_t a, trs_t b)
 /* Оперция присваивания троичных чисел в регистры */
 void copy_trs(trs_t *src, trs_t *dst)
 {
-	if( src->l == dst->l )  {
+	if (src->l == dst->l)
+	{
 		dst->t1 = src->t1;
-		dst->t0 = src->t0;		
+		dst->t0 = src->t0;
 	}
-	else if( src->l > dst->l ) {		
+	else if (src->l > dst->l)
+	{
 		dst->t1 = src->t1;
 		dst->t0 = src->t0 & (0xFFFFFFFF << dst->l);
 	}
-	else {		
+	else
+	{
 		dst->t1 = src->t1;
 		dst->t0 = src->t0 & (0xFFFFFFFF >> src->l);
-	} 
+	}
 }
 
 /* Получить часть тритов из троичного числа */
@@ -838,19 +846,19 @@ trs_t slice_trs(trs_t t, int8_t p1, int8_t p2)
 	trs_t r;
 
 	if (t.l == 0)
-	{	
+	{
 		return t; /* Error */
 	}
 	if (p1 > p2)
-	{	
+	{
 		return t; /* Error */
 	}
-	if( (p2-p1+1) > t.l ) 
-	{	
+	if ((p2 - p1 + 1) > t.l)
+	{
 		return t; /* Error */
 	}
 
- 	r = t;	
+	r = t;
 	r.t1 >>= p1;
 	r.t0 >>= p1;
 	r.t1 &= (0xFFFFFFFF >> p1);
@@ -858,7 +866,6 @@ trs_t slice_trs(trs_t t, int8_t p1, int8_t p2)
 	r.l = p2 - p1 + 1;
 
 	return r;
-
 }
 
 /**  -------------------------------------------------------------
@@ -918,23 +925,23 @@ trs_t set_trit_setun(trs_t t, uint8_t pos, int8_t trit)
  * Получить часть тритов из троичного числа
  */
 trs_t slice_trs_setun(trs_t t, int8_t p1, int8_t p2)
-{	
+{
 	trs_t r;
 
 	if (t.l == 0)
-	{	
+	{
 		return t; /* Error */
 	}
 	if (p1 > p2)
-	{	
+	{
 		return t; /* Error */
 	}
-	if( (p2-p1+1) > t.l ) 
-	{	
+	if ((p2 - p1 + 1) > t.l)
+	{
 		return t; /* Error */
 	}
 
- 	r = t;	
+	r = t;
 	r.t1 >>= (t.l - p2);
 	r.t0 >>= (t.l - p2);
 	r.t1 &= (0xFFFFFFFF >> (t.l - p2));
@@ -947,22 +954,25 @@ trs_t slice_trs_setun(trs_t t, int8_t p1, int8_t p2)
 /* Оперция присваивания троичных чисел в регистры */
 void copy_trs_setun(trs_t *src, trs_t *dst)
 {
-	if( src->l == dst->l )  {
+	if (src->l == dst->l)
+	{
 		dst->t1 = src->t1;
-		dst->t0 = src->t0;		
+		dst->t0 = src->t0;
 	}
-	else if( src->l > dst->l ) {
+	else if (src->l > dst->l)
+	{
 		int8_t s = src->l - dst->l;
 		dst->t1 = src->t1 >> s;
 		dst->t0 = src->t0 >> s;
 		dst->t0 &= 0xFFFFFFFF >> s;
 	}
-	else {		
+	else
+	{
 		int8_t s = dst->l - src->l;
 		dst->t1 = src->t1 << s;
 		dst->t0 = src->t0 << s;
 		dst->t0 &= 0xFFFFFFFF << s;
-	} 
+	}
 }
 
 /* Проверить на переполнение 18-тритного числа */
@@ -1029,123 +1039,89 @@ uint8_t zone_drum_to_index(trs_t z)
 	return r;
 }
 
-/* Дешифратор трита в индекс адреса памяти FRAM */
-uint8_t zone_fram_to_index_ver_1(trs_t z)
-{
-	//TODO ~
-	int8_t r = NUMBER_ZONE_FRAM >> 1;
-
-	r += get_trit(z, 1) * 1;
-
-	if (r == 0)
-	{
-		return 0; /* Зона 0,1  для чтения 18-трит */
-	}
-	else if (r == 1)
-	{
-		return 1;
-	}
-	else
-	{
-		return 2;
-	}
-}
-
 /* Дешифратор трита в индекс адреса физической памяти FRAM */
-uint8_t zone_fram_to_index(trs_t z)
+uint8_t addr2zone_fram(trs_t z)
 {
-	//TODO ~
 	int8_t r;
-
-	r = get_trit(z, 1) * 1;
-
-	if (r < 0)
-	{
-		return 0;
-	}
-	else if (r == 0)
-	{
-		return 0;
-	}
-	else
-	{
-		return 1;
-	}
+	r = get_trit_setun(z, 5);	
+	if(r < 0) { return 0; }
+	else if(r == 0) { return 0; }
+	else { return 1; }
 }
 
 /* Дешифратор строки 9-тритов в зоне памяти FRAM */
-uint8_t row_fram_to_index(trs_t z)
+uint8_t addr2row_fram(trs_t z)
 {
-	//TODO ~
 	int8_t r = 40;
-	r += get_trit(z, 4) * 1;
-	r += get_trit(z, 3) * 3;
-	r += get_trit(z, 2) * 9;
-	r += get_trit(z, 1) * 27;
-
+	r += get_trit_setun(z, 4) * 1;
+	r += get_trit_setun(z, 3) * 3;
+	r += get_trit_setun(z, 2) * 9;
+	r += get_trit_setun(z, 1) * 27;
 	return (uint8_t)r;
 }
+/* Дешифратор строки 9-тритов в зоне памяти FRAM */
+trs_t rowzose2addr(uint8_t rind, uint8_t zind )
+{	
+	trs_t r;
+	int8_t dd = 40;
+	rind -= 40;
+	r.l = 5;
+	r = set_trit_setun(r,5,zind);
+	//r += get_trit_setun(z, 4) * 1;
+	//r += get_trit_setun(z, 3) * 3;
+	//r += get_trit_setun(z, 2) * 9;
+	//r += get_trit_setun(z, 1) * 27;	
+	return r;
+}
+
 
 /* Новый адрес кода машины */
 trs_t next_address(trs_t c)
 {
 	trs_t r;
-	int8_t trit; 
-	
-	r = c;
+	int8_t trit;
+	r = c;	
+	inc_trs(&r);	
 	trit = get_trit_setun(r, 5);
-
-	if( trit <= 0 )
-	{
+	if( trit < 0) { 
 		inc_trs(&r);
 	}
-	else {
-		inc_trs(&r);
-		inc_trs(&r);
-	}
-
 	return r;
 }
 
 /* Новый адрес кода машины */
 trs_t next_ind(trs_t c)
 {
-	//TODO ~
 	trs_t r;
 	r = c;
-
 	if (get_trit(r, 5) == 0)
-	{
 		/* 0 */
 		inc_trs(&r);
-	}
 	else if (get_trit(r, 5) >= 1)
 	{
 		/* + */
 		inc_trs(&r);
 		inc_trs(&r);
 	}
-	else if (get_trit(r, 5) <= -1)
-	{
+	else if (get_trit(r, 5) <= -1) {
 		/* - */
-		inc_trs(&r);
+		inc_trs(&r);	
 	}
-
 	return r;
 }
 
 /* Операция очистить память ферритовую */
 void clean_fram(void)
-{
-	//TODO ~
+{	
 	int8_t zone;
 	int8_t row;
-
 	for (zone = 0; zone < SIZE_PAGES_FRAM; zone++)
 	{
 		for (row = 0; row < SIZE_PAGE_TRIT_FRAM; row++)
 		{
-			mem_fram[row][zone] = 0;
+			mem_fram[row][zone].l  = SIZE_WORD_SHORT;
+			mem_fram[row][zone].t1 = 0;
+			mem_fram[row][zone].t0 = 0;
 		}
 	}
 }
@@ -1156,12 +1132,13 @@ void clean_drum(void)
 	//TODO ~
 	int8_t zone;
 	int8_t row;
-
 	for (zone = 0; zone < NUMBER_ZONE_DRUM; zone++)
 	{
 		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
 		{
-			mem_drum[zone][row] = 0;
+			mem_drum[zone][row].l  = SIZE_WORD_SHORT;
+			mem_drum[zone][row].t1 = 0;
+			mem_drum[zone][row].t0 = 0;
 		}
 	}
 }
@@ -1174,46 +1151,44 @@ trs_t ld_fram(trs_t ea)
 	uint8_t rind;
 	int8_t eap5;
 	trs_t zr;
-	trs_t rr;
-	uint32_t r;
+	trs_t rr;	
+	trs_t rrr;
 	trs_t res;
-
-	/* Зона памяти FRAM */
-	zr = slice_trs_setun(ea, 5, 5);
-	zr.l = 1;
-	zind = zone_fram_to_index(zr);
 
 	/* Индекс строки в зоне памяти FRAM */
 	rr = slice_trs_setun(ea, 1, 4);
-	rr.l = 4;
-	rind = row_fram_to_index(rr);
+	rind = addr2row_fram(rr);
+
+	/* Зона памяти FRAM */
+	zr = slice_trs_setun(ea, 5, 5);
+	zind = addr2zone_fram(zr);
 
 	res.t1 = 0;
 	res.t0 = 0;
 
-	eap5 = get_trit(ea, 5);
+	eap5 = get_trit_setun(ea, 5);
 	if (eap5 < 0)
 	{
 		/* Прочитать 18-тритное число */
-		r = mem_fram[rind][zind + 1]; /* прочитать 10...18 младшую часть 18-тритного числа */
-		res.t1 = r;
-		r = mem_fram[rind][zind]; /* прочитать 1...9 старшую часть 18-тритного числа */
-		res.t1 |= ((uint32_t)r) << 18 & (uint32_t)0xFFFFC0000;
+		/* прочитать 10...18 старшую часть 18-тритного числа */
+		res = mem_fram[rind][zind];
 		res.l = 18;
+		res = shift_trs(res,-9);
+		/* прочитать 10...18 младшую часть 18-тритного числа */
+		rrr = mem_fram[rind][zind+1];
+		rrr.l = 18;
+		//		
+		res = or_trs(res,rrr);		
 	}
 	else if (eap5 == 0)
 	{
 		/* Прочитать старшую часть 18-тритного числа */
-		r = mem_fram[rind][zind];
-		res.t1 = r & (uint32_t)0x3FFFF;
-		res.l = 9;
+		res = mem_fram[rind][zind];
 	}
 	else
 	{ /* eap5 > 0 */
 		/* Прочитать младшую часть 18-тритного числа */
-		r = mem_fram[rind][zind]; /* read low part trits */
-		res.t1 = r & (uint32_t)0x3FFFF;
-		res.l = 9;
+		res = mem_fram[rind][zind+1];				
 	}
 	return res;
 }
@@ -1221,40 +1196,37 @@ trs_t ld_fram(trs_t ea)
 /* Функция "Записи троичного числа в ферритовую память" */
 void st_fram(trs_t ea, trs_t v)
 {
-	//TODO ~
-	uint8_t zind;
-	uint8_t rind;
 	int8_t eap5;
-	trs_t zr;
-	trs_t rr;
+	uint8_t rind, zind;
+	trs_t rr, zr;	
+	trs_t s = v;		
+
+	/* Индекс строки в зоне физической памяти FRAM */
+	rr = slice_trs_setun(ea, 1, 4);	
+	rind = addr2row_fram(rr);
 
 	/* Зона физической памяти FRAM */
 	zr = slice_trs_setun(ea, 5, 5);
-	zr.l = 1;
-	zind = zone_fram_to_index(zr);
+	zind = addr2zone_fram(zr);
 
-	/* Индекс строки в зоне физической памяти FRAM */
-	rr = slice_trs_setun(ea, 1, 4);
-	rr.l = 4;
-	rind = row_fram_to_index(rr);
+	eap5 = get_trit_setun(ea, 5);
+	
+	//viv+ dbg	printf(" ri=%d, zi=%d\n",rind,zind);
 
-	eap5 = get_trit(ea, 5);
 	if (eap5 < 0)
-	{
-		/* Записать 18-тритное число */
-		uint32_t r;
-		r = shift_trs(v, 9).t1;
-		mem_fram[rind][zind] = (uint32_t)r & (uint32_t)0x3FFFF;
-		mem_fram[rind][zind + 1] = (uint32_t)(v.t1 & (uint32_t)0x3FFFF);
+	{	/* Записать 18-тритное число */
+		mem_fram[rind][zind]   = slice_trs_setun(s,1,9);
+		mem_fram[rind][zind+1] = slice_trs_setun(s,10,18);
+		view_short_reg(&s,"s");
 	}
 	else if (eap5 == 0)
-	{
-		mem_fram[rind][zind] = (uint32_t)(v.t1 & (uint32_t)0x3FFFF);
+	{ /* Записать 9-тритное число */
+		mem_fram[rind][zind] = slice_trs_setun(s,1,9);
 	}
-	else
-	{ /* eap5 > 0 */
-		mem_fram[rind][zind] = (uint32_t)(v.t1 & (uint32_t)0x3FFFF);
-	}
+	else { /* eap5 > 0 */
+		/* Записать 18-тритное число */
+		mem_fram[rind][zind+1] = slice_trs_setun(s,1,9);
+	}	
 }
 
 /* Копировать страницу из память fram на магнитного барабана brum */
@@ -1319,8 +1291,7 @@ trs_t ld_drum(trs_t ea, uint8_t ind)
 		ind = 0;
 	}
 
-	res.t1 = mem_drum[zind][ind] & 0x3FFFF;
-	res.l = 9;
+	copy_trs_setun(&mem_drum[zind][ind],&res);
 
 	return res;
 }
@@ -1346,8 +1317,7 @@ void st_drum(trs_t ea, uint8_t ind, trs_t v)
 	{
 		ind = 0;
 	}
-
-	mem_drum[zind][ind] = v.t1 & 0x3FFFF;
+	copy_trs_setun( &v, &mem_drum[zind][ind]);
 }
 
 /* Копировать страницу с магнитного барабана в память fram */
@@ -1373,18 +1343,10 @@ void drum_to_fram(trs_t ea)
 	k2_k5 = slice_trs_setun(ea, 2, 5);
 	k2_k5.l = 4;
 
-	if (sng < 0)
-	{
-		fram_inc = smtr("----0");
-	}
-	else if (sng == 0)
-	{
-		fram_inc = smtr("0---0");
-	}
-	else
-	{
-		fram_inc = smtr("+---0");
-	}
+	if (sng < 0) fram_inc = smtr("----0");	
+	else if (sng == 0) fram_inc = smtr("0---0");
+	else fram_inc = smtr("+---0");
+
 	/* Копировать страницу */
 	for (uint8_t m = 0; m < SIZE_ZONE_TRIT_FRAM; m++)
 	{
@@ -1609,6 +1571,21 @@ uint8_t trit_to_lt(int8_t v)
 	}
 }
 
+trs_t digit2trs(int8_t n)
+{	
+	//TODO  ~ 
+	trs_t r;
+    if (n < 3) {
+        //printf("%d",n);
+	}
+    else
+    {
+        digit2trs(n/3);
+        //printf("%d",n%3);
+    }
+	return r;
+}
+
 /**
  * Троичный код в девятеричной системы 
  */
@@ -1649,14 +1626,14 @@ void cmd_str_2_trs(uint8_t *syms, trs_t *r)
 
 	for (i = 1; i < 10; i++)
 	{
-		*r = set_trit(*r, i, symtrs2numb(symtrs_str[i]));
+		*r = set_trit_setun(*r, i, symtrs2numb(symtrs_str[i]));
 	}
 }
 
 /**
  * Печать троичного числа в строку
  */
-void trit2str(trs_t t)
+void trs2str(trs_t t)
 {
 	int8_t i, j, n;
 	int8_t t0, t1;
@@ -1714,10 +1691,10 @@ void trit2symtrs(trs_t t)
  */
 void trit2linetape(trs_t v, uint8_t *lp)
 {
-	//TODO +add 
+	//TODO +add
 }
 
-/**
+/**fst
  * Преобразовать строку строки бумажной ленты в триты
  * 
  * Пар:  lp - строка линии ленты 
@@ -1742,6 +1719,7 @@ void view_short_reg(trs_t *t, uint8_t *ch)
 {
 	int8_t i;
 	int8_t l;
+	int8_t trit;
 	trs_t tv = *t;
 
 	printf("%s: ", (char *)ch);
@@ -1755,9 +1733,7 @@ void view_short_reg(trs_t *t, uint8_t *ch)
 	printf("[");
 	//printf("\nt1 % 8x\n",t->t1);
 	//printf("t2 % 8x\n",t->t0);
-	for (i = 0; i < l; i++)
-	{
-		int8_t trit;
+	for (i = 0; i < l; i++)	{		
 		tv = *t;
 		trit = get_trit(tv, l - 1 - i);
 		printf("%c", numb2symtrs(trit));
@@ -1765,13 +1741,11 @@ void view_short_reg(trs_t *t, uint8_t *ch)
 	printf("], ");
 	//
 	tv = *t;
-	trit2str(tv);
+	trs2str(tv);
 	printf(", "); //
 	printf("(%li)", (long int)trs2digit(*t));
 	printf(", {");
-	for (i = 0; i < l; i++)
-	{
-		int8_t trit;
+	for (i = 0; i < l; i++)	{
 		tv = *t;
 		trit = get_trit(tv, l - 1 - i);
 		printf("%i", trit);
@@ -2569,36 +2543,34 @@ void view_fram(trs_t ea)
 	trs_t zr;
 	trs_t rr;
 	trs_t res;
+	trs_t r;
 
 	/* Зона памяти FRAM */
 	zr = slice_trs_setun(ea, 5, 5);
 	zr.l = 1;
-	zind = zone_fram_to_index(zr);
+	zind = addr2zone_fram(zr);
 
 	/* Индекс строки в зоне памяти FRAM */
 	rr = slice_trs_setun(ea, 1, 4);
 	rr.l = 4;
-	rind = row_fram_to_index(rr);
+	rind = addr2row_fram(rr);
 
-	uint32_t r = mem_fram[rind][zind];
-	uint32_t t = r;
+	copy_trs_setun(&mem_fram[rind][zind],&r);	
 
 	printf("ram[...] (%3d:%2d) = ", rind - SIZE_PAGE_TRIT_FRAM / 2, zind);
-	printf(" hex = 0x%08x [", r);
-
-	j = 0;
+	//printf(" hex = 0x%08x [", r.t1);
+	
+	printf("[");
+	j = 1;
 	do
-	{
-		//viv- old code  printf("%i",tb2int(r >> (9-1-j)*2));
+	{		
+		printf("%c", numb2symtrs(get_trit_setun(r,j)));
 		j++;
-	} while (j < 9);
+	} while (j < 10);
 
 	printf("], ");
 	//TODO error printf("(%li), ", (long int)trs2digit(t));
-
-	tv.l = 9;
-	tv.t1 = r & 0x3FFFF;
-	trit2str(tv);
+	trs2str(r);
 	printf("\n");
 }
 
@@ -2608,8 +2580,7 @@ void dumpf(trs_t addr1, trs_t addr2)
 	trs_t ad1 = addr1;
 	trs_t ad2 = addr2;
 	int16_t a1 = trs2digit(ad1);
-	int16_t a2 = trs2digit(ad2);
-	//printf(" a1,a1 = %d", );
+	int16_t a2 = trs2digit(ad2);	
 
 	if ((a2 >= a1) && (a2 >= ZONE_M_FRAM_BEG && a2 <= ZONE_P_FRAM_END) && (a2 >= ZONE_M_FRAM_BEG && a2 <= ZONE_P_FRAM_END))
 	{
@@ -2634,39 +2605,29 @@ void dumpf(trs_t addr1, trs_t addr2)
  */
 void dump_fram(void)
 {
-	//TODO ~
 	int8_t zone;
 	int8_t row;
 	int8_t j;
 	trs_t tv;
+	trs_t r;
 
 	printf("\r\n[ Dump FRAM Setun-1958: ]\r\n");
 
-	for (row = 0; row < SIZE_PAGE_TRIT_FRAM; row++)
-	{
-		for (zone = 0; zone < SIZE_PAGES_FRAM; zone++)
-		{
+	for (row = 0; row < SIZE_PAGE_TRIT_FRAM; row++) {
+		for (zone = 0; zone < SIZE_PAGES_FRAM; zone++) {
+			
+			r = mem_fram[row][zone];			
+			//viv+ dbg view_short_reg(&r,"r");
 
-			uint32_t r = mem_fram[row][zone];
-			uint32_t t = r;
-
-			printf("ram[...] (%3d:%2d) : ", row - SIZE_PAGE_TRIT_FRAM / 2, zone);
-			/* printf(" hex = %08p [",r); */
+			printf("ram[...] (%3d:%2d) : ", row - SIZE_PAGE_TRIT_FRAM/2, zone);
+			//printf("%s",trs2str());			
 			printf(" [");
-
-			j = 0;
-			do
-			{
-				//viv- old code  printf("%i",tb2int(r >> (9-1-j)*2));
-				j++;
-			} while (j < 9);
-
+			for(j=1;j<10;j++) {
+				printf("%c",numb2symtrs(get_trit_setun(r,j)));
+			}
 			printf("], ");
-			//TODO error printf("(%li), ", (long int)trs2digit(t));
 
-			tv.l = 9;
-			tv.t1 = r & 0x3FFFF;
-			trit2str(tv);
+			trs2str(r);
 			printf("\n");
 		}
 	}
@@ -2679,41 +2640,33 @@ void view_drum(trs_t zone)
 {
 	//TODO ~
 	int8_t j;
-
 	trs_t zr;
 	uint8_t zind;
 	uint8_t rind;
-
 	trs_t tv;
 
 	/* Зона памяти FRAM */
 	zr = slice_trs_setun(zone, 1, 4);
-	zr.l = 4;
 	zind = zone_drum_to_index(zr);
 
 	printf("\n[ BRUM Zone = %2i ]\n", zind + 1);
 
 	for (uint8_t i = 0; i < SIZE_ZONE_TRIT_DRUM; i++)
 	{
-
 		// Читать короткое словао
 		uint32_t r = ld_drum(zr, i).t1 & (uint32_t)(0x3FFFF);
-
 		printf("drum[% 3i:% 3i ] ", zind, i);
 		/* Вывод короткого троичного слова */
-		j = 0;
-		do
-		{
+		for(j=1;j<10;j++) {
 			//viv- old code  printf("%i",tb2int(r >> (9-1-j)*2));
-			j++;
-		} while (j < 9);
+		};
 
 		printf("], ");
 		//TODO error printf("(%li), ", (long int)trs2digit(r));
 
 		tv.l = 9;
 		tv.t1 = r & 0x3FFFF;
-		trit2str(tv);
+		trs2str(tv);
 		printf("\n");
 
 	} /* for() */
@@ -2729,6 +2682,7 @@ void dump_drum(void)
 	int8_t row;
 	int8_t j;
 	trs_t tv;
+	trs_t r;
 
 	printf("\n[ BRUM Setun-1958 ]\n");
 
@@ -2737,8 +2691,7 @@ void dump_drum(void)
 		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
 		{
 
-			uint32_t r = mem_drum[zone][row];
-			uint32_t t = r;
+			copy_trs_setun(&mem_drum[zone][row],&r);
 
 			printf("drum[%3i:%3i] = [", zone, row - SIZE_ZONE_TRIT_DRUM / 2);
 
@@ -2752,9 +2705,7 @@ void dump_drum(void)
 			printf("], ");
 			//TODO error printf("(%li), ", (long int)trs2digit(t));
 
-			tv.l = 9;
-			tv.t1 = r & 0x3FFFF;
-			trit2str(tv);
+			trs2str(r);
 
 			printf("\n");
 		}
@@ -2809,12 +2760,12 @@ trs_t control_trs(trs_t a)
 	//TODO
 
 	int8_t k9;
-	trs_t k1_5;	
+	trs_t k1_5;
 	trs_t cn;
-	
+
 	clear(&cn);
 
-	k1_5 = slice_trs_setun(a, 1, 5);	
+	k1_5 = slice_trs_setun(a, 1, 5);
 	/* Признак модификации адремной части K(9) */
 	k9 = trit2int(a);
 
@@ -3324,8 +3275,8 @@ void Test1_Ariphmetic_Ternary(void)
 
 	for (a = -1; a < 2; a++)
 	{
-			not_t(&a,&c);			
-			pl(a,c);
+		not_t(&a, &c);
+		pl(a, c);
 	}
 
 	printf(" 1.2. Логическая операция AND\n");
@@ -3381,17 +3332,19 @@ void Test1_Ariphmetic_Ternary(void)
  *  Тестирование функций операций с тритами 
  *  ---------------------------------------------
  */
-void pt(int8_t t,uint8_t p) {
-     printf("t[% 2i]=% 2i\n",p,t);
+void pt(int8_t t, uint8_t p)
+{
+	printf("t[% 2i]=% 2i\n", p, t);
 }
-void pln(int8_t l) {
-     printf("TRIT-%02i : ",l);
+void pln(int8_t l)
+{
+	printf("TRIT-%02i : ", l);
 }
 void Test2_Opers_TRITS_32(void)
 {
 	int8_t trit; // трит
-	trs_t  tr1;  // троичное число
-	trs_t  tr2;  // троичное число
+	trs_t tr1;	 // троичное число
+	trs_t tr2;	 // троичное число
 
 	printf("\n --- TEST #2  Operations TRITS-32 for VM SETUN-1958 --- \n");
 
@@ -3412,53 +3365,80 @@ void Test2_Opers_TRITS_32(void)
 	tr1.l = 1;
 	tr1.t1 = ~0;
 	tr1.t0 = 1;
-	pln(1); view_short_reg(&tr1, "tr1");
-	tr1.t0 = 1<<4;
-	pln(5); tr1.l = 5;  view_short_reg(&tr1, "tr1");
-	tr1.t0 = 1<<8;
-	pln(9); tr1.l = 9;  view_short_reg(&tr1, "tr1");
-	tr1.t0 = 1<<17;
-	pln(18); tr1.l = 18; view_short_reg(&tr1, "tr1");
-	tr1.t0 = 1<<31;
-	pln(32); tr1.l = 32; view_short_reg(&tr1, "tr1");
+	pln(1);
+	view_short_reg(&tr1, "tr1");
+	tr1.t0 = 1 << 4;
+	pln(5);
+	tr1.l = 5;
+	view_short_reg(&tr1, "tr1");
+	tr1.t0 = 1 << 8;
+	pln(9);
+	tr1.l = 9;
+	view_short_reg(&tr1, "tr1");
+	tr1.t0 = 1 << 17;
+	pln(18);
+	tr1.l = 18;
+	view_short_reg(&tr1, "tr1");
+	tr1.t0 = 1 << 31;
+	pln(32);
+	tr1.l = 32;
+	view_short_reg(&tr1, "tr1");
 
 	//t2.4
 	printf("\nt2.4 --- get_trit(...)\n");
-    tr1 = smtr("+0-0+0-0+");
+	tr1 = smtr("+0-0+0-0+");
 	view_short_reg(&tr1, "tr1");
-	trit = get_trit(tr1, 8); pt(trit,8);
-	trit = get_trit(tr1, 7); pt(trit,7);
-	trit = get_trit(tr1, 6); pt(trit,6);
-	trit = get_trit(tr1, 5); pt(trit,5);
-	trit = get_trit(tr1, 4); pt(trit,4);
-	trit = get_trit(tr1, 3); pt(trit,3);
-	trit = get_trit(tr1, 2); pt(trit,2);
-	trit = get_trit(tr1, 1); pt(trit,1);
-	trit = get_trit(tr1, 0); pt(trit,0);
+	trit = get_trit(tr1, 8);
+	pt(trit, 8);
+	trit = get_trit(tr1, 7);
+	pt(trit, 7);
+	trit = get_trit(tr1, 6);
+	pt(trit, 6);
+	trit = get_trit(tr1, 5);
+	pt(trit, 5);
+	trit = get_trit(tr1, 4);
+	pt(trit, 4);
+	trit = get_trit(tr1, 3);
+	pt(trit, 3);
+	trit = get_trit(tr1, 2);
+	pt(trit, 2);
+	trit = get_trit(tr1, 1);
+	pt(trit, 1);
+	trit = get_trit(tr1, 0);
+	pt(trit, 0);
 
 	//t2.4
 	printf("\nt2.4 --- set_trit(...)\n");
-	tr1 = set_trit(tr1, 8, 0); pt(0,8);
-	tr1 = set_trit(tr1, 7, 1); pt(1,7);
-	tr1 = set_trit(tr1, 6, 0); pt(0,6);
-	tr1 = set_trit(tr1, 5,-1); pt(-1,5);
-	tr1 = set_trit(tr1, 4, 0); pt(0,4);
-	tr1 = set_trit(tr1, 3, 1); pt(1,3);
-	tr1 = set_trit(tr1, 2, 0); pt(0,2);
-	tr1 = set_trit(tr1, 1,-1); pt(-1,1);
-	tr1 = set_trit(tr1, 0, 0); pt(0,0);
+	tr1 = set_trit(tr1, 8, 0);
+	pt(0, 8);
+	tr1 = set_trit(tr1, 7, 1);
+	pt(1, 7);
+	tr1 = set_trit(tr1, 6, 0);
+	pt(0, 6);
+	tr1 = set_trit(tr1, 5, -1);
+	pt(-1, 5);
+	tr1 = set_trit(tr1, 4, 0);
+	pt(0, 4);
+	tr1 = set_trit(tr1, 3, 1);
+	pt(1, 3);
+	tr1 = set_trit(tr1, 2, 0);
+	pt(0, 2);
+	tr1 = set_trit(tr1, 1, -1);
+	pt(-1, 1);
+	tr1 = set_trit(tr1, 0, 0);
+	pt(0, 0);
 	view_short_reg(&tr1, "tr1");
 
 	//t2.5
 	printf("\nt2.5 --- input TRITS-32s\n");
-    printf("input tr1=[+000000000000000000000000000000-] \n");
+	printf("input tr1=[+000000000000000000000000000000-] \n");
 	tr1 = smtr("+000000000000000000000000000000-");
 	view_short_reg(&tr1, "tr1=");
 	printf("input tr2=[-000000000+] \n");
 	tr2 = smtr("-000000000+");
 	view_short_reg(&tr2, "tr2=");
-    
-    //t2.6
+
+	//t2.6
 	printf("\nt2.6 --- trit2int(...)\n");
 	tr1 = smtr("00-");
 	printf("tr1=[00-]\n");
@@ -3466,7 +3446,7 @@ void Test2_Opers_TRITS_32(void)
 	tr1 = smtr("000");
 	printf("tr1=[000]\n");
 	printf("trit2int(tr1) = % 2i\n", trit2int(tr1));
-	tr1 = smtr("00+");	
+	tr1 = smtr("00+");
 	printf("tr1=[00+]\n");
 	printf("trit2int(tr1) = % 2i\n", trit2int(tr1));
 
@@ -3495,12 +3475,12 @@ void Test2_Opers_TRITS_32(void)
 
 	//t2.9
 	printf("\nt2.9 --- view_short_reg()\n");
-	tr1 = smtr("+-0+-0+-0");	
+	tr1 = smtr("+-0+-0+-0");
 	view_short_reg(&tr1, "tr1 =");
 
 	//t2.10
 	printf("\nt2.10 --- slice_trs(...)\n");
-    tr1 = smtr("+000000000000000000000000000000-");
+	tr1 = smtr("+000000000000000000000000000000-");
 	printf("tr1 := [+000000000000000000000000000000-]\n");
 	tr2 = slice_trs(tr1, 0, 15);
 	view_short_reg(&tr2, "tr2[15,0] =");
@@ -3510,64 +3490,64 @@ void Test2_Opers_TRITS_32(void)
 
 	//t2.11
 	printf("\nt2.11 --- copy_trs(...)\n");
-    tr1 = smtr("+000000000000000000000000000000-");
+	tr1 = smtr("+000000000000000000000000000000-");
 	printf("tr1 := [+000000000000000000000000000000-]\n");
-    tr2 = smtr("00000000000000000000000000000000");	
+	tr2 = smtr("00000000000000000000000000000000");
 	printf("tr2 := [00000000000000000000000000000000]\n");
 	copy_trs(&tr1, &tr2);
 	view_short_reg(&tr2, "tr2 =");
-    tr1 = smtr("+00-00+00");
+	tr1 = smtr("+00-00+00");
 	printf("tr1 := [+00-00+00]\n");
-    tr2 = smtr("00000000000000000000000000000000");	
+	tr2 = smtr("00000000000000000000000000000000");
 	printf("tr2 := [00000000000000000000000000000000]\n");
 	copy_trs(&tr1, &tr2);
 	view_short_reg(&tr2, "tr2 =");
 
 	//t2.12
 	printf("\nt2.12 --- inc_trs(...)\n");
-    tr1 = smtr("+0-0+---");
+	tr1 = smtr("+0-0+---");
 	view_short_reg(&tr1, "tr1 =");
 	inc_trs(&tr1);
-	printf("inc_trs(&tr1)\n");	
+	printf("inc_trs(&tr1)\n");
 	view_short_reg(&tr1, "tr1 =");
 
 	//t2.13
 	printf("\nt2.13 --- dec_trs(...)\n");
-    tr1 = smtr("+0-0-+0-");
+	tr1 = smtr("+0-0-+0-");
 	view_short_reg(&tr1, "tr1 =");
 	dec_trs(&tr1);
-	printf("dec_trs(&tr1)\n");	
+	printf("dec_trs(&tr1)\n");
 	view_short_reg(&tr1, "tr1 =");
 
 	//t2.14
 	printf("\nt2.14 --- add_trs(...)\n");
-    tr1 = smtr("+---+");
+	tr1 = smtr("+---+");
 	view_short_reg(&tr1, "tr1 =");
-    tr2 = smtr("+0-+0");
-	view_short_reg(&tr2, "tr2 =");	
-	tr1 = add_trs(tr1,tr2);
-	printf("tr1 = add_trs(tr1,tr2)\n");	
+	tr2 = smtr("+0-+0");
+	view_short_reg(&tr2, "tr2 =");
+	tr1 = add_trs(tr1, tr2);
+	printf("tr1 = add_trs(tr1,tr2)\n");
 	view_short_reg(&tr1, "tr1 =");
 
 	//t2.15
 	printf("\nt2.15 --- sub_trs(...)\n");
-    tr1 = smtr("+0-+00--");
+	tr1 = smtr("+0-+00--");
 	view_short_reg(&tr1, "tr1 =");
-    tr2 = smtr("+0-0+--+");
-	view_short_reg(&tr2, "tr2 =");	
-	tr1 = sub_trs(tr1,tr2);
-	printf("tr1 = sub_trs(tr1,tr2)\n");	
+	tr2 = smtr("+0-0+--+");
+	view_short_reg(&tr2, "tr2 =");
+	tr1 = sub_trs(tr1, tr2);
+	printf("tr1 = sub_trs(tr1,tr2)\n");
 	view_short_reg(&tr1, "tr1 =");
 
 	//t2.15
 	printf("\nt2.15 --- shift_trs(...)\n");
-    tr1 = smtr("0000+0000");
+	tr1 = smtr("0000+0000");
 	view_short_reg(&tr1, "tr1 =");
-	tr1 = shift_trs(tr1,-2);
-	printf("tr1 = shift_trs(tr1,-2)\n");	
+	tr1 = shift_trs(tr1, -2);
+	printf("tr1 = shift_trs(tr1,-2)\n");
 	view_short_reg(&tr1, "tr1 =");
-	tr1 = shift_trs(tr1,-2);
-	printf("tr1 = shift_trs(tr1,-2)\n");	
+	tr1 = shift_trs(tr1, -2);
+	printf("tr1 = shift_trs(tr1,-2)\n");
 	view_short_reg(&tr1, "tr1 =");
 }
 
@@ -3576,12 +3556,15 @@ void Test2_Opers_TRITS_32(void)
  *  типов данных, функции
  *  ---------------------------------------------
  */
-void ps(int8_t t,uint8_t p) {
-     printf("S[% 3i]=% 2i\n",p,t);
+void ps(int8_t t, uint8_t p)
+{
+	printf("S[% 3i]=% 2i\n", p, t);
 }
 void Test3_Setun_Opers(void)
-{	
+{
 	int8_t trit;
+	trs_t ad1;
+	trs_t ad2;
 
 	printf("\n --- TEST #3  Operations for VM SETUN-1958 --- \n\n");
 
@@ -3589,20 +3572,26 @@ void Test3_Setun_Opers(void)
 
 	//t3.1
 	printf("\nt3.1 --- get_trit_setun(...)\n");
-    S = smtr("+000000-000000000-");
+	S = smtr("+000000-000000000-");
 	view_short_reg(&S, "S");
-	trit = get_trit_setun(S, 1); ps(trit,1);
-	trit = get_trit_setun(S, 8); ps(trit,8);
-	trit = get_trit_setun(S, 18); ps(trit,18);
+	trit = get_trit_setun(S, 1);
+	ps(trit, 1);
+	trit = get_trit_setun(S, 8);
+	ps(trit, 8);
+	trit = get_trit_setun(S, 18);
+	ps(trit, 18);
 
 	//t3.2
 	printf("\nt3.2 --- set_trit_setun(...)\n");
 	S = smtr("000000000000000000");
-	S = set_trit_setun(S, 2, -1); ps(-1,2);
-	S = set_trit_setun(S, 5, 1); ps(1,5);
-	S = set_trit_setun(S, 18, -1); ps(-1,18);
+	S = set_trit_setun(S, 2, -1);
+	ps(-1, 2);
+	S = set_trit_setun(S, 5, 1);
+	ps(1, 5);
+	S = set_trit_setun(S, 18, -1);
+	ps(-1, 18);
 	view_short_reg(&S, "S");
-	
+
 	//t3.3
 	printf("\nt3.3 --- sgn_trs(...)\n");
 	S = smtr("+00000000000000000");
@@ -3614,73 +3603,112 @@ void Test3_Setun_Opers(void)
 	S = smtr("-00000000000000000");
 	printf("S=[-00000000000000000]\n");
 	printf("sgn_trs(S) = % 2i\n", sgn_trs(S));
-	
+
 	//t3.4
 	printf("\nt3.4 --- slice_trs_setun(...)\n");
-    S = smtr("+0000000000000000-000000");
+	S = smtr("+0000000000000000-000000");
 	K = slice_trs_setun(S, 1, 9);
 	view_short_reg(&S, "S");
-	view_short_reg(&K, "K[1,9] =");	
+	view_short_reg(&K, "K[1,9] =");
 	K = slice_trs_setun(S, 10, 18);
 	view_short_reg(&S, "S");
 	view_short_reg(&K, "K[10,18] =");
 
 	//t3.5
 	printf("\nt3.5 --- copy_trs_setun(...)\n");
-    S = smtr("+0000000000000000-000000");
+	S = smtr("+0000000000000000-000000");
 	copy_trs_setun(&S, &K);
 	view_short_reg(&S, "S");
 	view_short_reg(&K, "K");
-	K = smtr("---------");	
+	K = smtr("---------");
 	copy_trs_setun(&K, &S);
 	view_short_reg(&S, "S");
 	view_short_reg(&K, "K");
 
 	printf("\nt3.6 --- S = S + R\n");
-    S = smtr("0000000000000+---+");	
-    R = smtr("0000000000000+0-+0");	
+	S = smtr("0000000000000+---+");
+	R = smtr("0000000000000+0-+0");
 	view_short_reg(&S, "S");
 	view_short_reg(&R, "R");
-	S = add_trs(S,R);
+	S = add_trs(S, R);
 	view_short_reg(&S, "S=S+R");
 
 	//t3.7
 	printf("\nt3.7 --- next_address(...)\n");
-    C = smtr("000--");	
+	C = smtr("000--");
 	view_short_reg(&C, "beg  C");
-	for(int8_t i=0; i<10;i++  ) {
+	for (int8_t i = 0; i < 10; i++)
+	{
 		C = next_address(C);
 		view_short_reg(&C, "next C");
 	}
-	
+
 	//t3.8
 	printf("\nt3.8 --- control_trs(...)\n");
-    trs_t Mem;
+	trs_t Mem;
 	Mem.l = 9;
-	Mem = smtr("00000000+");		
+	Mem = smtr("00000000+");
 	view_short_reg(&Mem, "Mem");
 	F = smtr("0000+");
 	view_short_reg(&F, "F");
 	K = control_trs(Mem);
-	view_short_reg(&K, "K"); 
+	view_short_reg(&K, "K");
 
-	Mem = smtr("000000000");		
+	Mem = smtr("000000000");
 	view_short_reg(&Mem, "Mem");
 	F = smtr("000++");
 	view_short_reg(&F, "F");
 	K = control_trs(Mem);
-	view_short_reg(&K, "K"); 
+	view_short_reg(&K, "K");
 
-	Mem = smtr("00000000-");		
+	Mem = smtr("00000000-");
 	view_short_reg(&Mem, "Mem");
 	F = smtr("000++");
 	view_short_reg(&F, "F");
 	K = control_trs(Mem);
-	view_short_reg(&K, "K"); 
+	view_short_reg(&K, "K");
 
+	//t3.8
+	printf("\nt3.8 --- st_fram(...)\n");	
+	trs_t aa;
+	//
+	aa = smtr("00000");
+	K = smtr("+0000000-");  
+	view_short_reg(&aa, "aa");
+	view_short_reg(&K, "K");	
+	//
+	st_fram(aa, K);	
+	aa = smtr("0000+");
+	K = smtr("-0000000+");  
+	view_short_reg(&aa, "aa");
+	view_short_reg(&K, "K");
+	st_fram(aa, K);
+	//
+	dump_fram();
+	
+	//viv- ERROR
+	//ad1 = smtr("000--");
+	//ad2 = smtr("000++");
+	//dumpf(ad1, ad2);
+
+	//t3.9
+	printf("\nt3.9 --- digit2trs(...)\n");
+	digit2trs(6);
+	printf("\n");
+
+	//t3.9
+	//printf("\nt3.9 --- ld_fram(...)\n");
+
+	//t3.10
+	//printf("\nt3.10 --- st_drum(...)\n");
+	//t3.11
+	//printf("\nt3.11 --- ld_drum(...)\n");
+
+	//	TODO instaruction Setum-1958
 }
 
-void TestN(void) {
+void TestN(void)
+{
 
 	printf("\n --- TEST electrified_typewriter() --- \n");
 
@@ -3768,7 +3796,7 @@ void TestN(void) {
 	//trs_t dst;
 	//dst.l = 9;
 	//dst.t1 = 0;
-	
+
 	inr.l = 5;
 	inr = set_trit_setun(inr, 1, -1);
 	inr = set_trit_setun(inr, 2, -1);
@@ -3800,11 +3828,11 @@ void TestN(void) {
 	trs_t zr;
 	zr.l = 1;
 	zr = set_trit_setun(zr, 1, -1);
-	printf(" - zone_fram_to_index()=%i\r\n", zone_fram_to_index(zr));
+	printf(" - addr2zone_fram()=%i\r\n", addr2zone_fram(zr));
 	zr = set_trit_setun(zr, 1, 0);
-	printf(" - zone_fram_to_index()=%i\r\n", zone_fram_to_index(zr));
+	printf(" - addr2zone_fram()=%i\r\n", addr2zone_fram(zr));
 	zr = set_trit_setun(zr, 1, 1);
-	printf(" - zone_fram_to_index()=%i\r\n", zone_fram_to_index(zr));
+	printf(" - addr2zone_fram()=%i\r\n", addr2zone_fram(zr));
 
 	trs_t rr;
 	rr.l = 4;
@@ -3813,19 +3841,19 @@ void TestN(void) {
 	rr = set_trit_setun(rr, 2, -1);
 	rr = set_trit_setun(rr, 3, -1);
 	rr = set_trit_setun(rr, 4, 0);
-	printf(" - row_fram_to_index()=%i\r\n", row_fram_to_index(rr));
+	printf(" - addr2row_fram()=%i\r\n", addr2row_fram(rr));
 
 	rr = set_trit_setun(rr, 1, 0);
 	rr = set_trit_setun(rr, 2, 0);
 	rr = set_trit_setun(rr, 3, 0);
 	rr = set_trit_setun(rr, 4, 0);
-	printf(" - row_fram_to_index()=%i\r\n", row_fram_to_index(rr));
+	printf(" - addr2row_fram()=%i\r\n", addr2row_fram(rr));
 
 	rr = set_trit_setun(rr, 1, 1);
 	rr = set_trit_setun(rr, 2, 1);
 	rr = set_trit_setun(rr, 3, 1);
 	rr = set_trit(rr, 4, 1);
-	printf(" - row_fram_to_index()=%i\r\n", row_fram_to_index(rr));
+	printf(" - addr2row_fram()=%i\r\n", addr2row_fram(rr));
 
 	printf(" - 1. \r\n");
 	trs_t aa;
@@ -3899,7 +3927,7 @@ void TestN(void) {
 
 	printf("\n --- END Test#1 for Setun-1958 ---\n");
 
-// -----------------------------------------------
+	// -----------------------------------------------
 	trs_t exK;
 	trs_t oper;
 	trs_t m0;
@@ -4229,7 +4257,6 @@ void TestN(void) {
 
 	printf("\nt24 test DRUN fill index and view \n");
 
-
 	inr.l = 9;
 	inr = smtr("000000000");
 
@@ -4308,31 +4335,36 @@ int usage(const char *argv0)
  */
 int main(int argc, char *argv[])
 {
+	//TODO error execute
+
 	FILE *file;
 
-	int test = 0;	
+	int test = 0;
 	char *output = "-";
 	int ret = 0;
 
-while (1) {
+	while (1)
+	{
 		int option_index;
 		struct option long_options[] = {
-			{ "help", 0, 0, 0 },
-			{ "test", 1, 0, 0 },
-			{ 0 },
+			{"help", 0, 0, 0},
+			{"test", 1, 0, 0},
+			{0},
 		};
 		int c = getopt_long(argc, argv, "o:", long_options, &option_index);
 		if (c == -1)
 			break;
-		switch (c) {
-		case 0: {
+		switch (c)
+		{
+		case 0:
+		{
 			const char *name = long_options[option_index].name;
 			if (strcmp(name, "help") == 0)
 				usage(argv[0]);
 			else if (strcmp(name, "test") == 0)
-				test = atoi(optarg);				
+				test = atoi(optarg);
 			break;
-			}
+		}
 		case 'o':
 			output = strdup(optarg);
 			break;
@@ -4341,13 +4373,11 @@ while (1) {
 		}
 	}
 
-	if (test == 0) {
-		/* Exit 0. Ok' */
-		return 0;
-	}
-		
-	/* Run number test */
-	switch( test ) {
+	if (test > 0)
+	{
+		/* Run number test */
+		switch (test)
+		{
 		case 1:
 			Test1_Ariphmetic_Ternary();
 			break;
@@ -4356,12 +4386,17 @@ while (1) {
 			break;
 		case 3:
 			Test3_Setun_Opers();
-		break;
+			break;
 		default:
-		break;
+			break;
+		}
+
+		/* Exit 0. Ok' */
+		return 0;
 	}
-	
-	return 0;
+
+	//---------------------------------------------------
+	printf("\r\n --- START emulator Setun-1958 --- \r\n");
 
 	//trs_t k;
 	trs_t inr;
@@ -4375,22 +4410,6 @@ while (1) {
 	trs_t addr;
 	trs_t oper;
 	uint8_t ret_exec;
-
-
-#if (TEST_NUMBER == 1)
-	/* Тесты троичной логики */
-	Test1_Ariphmetic_Ternary();
-#elif (TEST_NUMBER == 2)
-	/* Тест операции с тритами */
-	Test2_Opers_TRITS_32();
-#elif (TEST_NUMBER == 3)
-	Test3_Setun_Opers();
-#endif
-
-	return 0; //dbg
-
-	//---------------------------------------------------
-	printf("\r\n --- START emulator Setun-1958 --- \r\n");
 
 	/* Сброс виртуальной машины "Сетунь-1958" */
 	printf("\r\n --- Reset Setun-1958 --- \r\n");
@@ -4406,10 +4425,13 @@ while (1) {
 	MR.l = 18;
 	file = fopen("ur0/01-test.txs", "r");
 	while (fscanf(file, "%s\r\n", cmd) != EOF)
-	{
-		printf("%s -> ", cmd);
+	{		
 		cmd_str_2_trs(cmd, &dst);
+		printf("%s -> [", cmd );
+		trs2str(dst);
+		printf("]");
 		view_short_reg(&inr, " addr");
+		//printf(" [ri=%d][zi=%d] ",addr2row_fram(inr),addr2zone_fram(inr));
 		st_fram(inr, dst);
 		inr = next_address(inr);
 	}
@@ -4417,6 +4439,7 @@ while (1) {
 
 	//
 	//dump_drum(); //TODO dbg
+	dump_fram(); //TODO dbg
 
 	/**
 	 * Выполнить первый код "Сетунь-1958"
