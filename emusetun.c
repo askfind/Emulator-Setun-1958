@@ -291,7 +291,7 @@ void clear_full(trs_t *t)
 }
 
 /**
- * Преобразование младшего трита в битое поле f0=[b1b0]
+ * Преобразование младшего трита в int8
  */
 int8_t trit2int(trs_t t)
 {
@@ -2806,38 +2806,43 @@ void reset_setun_1958(void)
  */
 trs_t control_trs(trs_t a)
 {
-	int8_t k9;
-	trs_t k1_5;
-	trs_t r;
-	trs_t cn;
+	//TODO
 
-	k1_5 = slice_trs_setun(a, 1, 5);
+	int8_t k9;
+	trs_t k1_5;	
+	trs_t cn;
+	
+	clear(&cn);
+
+	k1_5 = slice_trs_setun(a, 1, 5);	
 	/* Признак модификации адремной части K(9) */
 	k9 = trit2int(a);
 
 	/* Модицикация адресной части K(1:5) */
-	if (k9 >= 1)
+	if (k9 > 0)
 	{ /* A(1:5) = A(1:5) + F(1:5) */
 		cn = add_trs(k1_5, F);
 		cn.t1 <<= 4;
-		r.t1 = a.t1 & 0xFF; /* Очистить неиспользованные триты */
-		r.t1 |= cn.t1 & 0x3FF00;
+		cn.t0 <<= 4;
+		cn.t1 &= (0xFFF << 4); /* Очистить неиспользованные триты */
+		cn.t0 &= (0xFFF << 4);
 	}
-	else if (k9 <= -1)
+	else if (k9 < 0)
 	{ /* A(1:5) = A(1:5) - F(1:5) */
 		cn = sub_trs(k1_5, F);
 		cn.t1 <<= 4;
-		r.t1 = a.t1 & 0xFF; /* Очистить неиспользованные триты */
-		r.t1 |= cn.t1 & 0x3FF00;
+		cn.t0 <<= 4;
+		cn.t1 &= (0xFFF << 4); /* Очистить неиспользованные триты */
+		cn.t0 &= (0xFFF << 4);
 	}
 	else
 	{ /* r = K(1:9) */
-		r = a;
+		cn = a;
 	}
 
-	r.l = 9;
+	cn.l = 9;
 
-	return r;
+	return cn;
 }
 
 /***************************************************************************************
@@ -3646,7 +3651,33 @@ void Test3_Setun_Opers(void)
 	for(int8_t i=0; i<10;i++  ) {
 		C = next_address(C);
 		view_short_reg(&C, "next C");
-	} 
+	}
+	
+	//t3.8
+	printf("\nt3.8 --- control_trs(...)\n");
+    trs_t Mem;
+	Mem.l = 9;
+	Mem = smtr("00000000+");		
+	view_short_reg(&Mem, "Mem");
+	F = smtr("0000+");
+	view_short_reg(&F, "F");
+	K = control_trs(Mem);
+	view_short_reg(&K, "K"); 
+
+	Mem = smtr("000000000");		
+	view_short_reg(&Mem, "Mem");
+	F = smtr("000++");
+	view_short_reg(&F, "F");
+	K = control_trs(Mem);
+	view_short_reg(&K, "K"); 
+
+	Mem = smtr("00000000-");		
+	view_short_reg(&Mem, "Mem");
+	F = smtr("000++");
+	view_short_reg(&F, "F");
+	K = control_trs(Mem);
+	view_short_reg(&K, "K"); 
+
 }
 
 void TestN(void) {
