@@ -2826,6 +2826,18 @@ trs_t control_trs(trs_t a)
 ---        жх        -13        Не задействована                 Аварийный стоп
 ------------------------------------------------------------------------------------------
 */
+/* --------------------------------------------------------------------------------------- 
+*  TEST#3  Operations
+*		+00	(A*)=>(S)		Ok'
+*		-++	(S)=>(A*)		Ok'
+*		+-+	(A*)=>(R)		Ok'
+*		0-0	(A*)=>(F)		Ok'
+*		00-	(F)=>(A*)		Ok'
+*		00+	(C)=>(A*)		Ok'
+*		+0+	(S)+(A*)=>(S)	Ok'
+*		+0-	(S)-(A*)=>(S)   Ok'
+*/
+
 /**
  * Выполнить операцию K(1:9) машины "Сетунь-1958"
  */
@@ -3560,6 +3572,7 @@ void ps(int8_t t, uint8_t p)
 void Test3_Setun_Opers(void)
 {
 	int8_t trit;
+	trs_t aa;
 	trs_t ad1;
 	trs_t ad2;
 	trs_t addr;
@@ -3673,7 +3686,6 @@ void Test3_Setun_Opers(void)
 
 	//t3.8
 	printf("\nt3.8 --- st_fram(...)\n");	
-	trs_t aa;
 	//
 	aa = smtr("00000");
 	K = smtr("+0000000-");  
@@ -3769,7 +3781,208 @@ void Test3_Setun_Opers(void)
 	ad2 = smtr("000++");
 	view_fram(ad1, ad2);		
 
+	//t3.12 test Oper=k6..8[+-+] : (A*)=>(R)
+	printf("\nt3.12:  Oper=k6..8[+-+] : (A*)=>(R)\n");
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("+0-0+0-00");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	addr = smtr("0000+");
+	m1 = smtr("00000+-+0");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
+
+
+	//t3.13 test Oper=k6..8[0-0] : (A*)=>(F)
+	printf("\nt3.12:  Oper=k6..8[0-0] : (A*)=>(F)\n");
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("+0-0+0-00");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	addr = smtr("0000+");
+	m1 = smtr("000000-00");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
+
+	//t3.14 test Oper=k6..8[00-] : (F)=>(A*)
+	printf("\nt3.14:  Oper=k6..8[00-] : (F)=>(A*)\n");
+	//
+	reset_setun_1958();
+	//
+	F = smtr("-000+");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("0000000-0");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
+	//
+	ad1 = smtr("000--");
+	ad2 = smtr("000++");
+	view_fram(ad1, ad2);		
+
+	//t3.15 test Oper=k6..8[00+] : (C)=>(A*)
+	printf("\nt3.15:  Oper=k6..8[00+] : (C)=>(A*)\n");
+	//
+	reset_setun_1958();
+	//
+	F = smtr("-000+");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("0000000+0");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
+	//
+	ad1 = smtr("000--");
+	ad2 = smtr("000++");
+	view_fram(ad1, ad2);		
+
+	//t3.16 test Oper=k6..8[+0+] : (S)+(A*)=>(S)
+	printf("\nt3.16:  Oper=k6..8[+0+] : (S)+(A*)=>(S)\n");
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("0000000+0");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	S = smtr("00000000000000000+");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("00000+0+0");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
+
+	//t3.17 test Oper=k6..8[+0-] : (S)-(A*)=>(S)
+	printf("\nt3.17:  Oper=k6..8[+0-] : (S)-(A*)=>(S)\n");
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("0000000++");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	S = smtr("000000000000000+0+");
+	view_short_reg(&S, "S=");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("00000+0-0");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
+
 	printf("   \n");
+
 
 	//t3.--
 	//printf("\nt3.10 --- st_drum(...)\n");
