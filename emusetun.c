@@ -4,13 +4,13 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   11.09.2021
+* Edit date:   12.09.2021
 *
-* Version: 1.37
+* Version: 1.38
 */
-//TODO
-// изменить комментарии в файле с кодом проекта
-// Тесты для троичных чисел TRITS-32, остальное регистры Сетунь.
+//TODO Тесты для троичных чисел TRITS-32
+//TODO Тесты для троичных регистров Сетунь.
+//TODO Тесты команд Сетунь.
 
 /**
  *  Заголовочные файла
@@ -1042,11 +1042,18 @@ uint8_t zone_drum_to_index(trs_t z)
 /* Дешифратор трита в индекс адреса физической памяти FRAM */
 uint8_t addr2zone_fram(trs_t z)
 {
-	int8_t r;
-	r = get_trit_setun(z, 5);	
-	if(r < 0) { return 0; }
-	else if(r == 0) { return 0; }
-	else { return 1; }
+	trs_t a = z;
+	int8_t r;	
+	r = get_trit_setun(a, 1);	
+	if(r < 0) { 
+		return 0;
+	}
+	else if(r > 0) {
+		return 1;
+	}
+	else { 
+		return 0;
+	}
 }
 
 /* Дешифратор строки 9-тритов в зоне памяти FRAM */
@@ -1188,7 +1195,7 @@ trs_t ld_fram(trs_t ea)
 	else
 	{ /* eap5 > 0 */
 		/* Прочитать младшую часть 18-тритного числа */
-		res = mem_fram[rind][zind+1];				
+		res = mem_fram[rind][zind];				
 	}
 	return res;
 }
@@ -1216,8 +1223,7 @@ void st_fram(trs_t ea, trs_t v)
 	if (eap5 < 0)
 	{	/* Записать 18-тритное число */
 		mem_fram[rind][zind]   = slice_trs_setun(s,1,9);
-		mem_fram[rind][zind+1] = slice_trs_setun(s,10,18);
-		view_short_reg(&s,"s");
+		mem_fram[rind][zind+1] = slice_trs_setun(s,10,18);		
 	}
 	else if (eap5 == 0)
 	{ /* Записать 9-тритное число */
@@ -1225,7 +1231,7 @@ void st_fram(trs_t ea, trs_t v)
 	}
 	else { /* eap5 > 0 */
 		/* Записать 18-тритное число */
-		mem_fram[rind][zind+1] = slice_trs_setun(s,1,9);
+		mem_fram[rind][zind] = slice_trs_setun(s,1,9);
 	}	
 }
 
@@ -2531,9 +2537,8 @@ void view_short_regs(void)
 /**
  * Печать памяти FRAM машины Сетунь-1958 
  */
-void view_fram(trs_t ea)
+void view_elem_fram(trs_t ea)
 {
-	//TODO ~
 	int8_t j;
 	trs_t tv;
 
@@ -2541,40 +2546,35 @@ void view_fram(trs_t ea)
 	uint8_t rind;
 	int8_t eap5;
 	trs_t zr;
-	trs_t rr;
-	trs_t res;
+	trs_t rr;	
 	trs_t r;
 
 	/* Зона памяти FRAM */
 	zr = slice_trs_setun(ea, 5, 5);
-	zr.l = 1;
 	zind = addr2zone_fram(zr);
 
 	/* Индекс строки в зоне памяти FRAM */
 	rr = slice_trs_setun(ea, 1, 4);
-	rr.l = 4;
 	rind = addr2row_fram(rr);
-
-	copy_trs_setun(&mem_fram[rind][zind],&r);	
-
-	printf("ram[...] (%3d:%2d) = ", rind - SIZE_PAGE_TRIT_FRAM / 2, zind);
-	//printf(" hex = 0x%08x [", r.t1);
 	
-	printf("[");
-	j = 1;
-	do
-	{		
-		printf("%c", numb2symtrs(get_trit_setun(r,j)));
-		j++;
-	} while (j < 10);
+	r = mem_fram[rind][zind];	
 
-	printf("], ");
-	//TODO error printf("(%li), ", (long int)trs2digit(t));
+	printf("fram[");
+	for(j=1;j<6;j++) {
+		printf("%c", numb2symtrs(get_trit_setun(ea,j)));
+	}	
+	printf("] (%3d:%2d) = ", rind - SIZE_PAGE_TRIT_FRAM / 2, zind);	
+
+	printf("[");
+	for(j=1;j<10;j++) {
+		printf("%c", numb2symtrs(get_trit_setun(r,j)));
+	}
+	printf("], ");	
 	trs2str(r);
 	printf("\n");
 }
 
-void dumpf(trs_t addr1, trs_t addr2)
+void view_fram(trs_t addr1, trs_t addr2)
 {
 	//TODO ~
 	trs_t ad1 = addr1;
@@ -2586,16 +2586,12 @@ void dumpf(trs_t addr1, trs_t addr2)
 	{
 		for (uint16_t i = 0; i < (abs(a2 - a1)); i++)
 		{
-			if (trit2int(ad1) >= 0)
-			{
-				view_fram(ad1);
-			}
-			inc_trs(&ad1);
-			if (trit2int(ad1) < 0)
-			{
+			inc_trs(&ad1);			
+			if (trit2int(ad1) < 0) {
 				inc_trs(&ad1);
 				i += 1;
 			}
+			view_elem_fram(ad1);
 		}
 	}
 }
@@ -2619,7 +2615,7 @@ void dump_fram(void)
 			r = mem_fram[row][zone];			
 			//viv+ dbg view_short_reg(&r,"r");
 
-			printf("ram[...] (%3d:%2d) : ", row - SIZE_PAGE_TRIT_FRAM/2, zone);
+			printf("fram[.] (%3d:%2d) : ", row - SIZE_PAGE_TRIT_FRAM/2, zone);
 			//printf("%s",trs2str());			
 			printf(" [");
 			for(j=1;j<10;j++) {
@@ -3674,27 +3670,21 @@ void Test3_Setun_Opers(void)
 	//
 	aa = smtr("00000");
 	K = smtr("+0000000-");  
+	st_fram(aa, K);	
 	view_short_reg(&aa, "aa");
 	view_short_reg(&K, "K");	
 	//
-	st_fram(aa, K);	
 	aa = smtr("0000+");
 	K = smtr("-0000000+");  
+	st_fram(aa, K);
 	view_short_reg(&aa, "aa");
 	view_short_reg(&K, "K");
-	st_fram(aa, K);
 	//
-	dump_fram();
+	ad1 = smtr("000--");
+	ad2 = smtr("000++");
+	view_fram(ad1, ad2);
 	
-	//viv- ERROR
-	//ad1 = smtr("000--");
-	//ad2 = smtr("000++");
-	//dumpf(ad1, ad2);
-
-	//t3.9
-	printf("\nt3.9 --- digit2trs(...)\n");
-	digit2trs(6);
-	printf("\n");
+	
 
 	//t3.9
 	//printf("\nt3.9 --- ld_fram(...)\n");
@@ -3953,12 +3943,12 @@ void TestN(void)
 	view_short_reg(&addr, "addr=");
 	m0 = smtr("+0-0+0-00");
 	st_fram(addr, m0);
-	view_fram(addr);
+	view_elem_fram(addr);
 
 	addr = smtr("0000+");
 	m1 = smtr("00000+000");
 	st_fram(addr, m1);
-	view_fram(addr);
+	view_elem_fram(addr);
 
 	/* Begin address fram */
 	C = smtr("0000+");
@@ -4069,7 +4059,7 @@ void TestN(void)
 
 	ad1 = smtr("000-0");
 	ad2 = smtr("00+-0");
-	dumpf(ad1, ad2);
+	view_fram(ad1, ad2);
 
 	view_short_regs();
 
@@ -4094,7 +4084,7 @@ void TestN(void)
 
 	ad1 = smtr("000-0");
 	ad2 = smtr("00+-0");
-	dumpf(ad1, ad2);
+	view_fram(ad1, ad2);
 
 	view_short_regs();
 
@@ -4165,7 +4155,7 @@ void TestN(void)
 	//views
 	ad1 = smtr("000-0");
 	ad2 = smtr("00+-0");
-	dumpf(ad1, ad2);
+	view_fram(ad1, ad2);
 
 	view_short_regs();
 
@@ -4222,7 +4212,7 @@ void TestN(void)
 	//views
 	ad1 = smtr("000-0");
 	ad2 = smtr("00+-0");
-	//dumpf(ad1, ad2);
+	//view_fram(ad1, ad2);
 
 	view_short_regs();
 
