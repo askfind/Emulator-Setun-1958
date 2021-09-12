@@ -1653,6 +1653,8 @@ void trs2str(trs_t t)
 		n -= 1;
 		i -= 1;
 	}
+	
+	if(t.l == 1)  return;
 
 	while (1)
 	{
