@@ -3736,10 +3736,45 @@ void Test3_Setun_Opers(void)
 	//
 	view_short_regs();
 
-	//t3.10
+	//t3.11 test Oper=k6..8[-++] : (S)=>(A*)
+	printf("\nt3.11:  Oper=k6..8[-++] : (S)=>(A*)\n");
+	//
+	reset_setun_1958();
+	//
+	S = smtr("-0000000+000-+0000");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("0000--++0");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
+	//
+	ad1 = smtr("000--");
+	ad2 = smtr("000++");
+	view_fram(ad1, ad2);		
+
+	printf("   \n");
+
+	//t3.--
 	//printf("\nt3.10 --- st_drum(...)\n");
 	
-	//t3.11
+	//t3.--
 	//printf("\nt3.11 --- ld_drum(...)\n");
 
 	//	TODO instaruction Setum-1958
