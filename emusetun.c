@@ -1153,7 +1153,6 @@ void clean_drum(void)
 /* Функция "Читать троичное число из ферритовой памяти" */
 trs_t ld_fram(trs_t ea)
 {
-	//TODO ~
 	uint8_t zind;
 	uint8_t rind;
 	int8_t eap5;
@@ -2521,7 +2520,7 @@ void view_short_regs(void)
 {
 	int8_t i;
 
-	printf("[ Registers Setun-1958: ]\n");
+	printf("[DUMP registers Setun-1958]\n");
 
 	view_short_reg(&K, "  K  ");
 	view_short_reg(&F, "  F  ");
@@ -3561,6 +3560,12 @@ void Test3_Setun_Opers(void)
 	int8_t trit;
 	trs_t ad1;
 	trs_t ad2;
+	trs_t addr;
+	trs_t oper;
+	trs_t exK;
+	trs_t m0;
+	trs_t m1;
+	int8_t ret_exec;
 
 	printf("\n --- TEST #3  Operations for VM SETUN-1958 --- \n\n");
 
@@ -3684,13 +3689,54 @@ void Test3_Setun_Opers(void)
 	ad2 = smtr("000++");
 	view_fram(ad1, ad2);
 	
-	
-
 	//t3.9
-	//printf("\nt3.9 --- ld_fram(...)\n");
+	printf("\nt3.9 --- ld_fram(...)\n");
+	aa = smtr("000++");
+	K = smtr("+000-000+"); 
+	printf("st_fram(aa, K)\n"); 
+	st_fram(aa, K);	
+	view_short_reg(&aa, "aa");
+	view_short_reg(&K, "K");	
+	printf("ld_fram(aa)\n"); 
+	K=ld_fram(aa);	
+	view_short_reg(&aa, "aa");
+	view_short_reg(&K, "K");	
+
+	//t3.10 test Oper=k6..8[+00] : (A*)=>(S)
+	printf("\nt3.10:  Oper=k6..8[+00] : (A*)=>(S)\n");
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("+0-0+0-00");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	addr = smtr("0000+");
+	m1 = smtr("00000+000");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
 
 	//t3.10
 	//printf("\nt3.10 --- st_drum(...)\n");
+	
 	//t3.11
 	//printf("\nt3.11 --- ld_drum(...)\n");
 
@@ -3780,131 +3826,6 @@ void TestN(void)
 		inc_trs(&cp);
 	}
 
-	printf("\nt15 --- inc_trs()\n");
-
-	//uint8_t cmd[20];
-	//trs_t dst;
-	//dst.l = 9;
-	//dst.t1 = 0;
-
-	inr.l = 5;
-	inr = set_trit_setun(inr, 1, -1);
-	inr = set_trit_setun(inr, 2, -1);
-	inr = set_trit_setun(inr, 3, -1);
-	inr = set_trit_setun(inr, 4, -1);
-	inr = set_trit_setun(inr, 5, 0);
-
-	uint8_t mm;
-	for (mm = 1; mm <= 54; mm++)
-	{
-		view_short_reg(&inr, "inr");
-		inc_trs(&inr);
-	}
-
-	//dump_fram();
-	//dump_fram();
-	printf("\n --- Size bytes DRUM, FRAM --- \n");
-	printf(" - mem_drum=%f\r\n", (float)(sizeof(mem_drum)));
-	printf(" - mem_fram=%f\r\n", (float)(sizeof(mem_fram)));
-
-	trs_t zd;
-	zd.l = 4;
-	zd = set_trit_setun(zd, 1, 1);
-	zd = set_trit_setun(zd, 2, 1);
-	zd = set_trit_setun(zd, 3, 1);
-	zd = set_trit_setun(zd, 4, 1);
-	printf(" - zone_drum_to_index()=%i\r\n", zone_drum_to_index(zd));
-
-	trs_t zr;
-	zr.l = 1;
-	zr = set_trit_setun(zr, 1, -1);
-	printf(" - addr2zone_fram()=%i\r\n", addr2zone_fram(zr));
-	zr = set_trit_setun(zr, 1, 0);
-	printf(" - addr2zone_fram()=%i\r\n", addr2zone_fram(zr));
-	zr = set_trit_setun(zr, 1, 1);
-	printf(" - addr2zone_fram()=%i\r\n", addr2zone_fram(zr));
-
-	trs_t rr;
-	rr.l = 4;
-
-	rr = set_trit_setun(rr, 1, -1);
-	rr = set_trit_setun(rr, 2, -1);
-	rr = set_trit_setun(rr, 3, -1);
-	rr = set_trit_setun(rr, 4, 0);
-	printf(" - addr2row_fram()=%i\r\n", addr2row_fram(rr));
-
-	rr = set_trit_setun(rr, 1, 0);
-	rr = set_trit_setun(rr, 2, 0);
-	rr = set_trit_setun(rr, 3, 0);
-	rr = set_trit_setun(rr, 4, 0);
-	printf(" - addr2row_fram()=%i\r\n", addr2row_fram(rr));
-
-	rr = set_trit_setun(rr, 1, 1);
-	rr = set_trit_setun(rr, 2, 1);
-	rr = set_trit_setun(rr, 3, 1);
-	rr = set_trit(rr, 4, 1);
-	printf(" - addr2row_fram()=%i\r\n", addr2row_fram(rr));
-
-	printf(" - 1. \r\n");
-	trs_t aa;
-	aa.l = 5;
-	aa = set_trit_setun(aa, 1, -1);
-	aa = set_trit_setun(aa, 2, -1);
-	aa = set_trit_setun(aa, 3, 1);
-	aa = set_trit_setun(aa, 4, 1);
-	aa = set_trit_setun(aa, 5, -1);
-
-	R.t1 = 0;
-	R.t0 = 0;
-	R = set_trit_setun(R, 1, -1);
-	R = set_trit_setun(R, 18, -1);
-	view_short_reg(&R, "R");
-
-	st_fram(aa, R);
-	R = ld_fram(aa);
-	view_short_reg(&aa, "aa");
-	view_short_reg(&R, "R");
-
-	printf(" - 2. \r\n");
-	aa = set_trit_setun(aa, 1, -1);
-	aa = set_trit_setun(aa, 2, -1);
-	aa = set_trit_setun(aa, 3, -1);
-	aa = set_trit_setun(aa, 4, -1);
-	aa = set_trit_setun(aa, 5, -1);
-
-	st_fram(aa, aa);
-	R = ld_fram(aa);
-	view_short_reg(&aa, "aa");
-	view_short_reg(&R, "R");
-
-	printf(" - 3. \r\n");
-	inc_trs(&aa);
-	st_fram(aa, aa);
-	R = ld_fram(aa);
-	view_short_reg(&aa, "aa");
-	view_short_reg(&R, "R");
-
-	printf(" - 4. \r\n");
-	inc_trs(&aa);
-	st_fram(aa, aa);
-	R = ld_fram(aa);
-	view_short_reg(&aa, "aa");
-	view_short_reg(&R, "R");
-
-	aa = set_trit_setun(aa, 1, 1);
-	aa = set_trit_setun(aa, 2, 1);
-	aa = set_trit_setun(aa, 3, 1);
-	aa = set_trit_setun(aa, 4, 1);
-	aa = set_trit_setun(aa, 5, 1);
-	st_fram(aa, aa);
-	R = ld_fram(aa);
-	view_short_reg(&aa, "aa");
-	view_short_reg(&R, "R");
-
-	//
-	//dump_fram();
-	//dump_drum();
-
 	printf("\r\n --- smtr() --- \n");
 	R = smtr("-+0+-");
 	view_short_reg(&R, "R");
@@ -3914,8 +3835,6 @@ void TestN(void)
 
 	R = smtr("+++++++++");
 	view_short_reg(&R, "R");
-
-	printf("\n --- END Test#1 for Setun-1958 ---\n");
 
 	// -----------------------------------------------
 	trs_t exK;
@@ -3927,47 +3846,7 @@ void TestN(void)
 	trs_t ad2;
 	uint8_t ret_exec;
 
-	//t__ test sub_trs
-	trs_t aaa = smtr("+++++++++000000000");
-	trs_t bbb = smtr("---------+++++++++");
-	trs_t ccc;
-	ccc = sub_trs(aaa, bbb);
-	view_short_reg(&ccc, "c=a-b");
 
-	//t18 test Oper=k6..8[+00] : (A*)=>(S)
-	printf("\nt18: test Oper=k6..8[+00] : (A*)=>(S)\n");
-
-	reset_setun_1958();
-
-	addr = smtr("00000");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("+0-0+0-00");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-
-	addr = smtr("0000+");
-	m1 = smtr("00000+000");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-
-	printf("\nreg C = 00001\n");
-
-	/** 
-	* work VM Setun-1958
-	*/
-
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	printf("ret_exec = %i\r\n", ret_exec);
-	printf("\n");
-
-	view_short_regs();
 
 	//t19 test Oper=k6..8[+00] : (A*)=>(S)
 	printf("\nt19: test Oper=k6..8[+00] : (A*)=>(S)\n");
