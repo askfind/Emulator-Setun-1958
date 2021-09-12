@@ -6,7 +6,7 @@
 * Create date: 01.11.2018
 * Edit date:   12.09.2021
 *
-* Version: 1.38
+* Version: 1.39
 */
 //TODO Тесты для троичных чисел TRITS-32
 //TODO Тесты для троичных регистров Сетунь.
@@ -2913,7 +2913,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // +00 : Посылка в S	(A*)=>(S)
 		printf("   k6..8[+00] : (A*)=>(S)\n");
 		MR = ld_fram(k1_5);
-		copy_trs(&MR, &S);
+		copy_trs_setun(&MR, &S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
 	}
@@ -2947,7 +2947,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	case (+1 * 9 + 1 * 3 + 0):
 	{ // ++0 : Умножение 0	(S)=>(R); (A*)(R)=>(S)
 		printf("   k6..8[++0] : (S)=>(R); (A*)(R)=>(S)\n");
-		copy_trs(&S, &R);
+		copy_trs_setun(&S, &R);
 		S.t1 = 0;
 		MR = ld_fram(k1_5);
 		S = slice_trs_setun(mul_trs(MR, R), 1, 9);
@@ -3081,7 +3081,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // 0-0 : Посылка в F	(A*)=>(F)
 		printf("   k6..8[0-0] : (A*)=>(F)\n");
 		MR = ld_fram(k1_5);
-		copy_trs(&MR, &F);
+		copy_trs_setun(&MR, &F);
 		W = set_trit_setun(W, 1, sgn_trs(F));
 		C = next_address(C);
 	}
