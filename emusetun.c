@@ -549,7 +549,7 @@ int8_t sgn_trs(trs_t x)
 {
 	int8_t i;
 	x.l = min(x.l, SIZE_TRITS_MAX);
-	for (i = sizeof(x.t1) * 8; i > 0; i--)
+	for (i = x.l; i > 0; i--)
 	{
 		if ((x.t0 & (1 << i)) > 0)
 		{
@@ -978,8 +978,8 @@ void copy_trs_setun(trs_t *src, trs_t *dst)
 /* Проверить на переполнение 18-тритного числа */
 int8_t over_word_long(trs_t x)
 {
-	ph1 = set_trit_setun(ph1, 1, get_trit(x, 19));
-	ph2 = set_trit_setun(ph2, 1, get_trit(x, 18));
+	ph1 = set_trit(ph1, 1, get_trit(x, 19));
+	ph2 = set_trit(ph2, 1, get_trit(x, 18));
 
 	if (get_trit_setun(ph1, 1) != 0)
 	{
