@@ -4,13 +4,14 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   12.09.2021
+* Edit date:   13.09.2021
 *
-* Version: 1.39
+* Version: 1.40
 */
 //TODO Тесты для троичных чисел TRITS-32
 //TODO Тесты для троичных регистров Сетунь.
 //TODO Тесты команд Сетунь.
+//TODO чтение и запись зон fram. 
 
 /**
  *  Заголовочные файла
@@ -87,8 +88,8 @@
 #define SIZE_ZONE_TRIT_FRAM (54) /* количнество коротких 9-тритных слов в зоне */
 #define SIZE_ALL_TRIT_FRAM (162) /* всего количество коротких 9-тритных слов */
 
-#define SIZE_PAGES_FRAM (2)		 /* количнество страниц в FRAM */
-#define SIZE_PAGE_TRIT_FRAM (81) /* количнество коротких 9-тритных слов в зоне */
+#define SIZE_GRFRAM (2)		 /* количнество груп в FRAM */
+#define SIZE_GR_TRIT_FRAM (81) /* количнество коротких 9-тритных слов в зоне */
 
 /**
  * Адреса зон ферритовой памяти FRAM
@@ -142,7 +143,7 @@ enum
 /**
  * Определение памяти машины "Сетунь-1958"
  */
-trs_t mem_fram[SIZE_PAGE_TRIT_FRAM][SIZE_PAGES_FRAM];  /* оперативное запоминающее устройство на ферритовых сердечниках */
+trs_t mem_fram[SIZE_GR_TRIT_FRAM][SIZE_GRFRAM];  /* оперативное запоминающее устройство на ферритовых сердечниках */
 trs_t mem_drum[NUMBER_ZONE_DRUM][SIZE_ZONE_TRIT_DRUM]; /* запоминающее устройство на магнитном барабане */
 
 /** ***********************************
@@ -757,15 +758,15 @@ trs_t sub_trs(trs_t x, trs_t y)
  */
 trs_t shift_trs(trs_t t, int8_t d)
 {
-	if (d > 0)
+	if (d > 0) /* сдвиг  */
 	{
-		t.t1 >>= d;
-		t.t0 >>= d;
+		t.t1 <<= d;
+		t.t0 <<= d;
 	}
 	else if (d < 0)
 	{
-		t.t1 <<= -d;
-		t.t0 <<= -d;
+		t.t1 >>= -d;
+		t.t0 >>= -d;
 	}
 	return t;
 }
@@ -795,11 +796,11 @@ trs_t mul_trs(trs_t a, trs_t b)
 	{
 		if (get_trit(b, i) > 0)
 		{
-			r = add_trs(r, shift_trs(a, -i));
+			r = add_trs(r, shift_trs(a, i));
 		}
 		else if (trit2int(b) < 0)
 		{
-			r = sub_trs(r, shift_trs(a, -i));
+			r = sub_trs(r, shift_trs(a, i));
 		}
 		else
 		{
@@ -978,8 +979,8 @@ void copy_trs_setun(trs_t *src, trs_t *dst)
 /* Проверить на переполнение 18-тритного числа */
 int8_t over_word_long(trs_t x)
 {
-	ph1 = set_trit(ph1, 1, get_trit(x, 19));
-	ph2 = set_trit(ph2, 1, get_trit(x, 18));
+	ph1 = set_trit(ph1, 1, get_trit(x, 17));
+	ph2 = set_trit(ph2, 1, get_trit(x, 16));
 
 	if (get_trit_setun(ph1, 1) != 0)
 	{
@@ -992,7 +993,7 @@ int8_t over_word_long(trs_t x)
 }
 
 /* Преобразование трита в номер зоны */
-int8_t trit2zone(trs_t t)
+int8_t trit2grfram(trs_t t)
 {
 	//TODO ~
 	if ((t.t0 & (1 << 0)) > 0)
@@ -1040,7 +1041,7 @@ uint8_t zone_drum_to_index(trs_t z)
 }
 
 /* Дешифратор трита в индекс адреса физической памяти FRAM */
-uint8_t addr2zone_fram(trs_t z)
+uint8_t addr2grfram(trs_t z)
 {
 	trs_t a = z;
 	int8_t r;	
@@ -1120,15 +1121,15 @@ trs_t next_ind(trs_t c)
 /* Операция очистить память ферритовую */
 void clean_fram(void)
 {	
-	int8_t zone;
+	int8_t grfram;
 	int8_t row;
-	for (zone = 0; zone < SIZE_PAGES_FRAM; zone++)
+	for (grfram = 0; grfram < SIZE_GRFRAM; grfram++)
 	{
-		for (row = 0; row < SIZE_PAGE_TRIT_FRAM; row++)
+		for (row = 0; row < SIZE_GR_TRIT_FRAM; row++)
 		{
-			mem_fram[row][zone].l  = SIZE_WORD_SHORT;
-			mem_fram[row][zone].t1 = 0;
-			mem_fram[row][zone].t0 = 0;
+			mem_fram[row][grfram].l  = SIZE_WORD_SHORT;
+			mem_fram[row][grfram].t1 = 0;
+			mem_fram[row][grfram].t0 = 0;
 		}
 	}
 }
@@ -1167,7 +1168,7 @@ trs_t ld_fram(trs_t ea)
 
 	/* Зона памяти FRAM */
 	zr = slice_trs_setun(ea, 5, 5);
-	zind = addr2zone_fram(zr);
+	zind = addr2grfram(zr);
 
 	res.t1 = 0;
 	res.t0 = 0;
@@ -1179,7 +1180,7 @@ trs_t ld_fram(trs_t ea)
 		/* прочитать 10...18 старшую часть 18-тритного числа */
 		res = mem_fram[rind][zind];
 		res.l = 18;
-		res = shift_trs(res,-9);
+		res = shift_trs(res,9);
 		/* прочитать 10...18 младшую часть 18-тритного числа */
 		rrr = mem_fram[rind][zind+1];
 		rrr.l = 18;
@@ -1213,7 +1214,7 @@ void st_fram(trs_t ea, trs_t v)
 
 	/* Зона физической памяти FRAM */
 	zr = slice_trs_setun(ea, 5, 5);
-	zind = addr2zone_fram(zr);
+	zind = addr2grfram(zr);
 
 	eap5 = get_trit_setun(ea, 5);
 	
@@ -2552,7 +2553,7 @@ void view_elem_fram(trs_t ea)
 
 	/* Зона памяти FRAM */
 	zr = slice_trs_setun(ea, 5, 5);
-	zind = addr2zone_fram(zr);
+	zind = addr2grfram(zr);
 
 	/* Индекс строки в зоне памяти FRAM */
 	rr = slice_trs_setun(ea, 1, 4);
@@ -2564,7 +2565,7 @@ void view_elem_fram(trs_t ea)
 	for(j=1;j<6;j++) {
 		printf("%c", numb2symtrs(get_trit_setun(ea,j)));
 	}	
-	printf("] (%3d:%2d) = ", rind - SIZE_PAGE_TRIT_FRAM / 2, zind);	
+	printf("] (%3d:%2d) = ", rind - SIZE_GR_TRIT_FRAM / 2, zind);	
 
 	printf("[");
 	for(j=1;j<10;j++) {
@@ -2602,7 +2603,7 @@ void view_fram(trs_t addr1, trs_t addr2)
  */
 void dump_fram(void)
 {
-	int8_t zone;
+	int8_t grfram;
 	int8_t row;
 	int8_t j;
 	trs_t tv;
@@ -2610,13 +2611,13 @@ void dump_fram(void)
 
 	printf("\r\n[ Dump FRAM Setun-1958: ]\r\n");
 
-	for (row = 0; row < SIZE_PAGE_TRIT_FRAM; row++) {
-		for (zone = 0; zone < SIZE_PAGES_FRAM; zone++) {
+	for (row = 0; row < SIZE_GR_TRIT_FRAM; row++) {
+		for (grfram = 0; grfram < SIZE_GRFRAM; grfram++) {
 			
-			r = mem_fram[row][zone];			
+			r = mem_fram[row][grfram];			
 			//viv+ dbg view_short_reg(&r,"r");
 
-			printf("fram[.] (%3d:%2d) : ", row - SIZE_PAGE_TRIT_FRAM/2, zone);
+			printf("fram[.] (%3d:%2d) : ", row - SIZE_GR_TRIT_FRAM/2, grfram);
 			//printf("%s",trs2str());			
 			printf(" [");
 			for(j=1;j<10;j++) {
@@ -3142,7 +3143,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (-1 * 9 + 1 * 3 - 1):
 	{ // -+- : Нормализация	Норм.(S)=>(A*); (N)=>(S)
-		printf("   k6..8[-+-] : Норм.(S)=>(A*); (N)=>(S)\n");
+		printf("   k6..8[-+-] : Норм.(S)=>(A*); (N)=>(S)\n");		
 		/*
 				* Операция нормализации производит сдвиг (S) при (S) != 0 в таком направлении и на такое число
 				* разрядов |N|, чтобы результат, посылаемый в ячейку A*, был но модулю больше 1/2 , но меньше 3/2,
@@ -3152,6 +3153,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	    		* 1/2 <|(S)| < 3/2 в ячейку А* посылается (S), а в регистр S посылается N = 0.
 				*/
 		/* Определить знак S */
+		//TODO
 		int8_t w;
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		w = sgn_trs(W);
@@ -4550,7 +4552,7 @@ int main(int argc, char *argv[])
 		trs2str(dst);
 		printf("]");
 		view_short_reg(&inr, " addr");
-		//printf(" [ri=%d][zi=%d] ",addr2row_fram(inr),addr2zone_fram(inr));
+		//printf(" [ri=%d][zi=%d] ",addr2row_fram(inr),addr2grfram(inr));
 		st_fram(inr, dst);
 		inr = next_address(inr);
 	}
