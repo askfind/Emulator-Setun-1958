@@ -751,9 +751,9 @@ trs_t sub_trs(trs_t x, trs_t y)
 /**
  * Операция сдвига тритов
  * Параметр:
- * if(d > 0) then "Вправо" 
+ * if(d > 0) then "Влево" 
  * if(d == 0) then "Нет сдвига" 
- * if(d < 0) then "Влево" 
+ * if(d < 0) then "Вправо" 
  * Возврат: Троичное число 
  */
 trs_t shift_trs(trs_t t, int8_t d)
@@ -776,37 +776,33 @@ trs_t mul_trs(trs_t a, trs_t b)
 {
 	int8_t i;
 	int8_t l;
+	trs_t temp;
 	trs_t r;
 
 	a.l = min(a.l, SIZE_TRITS_MAX);
 	b.l = min(b.l, SIZE_TRITS_MAX);
-
-	if (a.l >= b.l)
-	{
-		l = a.l;
-	}
-	else
-	{
-		l = b.l;
-	}
-
-	r.l = l * 2;
+	l =  b.l; 
+	r.l = a.l + b.l;
+	r.t1=0;
+	r.t0=0;
 
 	for (i = 0; i < l; i++)
-	{
+	{	
+		temp = shift_trs(a,i);	 
 		if (get_trit(b, i) > 0)
-		{
-			r = add_trs(r, shift_trs(a, i));
+		{			
+			r = add_trs(r, temp);
 		}
-		else if (trit2int(b) < 0)
+		else if (get_trit(b, i) < 0)
 		{
-			r = sub_trs(r, shift_trs(a, i));
+			r = sub_trs(r, temp);
 		}
 		else
 		{
 			r = r;
-		}
+		}		
 	}
+	r.l = a.l + b.l - 1;
 	return r;
 }
 
@@ -965,7 +961,7 @@ void copy_trs_setun(trs_t *src, trs_t *dst)
 		int8_t s = src->l - dst->l;
 		dst->t1 = src->t1 >> s;
 		dst->t0 = src->t0 >> s;
-		dst->t0 &= 0xFFFFFFFF >> s;
+		dst->t0 &= ~(0xFFFFFFFF << dst->l);
 	}
 	else
 	{
@@ -978,9 +974,9 @@ void copy_trs_setun(trs_t *src, trs_t *dst)
 
 /* Проверить на переполнение 18-тритного числа */
 int8_t over_word_long(trs_t x)
-{
-	ph1 = set_trit(ph1, 1, get_trit(x, 17));
-	ph2 = set_trit(ph2, 1, get_trit(x, 16));
+{	
+	ph1 = set_trit_setun(ph1, 1, get_trit_setun(x, 1));
+	ph2 = set_trit_setun(ph2, 1, get_trit_setun(x, 2));
 
 	if (get_trit_setun(ph1, 1) != 0)
 	{
@@ -2801,7 +2797,7 @@ trs_t control_trs(trs_t a)
 +00        30         9        Посылка в S               w(S)    (A*)=>(S)
 +0+        33        10        Сложение в S              w(S)    (S)+(A*)=>(S)
 +0-        3х         8        Вычитание в S             w(S)    (S)-(A*)=>(S)
-++0        40        12        Умножение 0               w(S)    (S)=>(R); (A*)(R)=>(S)
+++0        40        12        Умножение 0               w(S)    (S)=>(R); S=0; (A*)(R)=>(S)
 +++        43        13        Умножение +               w(S)    (S)+(A*)(R)=>(S)
 ++-        4х        11        Умножение -               w(S)    (A*)+(S)(R)=>(S)
 +-0        20         6        Поразрядное умножение     w(S)    (A*)[x](S)=>(S)
@@ -2837,6 +2833,7 @@ trs_t control_trs(trs_t a)
 *		00+	(C)=>(A*)		Ok'
 *		+0+	(S)+(A*)=>(S)	Ok'
 *		+0-	(S)-(A*)=>(S)   Ok'
+*		++0 (S)=>(R); S=0; (A*)(R)=>(S)
 */
 
 /**
@@ -2961,9 +2958,11 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // ++0 : Умножение 0	(S)=>(R); (A*)(R)=>(S)
 		printf("   k6..8[++0] : (S)=>(R); (A*)(R)=>(S)\n");
 		copy_trs_setun(&S, &R);
-		S.t1 = 0;
+		S.t0 = 0;
 		MR = ld_fram(k1_5);
-		S = slice_trs_setun(mul_trs(MR, R), 1, 9);
+		trs_t temp = mul_trs(MR, R);
+		temp = slice_trs(temp, 0, 17);		
+		copy_trs_setun(&temp,&S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		if (over_word_long(S) > 0)
 		{
@@ -3560,6 +3559,25 @@ void Test2_Opers_TRITS_32(void)
 	tr1 = shift_trs(tr1, -2);
 	printf("tr1 = shift_trs(tr1,-2)\n");
 	view_short_reg(&tr1, "tr1 =");
+
+	//t2.16
+	printf("\nt2.16 --- mul_trs(...)\n");
+	tr1 = smtr("0000000000000000++");
+	view_short_reg(&tr1, "tr1 =");
+	tr2 = smtr("000000000000000+++");
+	view_short_reg(&tr2, "tr2 =");
+	tr2 = mul_trs(tr1, tr2);
+	view_short_reg(&tr2, "tr2 =");
+
+	//t2.17
+	printf("\nt2.17 --- mul_trs(...)\n");
+	tr1 = smtr("0000000++");
+	view_short_reg(&tr1, "tr1 =");
+	tr2 = smtr("000000000000000---");
+	view_short_reg(&tr2, "tr2 =");
+	tr2 = mul_trs(tr1, tr2);
+	view_short_reg(&tr2, "tr2 =");
+
 }
 
 /** *********************************************
@@ -3963,6 +3981,41 @@ void Test3_Setun_Opers(void)
 	//
 	addr = smtr("0000+");
 	m1 = smtr("00000+0-0");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
+
+	//t3.18 test Oper=k6..8[++0] : (S)=>(R); (A*)(R)=>(S) 
+	printf("\nt3.18:  Oper=k6..8[++0] : (S)=>(R); (A*)(R)=>(S)\n"); 
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("0+0000000");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	S = smtr("00000000+++0000000");
+	view_short_reg(&S, "S=");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("00000++00");
 	st_fram(addr, m1);
 	view_elem_fram(addr);
 
