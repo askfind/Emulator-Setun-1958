@@ -605,30 +605,30 @@ trs_t xor_trs(trs_t x, trs_t y)
 {
 	trs_t r;
 
-	int8_t i, j;
+	int8_t i, j, ll;
 	int8_t a, b, s;
 
 	x.l = min(x.l, SIZE_TRITS_MAX);
 	y.l = min(y.l, SIZE_TRITS_MAX);
 	if (x.l >= y.l)
 	{
-		j = x.l;
+		j = y.l;
+		ll = x.l;
 	}
 	else
 	{
-		j = y.l;
+		j = x.l;
+		ll = y.l;
 	}
 
-	r.l = j;
-
 	for (i = 0; i < j; i++)
-	{
+	{	
 		a = get_trit(x, i);
 		b = get_trit(y, i);
 		xor_t(&a, &b, &s);
 		r = set_trit(x, i, s);
 	}
-
+	r.l = ll;
 	return r;
 }
 
@@ -2835,7 +2835,8 @@ trs_t control_trs(trs_t a)
 *		+0-	(S)-(A*)=>(S)   Ok'
 *		++0 (S)=>(R); S=0; (A*)(R)=>(S) Ok'
 *		+++ (S)+(A*)(R)=>(S) Ok'
-* 		++- (A*)+(S)(R)=>(S)
+* 		++- (A*)+(S)(R)=>(S) Ok'
+*		+-0 (A*)[x](S)=>(S)
 */
 
 /**
@@ -4078,8 +4079,8 @@ void Test3_Setun_Opers(void)
 	//
 	view_short_regs();
 
-	//t3.20 test Oper=k6..8[++-] : (A*)+(S)(R)=>(S)=>(S)
-	printf("\nt3.20:  Oper=k6..8[++-] : (A*)+(S)(R)=>(S)\n"); 
+	//t3.21 test Oper=k6..8[++-] : (A*)+(S)(R)=>(S)=>(S)
+	printf("\nt3.21:  Oper=k6..8[++-] : (A*)+(S)(R)=>(S)\n"); 
 	//
 	reset_setun_1958();
 	//
@@ -4118,6 +4119,43 @@ void Test3_Setun_Opers(void)
 
 	printf("   \n");
 
+	//t3.22 test Oper=k6..8[+-0] : (A*)[x](S)=>(S)
+	printf("\nt3.22:  Oper=k6..8[+-0] : (A*)[x](S)=>(S)\n"); 
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("000000--0");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	S = smtr("000000000000000+00");
+	view_short_reg(&S, "S=");
+	//
+	R = smtr("0000000000000000+0");
+	view_short_reg(&R, "R=");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("00000+-00");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
 
 	//t3.--
 	//printf("\nt3.10 --- st_drum(...)\n");
