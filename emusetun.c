@@ -2835,6 +2835,7 @@ trs_t control_trs(trs_t a)
 *		+0-	(S)-(A*)=>(S)   Ok'
 *		++0 (S)=>(R); S=0; (A*)(R)=>(S) Ok'
 *		+++ (S)+(A*)(R)=>(S) Ok'
+* 		++- (A*)+(S)(R)=>(S)
 */
 
 /**
@@ -2990,7 +2991,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // ++- : Умножение - (A*)+(S)(R)=>(S)
 		printf("   k6..8[++-] : (A*)+(S)(R)=>(S)\n");
 		MR = ld_fram(k1_5);
-		S = add_trs(slice_trs_setun(mul_trs(S, R), 1, 9), MR);
+		trs_t temp = mul_trs(S, R);
+		S = add_trs(slice_trs(temp, 0, 17), MR);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		if (over_word_long(S) > 0)
 		{
@@ -4056,6 +4058,44 @@ void Test3_Setun_Opers(void)
 	//
 	addr = smtr("0000+");
 	m1 = smtr("00000+++0");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
+
+	//t3.20 test Oper=k6..8[++-] : (A*)+(S)(R)=>(S)=>(S)
+	printf("\nt3.20:  Oper=k6..8[++-] : (A*)+(S)(R)=>(S)\n"); 
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("000000--0");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	S = smtr("000000000000000+00");
+	view_short_reg(&S, "S=");
+	//
+	R = smtr("0000000000000000+0");
+	view_short_reg(&R, "R=");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("00000++-0");
 	st_fram(addr, m1);
 	view_elem_fram(addr);
 
