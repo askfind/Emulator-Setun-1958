@@ -4039,12 +4039,12 @@ void Test3_Setun_Opers(void)
 	view_short_regs();
 
 	//t3.19 test Oper=k6..8[+++] : (S)+(A*)(R)=>(S)
-	printf("\nt3.18:  Oper=k6..8[+++] : (S)+(A*)(R)=>(S)\n"); 
+	printf("\nt3.19:  Oper=k6..8[+++] : (S)+(A*)(R)=>(S)\n"); 
 	//
 	reset_setun_1958();
 	//
 	addr = smtr("00000");
-	m0 = smtr("0000000+0");
+	m0 = smtr("000000--0");
 	st_fram(addr, m0);
 	view_elem_fram(addr);
 	//
