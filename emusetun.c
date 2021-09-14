@@ -2833,7 +2833,8 @@ trs_t control_trs(trs_t a)
 *		00+	(C)=>(A*)		Ok'
 *		+0+	(S)+(A*)=>(S)	Ok'
 *		+0-	(S)-(A*)=>(S)   Ok'
-*		++0 (S)=>(R); S=0; (A*)(R)=>(S)
+*		++0 (S)=>(R); S=0; (A*)(R)=>(S) Ok'
+*		+++ (S)+(A*)(R)=>(S) Ok'
 */
 
 /**
@@ -2955,8 +2956,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+1 * 9 + 1 * 3 + 0):
-	{ // ++0 : Умножение 0	(S)=>(R); (A*)(R)=>(S)
-		printf("   k6..8[++0] : (S)=>(R); (A*)(R)=>(S)\n");
+	{ // ++0 : Умножение +	(S)+(A*)(R)=>(S)
+		printf("   k6..8[++0] : (S)+(A*)(R)=>(S)\n");
 		copy_trs_setun(&S, &R);
 		S.t0 = 0;
 		MR = ld_fram(k1_5);
@@ -2974,8 +2975,9 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	case (+1 * 9 + 1 * 3 + 1):
 	{ // +++ : Умножение +	(S)+(A*)(R)=>(S)
 		printf("   k6..8[+++] : (S)+(A*)(R)=>(S)\n");
-		MR = ld_fram(k1_5);
-		S = add_trs(slice_trs_setun(mul_trs(MR, R), 1, 9), S);
+		MR = ld_fram(k1_5);		
+		trs_t temp = slice_trs(mul_trs(MR, R), 0, 17);		
+		S = add_trs(temp, S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		if (over_word_long(S) > 0)
 		{
@@ -3562,7 +3564,7 @@ void Test2_Opers_TRITS_32(void)
 
 	//t2.16
 	printf("\nt2.16 --- mul_trs(...)\n");
-	tr1 = smtr("0000000000000000++");
+	tr1 = smtr("0000000++");
 	view_short_reg(&tr1, "tr1 =");
 	tr2 = smtr("000000000000000+++");
 	view_short_reg(&tr2, "tr2 =");
@@ -4016,6 +4018,44 @@ void Test3_Setun_Opers(void)
 	//
 	addr = smtr("0000+");
 	m1 = smtr("00000++00");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	//
+	view_short_regs();
+
+	//t3.19 test Oper=k6..8[+++] : (S)+(A*)(R)=>(S)
+	printf("\nt3.18:  Oper=k6..8[+++] : (S)+(A*)(R)=>(S)\n"); 
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("0000000+0");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	S = smtr("000000000000000+00");
+	view_short_reg(&S, "S=");
+	//
+	R = smtr("0000000000000000+0");
+	view_short_reg(&R, "R=");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("00000+++0");
 	st_fram(addr, m1);
 	view_elem_fram(addr);
 
