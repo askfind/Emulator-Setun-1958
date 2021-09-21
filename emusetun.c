@@ -216,14 +216,14 @@ void clear_full(trs_t *t);
 void inc_trs(trs_t *tr);
 void dec_trs(trs_t *tr);
 
-trs_t shift_trs(trs_t t, int8_t s);
-trs_t add_trs(trs_t a, trs_t b);
 trs_t and_trs(trs_t a, trs_t b);
 trs_t or_trs(trs_t a, trs_t b);
 trs_t xor_trs(trs_t a, trs_t b);
+trs_t add_trs(trs_t a, trs_t b);
 trs_t sub_trs(trs_t a, trs_t b);
 trs_t mul_trs(trs_t a, trs_t b);
 trs_t div_trs(trs_t a, trs_t b);
+trs_t shift_trs(trs_t t, int8_t s);
 
 /* Преобразование тритов в другие типы данных */
 int32_t trs2digit(trs_t t);
@@ -681,6 +681,11 @@ trs_t add_trs(trs_t x, trs_t y)
 	int8_t i, j;
 	int8_t a, b, s, p0, p1;
 	trs_t r;
+	
+	/* Результат для Сетунь-1958 R,S */
+	uint64_t tl = 0;
+	uint64_t t1 = 0;
+	uint64_t t0 = 0;
 
 	x.l = min(x.l, SIZE_TRITS_MAX);
 	y.l = min(y.l, SIZE_TRITS_MAX);
@@ -705,9 +710,57 @@ trs_t add_trs(trs_t x, trs_t y)
 		a = get_trit(x, i);
 		b = get_trit(y, i);
 		sum_t(&a, &b, &p0, &s, &p1);
-		r = set_trit(r, i, s);
+		//
+		if( s > 0) {
+			t1 |= 1<<tl; 
+			t0 |= 1<<tl; 
+		}
+		else if( s < 0) {
+			t1 &= ~(1<<tl); 
+			t0 |= 1<<tl; 
+		}
+		else {
+			t1 &= ~(1<<tl); 
+			t0 &= ~(1<<tl); 
+		}	
+		tl += 1;
 		p0 = p1;
 	}
+
+	/* Установить трит переполнения */ 
+	/* ph1 */
+	if( t0 & (1<<19) > 0 ) {
+		if( t1 & (1<<19) > 0 ) {
+			set_trit(ph1,1,1);
+		} 
+		else {
+			set_trit(ph1,1,-1);
+		}
+	}
+	else {
+		set_trit(ph1,1,0);
+	}
+	t0 &= ~(1<<19); /* очистить трит */
+	
+	/* Установить трит переполнения */ 
+	/* ph2 */
+	if( t0 & (1<<18) > 0 ) {
+		if( t1 & (1<<18) > 0 ) {
+			set_trit(ph2,1,1);
+		} 
+		else {
+			set_trit(ph2,1,-1);
+		}
+	}
+	else {
+		set_trit(ph2,1,0);
+	}	
+	t0 &= ~(1<<18); /* очистить трит */ 	 
+	
+	/* результат */
+	r.t1 = (uint32_t)t1; /* t[1.18] */
+	r.t0 = (uint32_t)t0; /* t[1.18] */
+	r.l = j+2;
 
 	return r;
 }
@@ -718,6 +771,11 @@ trs_t sub_trs(trs_t x, trs_t y)
 	int8_t i, j;
 	int8_t a, b, s, p0, p1;
 	trs_t r;
+	
+	/* Результат для Сетунь-1958 R,S */
+	uint64_t tl = 0;
+	uint64_t t1 = 0;
+	uint64_t t0 = 0;
 
 	x.l = min(x.l, SIZE_TRITS_MAX);
 	y.l = min(y.l, SIZE_TRITS_MAX);
@@ -731,6 +789,8 @@ trs_t sub_trs(trs_t x, trs_t y)
 	}
 
 	r.l = j;
+	r.t1 = 0;
+	r.t0 = 0;
 
 	p0 = 0;
 	p1 = 0;
@@ -741,9 +801,57 @@ trs_t sub_trs(trs_t x, trs_t y)
 		b = get_trit(y, i);
 		b = -b;
 		sum_t(&a, &b, &p0, &s, &p1);
-		r = set_trit(r, i, s);
+		//
+		if( s > 0) {
+			t1 |= 1<<tl; 
+			t0 |= 1<<tl; 
+		}
+		else if( s < 0) {
+			t1 &= ~(1<<tl); 
+			t0 |= 1<<tl; 
+		}
+		else {
+			t1 &= ~(1<<tl); 
+			t0 &= ~(1<<tl); 
+		}	
+		tl += 1;
 		p0 = p1;
 	}
+
+	/* Установить трит переполнения */ 
+	/* ph1 */
+	if( t0 & (1<<19) > 0 ) {
+		if( t1 & (1<<19) > 0 ) {
+			set_trit(ph1,1,1);
+		} 
+		else {
+			set_trit(ph1,1,-1);
+		}
+	}
+	else {
+		set_trit(ph1,1,0);
+	}
+	t0 &= ~(1<<19); /* очистить трит */
+	
+	/* Установить трит переполнения */ 
+	/* ph2 */
+	if( t0 & (1<<18) > 0 ) {
+		if( t1 & (1<<18) > 0 ) {
+			set_trit(ph2,1,1);
+		} 
+		else {
+			set_trit(ph2,1,-1);
+		}
+	}
+	else {
+		set_trit(ph2,1,0);
+	}	
+	t0 &= ~(1<<18); /* очистить трит */ 	 
+	
+	/* результат */
+	r.t1 = (uint32_t)t1; /* t[1.18] */
+	r.t0 = (uint32_t)t0; /* t[1.18] */
+	r.l = j+2;
 
 	return r;
 }
@@ -774,20 +882,21 @@ trs_t shift_trs(trs_t t, int8_t d)
 /* Троичное умножение тритов */
 trs_t mul_trs(trs_t a, trs_t b)
 {
+#if 1
 	int8_t i;
 	int8_t l;
 	trs_t temp;
 	trs_t r;
-
-	a.l = min(a.l, SIZE_TRITS_MAX);
-	b.l = min(b.l, SIZE_TRITS_MAX);
-	l =  b.l; 
+	
+	/* Уменьшить количество операций */
+	a.l = min(a.l, SIZE_WORD_LONG);
+	b.l = min(b.l, SIZE_WORD_LONG);
 	r.l = a.l + b.l;
-	r.t1=0;
-	r.t0=0;
+
+	/* */
 
 	for (i = 0; i < l; i++)
-	{	
+	{			
 		temp = shift_trs(a,i);	 
 		if (get_trit(b, i) > 0)
 		{			
@@ -803,6 +912,10 @@ trs_t mul_trs(trs_t a, trs_t b)
 		}		
 	}
 	r.l = a.l + b.l - 1;
+#else
+
+#endif
+
 	return r;
 }
 
@@ -2836,7 +2949,7 @@ trs_t control_trs(trs_t a)
 *		++0 (S)=>(R); S=0; (A*)(R)=>(S) Ok'
 *		+++ (S)+(A*)(R)=>(S) Ok'
 * 		++- (A*)+(S)(R)=>(S) Ok'
-*		+-0 (A*)[x](S)=>(S)
+*		+-0 (A*)[x](S)=>(S) Ok'
 */
 
 /**
@@ -4749,7 +4862,7 @@ int main(int argc, char *argv[])
 	/** 
 	* work VM Setun-1958
 	*/
-	for (uint16_t jj = 1; jj < 100; jj++)
+	for (uint16_t jj = 1; jj < 500; jj++)
 	{
 
 		K = ld_fram(C);
