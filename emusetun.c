@@ -4,10 +4,11 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   13.09.2021
+* Edit date:   23.09.2021
 *
-* Version: 1.40
+* Version: 1.42
 */
+//TODO Добавить тип данных для троичных чисел TRITS-64
 //TODO Тесты для троичных чисел TRITS-32
 //TODO Тесты для троичных регистров Сетунь.
 //TODO Тесты команд Сетунь.
@@ -58,6 +59,7 @@
 #define TRIT18_MIN (-193710244L)
 
 #define SIZE_TRITS_MAX (32) /* максимальная количество тритов троичного числа */
+#define SIZE_LONG_TRITS_MAX (64) /* максимальная количество тритов в длинном троичном числе */
 
 /* *******************************************
  * Реализация виртуальной машины "Сетунь-1958"
@@ -119,6 +121,13 @@ typedef struct trs
 	uint32_t t1; /* троичное число FALSE,TRUE */
 	uint32_t t0; /* троичное число NIL */
 } trs_t;
+
+typedef struct long_trs
+{
+	uint8_t l;	 /* длина троичного числа в тритах			*/
+	uint64_t t1; /* троичное число FALSE,TRUE */
+	uint64_t t0; /* троичное число NIL */
+} long_trs_t;
 
 typedef struct mem_elm
 {
@@ -193,6 +202,18 @@ int8_t get_trit(trs_t t, uint8_t pos);
 trs_t set_trit(trs_t t, uint8_t pos, int8_t trit);
 trs_t slice_trs(trs_t t, int8_t p1, int8_t p2);
 void copy_trs(trs_t *src, trs_t *dst);
+
+/**  -------------------------------------------------------------
+ *   Троичные числа
+ *   TRITS-64 = [t63...t0] - обозначение позиции тритов в числе 
+ */
+void clear_long(long_trs_t *t);
+void clear_full_long(long_trs_t *t);
+int8_t get_long_trit(long_trs_t t, uint8_t pos);
+long_trs_t set_long_trit(long_trs_t t, uint8_t pos, int8_t trit);
+int8_t sgn_long_trs(long_trs_t x);
+long_trs_t shift_long_trs(long_trs_t t, int8_t s);
+void copy_long_trs(long_trs_t *src, long_trs_t *dst);
 
 /**  -------------------------------------------------------------
  *   Троичные числа регистров Setun-1958
@@ -290,6 +311,25 @@ void clear(trs_t *t)
  * Очистить длину троичного числа и поле битов троичного числа
  */
 void clear_full(trs_t *t)
+{
+	t->l = 0;
+	t->t1 = 0;
+	t->t0 = 0;
+}
+
+/**
+ * Очистить поле битов троичного числа
+ */
+void clear_long(long_trs_t *t)
+{
+	t->t1 = 0;
+	t->t0 = 0;
+}
+
+/**
+ * Очистить длину троичного числа и поле битов троичного числа
+ */
+void clear_full_long(long_trs_t *t)
 {
 	t->l = 0;
 	t->t1 = 0;
@@ -497,7 +537,121 @@ void or_t(int8_t *a, int8_t *b, int8_t *s)
 /**  -------------------------------------------------------------
  *   Троичные числа
  *
- *   TRITS-1  = [t0]       - обозначение позиции тритов в числе 
+ *   TRITS-64 = [t63...t0] - обозначение позиции тритов в числе 
+ *
+ */
+
+/* Получить целое со знаком трита в позиции троичного числа */
+int8_t get_long_trit(long_trs_t t, uint8_t pos)
+{
+	t.l = min(t.l, SIZE_LONG_TRITS_MAX);
+	pos = min(pos, SIZE_LONG_TRITS_MAX-1);
+	if ((t.t0 & ( ((uint64_t)(1)) << pos)) > 0)
+	{
+		if ((t.t1 & (((uint64_t)(1)) << pos)) > 0)
+		{
+			return 1;
+		}
+		else
+		{
+			return -1;
+		}
+	}
+	return 0;
+}
+
+/* Установить трит в троичном числе */
+long_trs_t set_long_trit(long_trs_t t, uint8_t pos, int8_t trit)
+{
+	long_trs_t r = t;
+	r.l = min(r.l, SIZE_LONG_TRITS_MAX);
+	pos = min(pos, SIZE_LONG_TRITS_MAX-1);
+	if (trit > 0)
+	{
+		r.t1 |= (((uint64_t)(1)) << pos);
+		r.t0 |= (((uint64_t)(1)) << pos);
+	}
+	else if (trit < 0)
+	{
+		r.t1 &= ~(((uint64_t)(1)) << pos);
+		r.t0 |= (((uint64_t)(1)) << pos);
+	}
+	else
+	{
+		r.t1 &= ~(((uint64_t)(1)) << pos);
+		r.t0 &= ~(((uint64_t)(1)) << pos);
+	}
+	return r;
+}
+
+/* Операция знак SGN троичного числа */
+int8_t sgn_long_trs(long_trs_t x)
+{
+	int8_t i;
+	x.l = min(x.l, SIZE_LONG_TRITS_MAX);
+	for (i = x.l; i > 0; i--)
+	{
+		if ((x.t0 & (((uint64_t)(1)) << i)) > 0)
+		{
+			if ((x.t1 & (((uint64_t)(1)) << i)) > 0)
+			{
+				return 1;
+			}
+			else
+			{
+				return -1;
+			}
+		}
+	}
+	return 0;
+}
+
+/**
+ * Операция сдвига тритов
+ * Параметр:
+ * if(d > 0) then "Вправо" 
+ * if(d == 0) then "Нет сдвига" 
+ * if(d < 0) then "Влево" 
+ * Возврат: Троичное число 
+ */
+long_trs_t shift_long_trs(long_trs_t t, int8_t d)
+{	
+	if (d > 0) /* сдвиг  */
+	{
+		t.t1 <<= d;
+		t.t0 <<= d;
+	}
+	else if (d < 0)
+	{
+		t.t1 >>= -d;
+		t.t0 >>= -d;
+	}
+	return t;
+}
+
+/* Оперция присваивания троичных чисел в регистры */
+void copy_long_trs(long_trs_t *src, long_trs_t *dst)
+{
+	if (src->l == dst->l)
+	{
+		dst->t1 = src->t1;
+		dst->t0 = src->t0;
+	}
+	else if (src->l > dst->l)
+	{
+		dst->t1 = src->t1;
+		dst->t0 = src->t0 & ( (uint64_t)(0xFFFFFFFFFFFFFFFF) << dst->l);
+	}
+	else
+	{
+		dst->t1 = src->t1;
+		dst->t0 = src->t0 & ( (uint64_t)(0xFFFFFFFFFFFFFFFF) >> src->l);
+	}
+}
+
+/**  -------------------------------------------------------------
+ *   Троичные числа
+ *
  *   TRITS-32 = [t31...t0] - обозначение позиции тритов в числе 
  *
  */
@@ -882,7 +1036,54 @@ trs_t shift_trs(trs_t t, int8_t d)
 /* Троичное умножение тритов */
 trs_t mul_trs(trs_t a, trs_t b)
 {
+	//TODO edit
 #if 1
+	int8_t i;
+	int8_t l;
+	trs_t temp;
+	trs_t r;
+
+	/* Результат для Сетунь-1958 R,S */
+	uint64_t xl = 0;
+	uint64_t x1 = 0;
+	uint64_t x0 = 0;
+
+	uint64_t yl = 0;
+	uint64_t y1 = 0;
+	uint64_t y0 = 0;
+	
+	/* Уменьшить количество операций */
+	a.l = min(a.l, SIZE_WORD_LONG);
+	b.l = min(b.l, SIZE_WORD_LONG);
+	r.l = a.l + b.l;
+	
+	/* Копировать троичные числа */
+	x1 = (uint64_t)a.t1;
+	x0 = (uint64_t)a.t0;
+	y1 = 0;
+	y0 = 0;
+
+	for (i = 0; i < l; i++)
+	{	
+		x1 <<= i;
+		x0 <<= i;
+		
+		if (get_trit(b, i) > 0)
+		{			
+			//sum_t(&a, &b, &p0, &s, &p1);
+		}
+		else if (get_trit(b, i) < 0)
+		{
+			//r = sub_trs(r, temp);
+		}
+		else
+		{
+			r = r;
+		}		
+	}
+	r.l = a.l + b.l - 1;
+
+#else //viv- old version
 	int8_t i;
 	int8_t l;
 	trs_t temp;
@@ -912,8 +1113,6 @@ trs_t mul_trs(trs_t a, trs_t b)
 		}		
 	}
 	r.l = a.l + b.l - 1;
-#else
-
 #endif
 
 	return r;
@@ -1781,6 +1980,39 @@ void trs2str(trs_t t)
 /**
  * Печать троичного числа в строку
  */
+void long_trs2str(long_trs_t t)
+{
+	int8_t i, j, n;
+	int8_t t0, t1;
+
+	n = t.l;
+	i = t.l - 1;
+	if (n % 2)
+	{
+		t1 = 0;
+		t0 = get_long_trit(t, i);
+		printf("%c", trit2lt(t1 * 3 + t0));
+		n -= 1;
+		i -= 1;
+	}
+	
+	if(t.l == 1)  return;
+
+	while (1)
+	{
+		t1 = get_long_trit(t, i);
+		t0 = get_long_trit(t, i - 1);
+		printf("%c", trit2lt(t1 * 3 + t0));
+		n -= 2;
+		i -= 2;
+		if (i < 0)
+			break;
+	}
+}
+
+/**
+ * Печать троичного числа в строку
+ */
 void trit2symtrs(trs_t t)
 {
 
@@ -1871,6 +2103,51 @@ void view_short_reg(trs_t *t, uint8_t *ch)
 	//
 	printf("\n");
 }
+
+/**
+ * Печать троичного регистра 
+ *  
+ */
+void view_short_long_reg(long_trs_t *t, uint8_t *ch)
+{
+	int8_t i;
+	int8_t l;
+	int8_t trit;
+	long_trs_t tv = *t;
+
+	printf("%s: ", (char *)ch);
+	if (tv.l <= 0)
+	{
+		printf("\n");
+		return;
+	}
+
+	l = min(tv.l, SIZE_LONG_TRITS_MAX);
+	printf("[");
+	//printf("\nt1 %p\n",t->t1);
+	//printf("t2 %p\n",t->t0);
+	for (i = 0; i < l; i++)	{		
+		tv = *t;
+		trit = get_long_trit(tv, l - 1 - i);
+		printf("%c", numb2symtrs(trit));
+	}
+	printf("], ");
+	//
+	tv = *t;
+	long_trs2str(tv);
+	printf(", "); //
+	//printf("(%li)", (long int)trs2digit(*t));
+	printf(", {");
+	for (i = 0; i < l; i++)	{
+		tv = *t;
+		trit = get_long_trit(tv, l - 1 - i);
+		printf("%i", trit);
+	}
+	printf("}");
+	//
+	printf("\n");
+}
+
 
 /**
  * Печать на электрифицированную пишущую машинку
@@ -3695,6 +3972,25 @@ void Test2_Opers_TRITS_32(void)
 	view_short_reg(&tr2, "tr2 =");
 	tr2 = mul_trs(tr1, tr2);
 	view_short_reg(&tr2, "tr2 =");
+
+	//t2.18
+	printf("\nt2.18 --- shift_long_trs(...)\n");
+	long_trs_t ltr1;
+	ltr1.l = 64; 
+	tr1 = smtr("0-00+0000");
+	ltr1.t1 = tr1.t1;
+	ltr1.t0 = tr1.t0;
+
+	printf("ltr1.t1=%p\n",ltr1.t1);
+	printf("ltr1.t0=%p\n",ltr1.t0);
+
+	view_short_long_reg(&ltr1, "ltr1 =");
+	ltr1 = shift_long_trs(ltr1, -2);
+	printf("ltr1 = shift_long_trs(ltr1,-2)\n");
+	view_short_long_reg(&ltr1, "ltr1 =");
+	ltr1 = shift_long_trs(ltr1, -2);
+	printf("ltr1 = shift_long_trs(ltr1,-2)\n");
+	view_short_long_reg(&ltr1, "ltr1 =");
 
 }
 
