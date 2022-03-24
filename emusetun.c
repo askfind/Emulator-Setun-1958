@@ -4,9 +4,9 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   23.09.2021
+* Edit date:   21.03.2022
 *
-* Version: 1.42
+* Version: 1.43
 */
 //TODO Добавить тип данных для троичных чисел TRITS-64
 //TODO Тесты для троичных чисел TRITS-32
@@ -3434,7 +3434,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+0 * 9 + 1 * 3 + 1):
-	{ // 0+1 : Условный переход -	A*=>(C) при w=0
+	{ // 0++ : Условный переход -	A*=>(C) при w=0
 		printf("   k6..8[0+-] : A*=>(C) при w=+1\n");
 		int8_t w;
 		w = sgn_trs(W);
@@ -3992,6 +3992,7 @@ void Test2_Opers_TRITS_32(void)
 	printf("ltr1 = shift_long_trs(ltr1,-2)\n");
 	view_short_long_reg(&ltr1, "ltr1 =");
 
+	printf("\n --- END TEST #2 --- \n");
 }
 
 /** *********************************************
@@ -4563,14 +4564,15 @@ void Test3_Setun_Opers(void)
 	if( ret_exec == 0) printf("[status: OK']\n");
 	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
 	printf("\n");
-	//
-	view_short_regs();
+	// view_short_regs();
 
 	//t3.--
 	//printf("\nt3.10 --- st_drum(...)\n");
 	
 	//t3.--
 	//printf("\nt3.11 --- ld_drum(...)\n");
+
+	printf("\n --- END TEST #3 --- \n\n");
 
 	//	TODO instaruction Setum-1958
 }
@@ -5043,7 +5045,7 @@ int main(int argc, char *argv[])
 	int test = 0;
 	char *output = "-";
 	int ret = 0;
-
+	
 	while (1)
 	{
 		int option_index;
@@ -5060,8 +5062,9 @@ int main(int argc, char *argv[])
 		case 0:
 		{
 			const char *name = long_options[option_index].name;
-			if (strcmp(name, "help") == 0)
-				usage(argv[0]);
+			if (strcmp(name, "help") == 0) {
+				usage(argv[0]);				
+			}
 			else if (strcmp(name, "test") == 0)
 				test = atoi(optarg);
 			break;
@@ -5079,6 +5082,8 @@ int main(int argc, char *argv[])
 		/* Run number test */
 		switch (test)
 		{
+		case 0:	
+			break;
 		case 1:
 			Test1_Ariphmetic_Ternary();
 			break;
@@ -5095,7 +5100,7 @@ int main(int argc, char *argv[])
 		/* Exit 0. Ok' */
 		return 0;
 	}
-
+	
 	//---------------------------------------------------
 	printf("\r\n --- START emulator Setun-1958 --- \r\n");
 

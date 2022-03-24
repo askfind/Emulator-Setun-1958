@@ -7,4 +7,4 @@ clean :
 	rm -f output.vcd
 
 run : emu
-	./emusetun
+	./emu

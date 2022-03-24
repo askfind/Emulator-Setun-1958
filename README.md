@@ -50,6 +50,25 @@ A*=[+0-00], (  72),    k6..8[-00] : STOP
 ...
 ```
 
+```shell
+./emu --help 
+```
+
+```shell
+./emu --test 1
+ 
+ 1.4. Логическая операция SUM FULL
+ C, P1 = A + B + P0 
+ a,b,p0,c,p1 {-1,-1,-1}-> 0,-1
+ ...
+ a,b,p0,c,p1 { 1, 0, 1}->-1, 1
+ a,b,p0,c,p1 { 1, 1,-1}-> 1, 0
+ a,b,p0,c,p1 { 1, 1, 0}->-1, 1
+ a,b,p0,c,p1 { 1, 1, 1}-> 0, 1
+
+ --- END TEST #1 --- 
+```
+
 ## Notes
 
 * `lpt0`, `ptp0` ... `ur0`, `ur1` folders - virtual device files like tty and others
