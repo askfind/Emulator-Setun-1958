@@ -4,9 +4,9 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   21.03.2022
+* Edit date:   28.04.2022
 *
-* Version: 1.43
+* Version: 1.44
 */
 //TODO Добавить тип данных для троичных чисел TRITS-64
 //TODO Тесты для троичных чисел TRITS-32
@@ -3312,7 +3312,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 
 	switch (codeoper)
 	{
-	case (+1 * 9 + 0 * 3 + 0):
+	case (+1*9 +0*3 +0):
 	{ // +00 : Посылка в S	(A*)=>(S)
 		printf("   k6..8[+00] : (A*)=>(S)\n");
 		MR = ld_fram(k1_5);
@@ -3321,7 +3321,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+1 * 9 + 0 * 3 + 1):
+	case (+1*9 + 0*3 +1):
 	{ // +0+ : Сложение в S	(S)+(A*)=>(S)
 		printf("   k6..8[+0+] : (S)+(A*)=>(S)\n");
 		MR = ld_fram(k1_5);
@@ -3334,7 +3334,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+1 * 9 + 0 * 3 - 1):
+	case (+1*9 + 0*3 -1):
 	{ // +0- : Вычитание в S	(S)-(A*)=>(S)
 		printf("   k6..8[+0-] : (S)-(A*)=>(S)\n");
 		MR = ld_fram(k1_5);
@@ -3347,7 +3347,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+1 * 9 + 1 * 3 + 0):
+	case (+1*9 +1*3 +0):
 	{ // ++0 : Умножение +	(S)+(A*)(R)=>(S)
 		printf("   k6..8[++0] : (S)+(A*)(R)=>(S)\n");
 		copy_trs_setun(&S, &R);
@@ -3364,7 +3364,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+1 * 9 + 1 * 3 + 1):
+	case (+1*9 +1*3 +1):
 	{ // +++ : Умножение +	(S)+(A*)(R)=>(S)
 		printf("   k6..8[+++] : (S)+(A*)(R)=>(S)\n");
 		MR = ld_fram(k1_5);		
@@ -3378,7 +3378,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+1 * 9 + 1 * 3 - 1):
+	case (+1*9 +1*3 -1):
 	{ // ++- : Умножение - (A*)+(S)(R)=>(S)
 		printf("   k6..8[++-] : (A*)+(S)(R)=>(S)\n");
 		MR = ld_fram(k1_5);
@@ -3392,7 +3392,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+1 * 9 - 1 * 3 + 0):
+	case (+1*9 -1*3 +0):
 	{ // +-0 : Поразрядное умножение	(A*)[x](S)=>(S)
 		printf("   k6..8[+-0] : (A*)[x](S)=>(S)\n");
 		MR = ld_fram(k1_5);
@@ -3401,7 +3401,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+1 * 9 - 1 * 3 + 1):
+	case (+1*9 -1*3 +1):
 	{ // +-+ : Посылка в R	(A*)=>(R)
 		printf("   k6..8[+-+] : (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
@@ -3410,7 +3410,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+1 * 9 - 1 * 3 - 1):
+	case (+1*9 -1*3 -1):
 	{ // +-- : Останов	Стоп; (A*)=>(R)
 		printf("   k6..8[+--] : (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
@@ -3418,7 +3418,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+0 * 9 + 1 * 3 + 0):
+	case (+0*9 +1*3 +0):
 	{ // 0+0 : Условный переход -	A*=>(C) при w=0
 		printf("   k6..8[0+-] : A*=>(C) при w=0\n");
 		int8_t w;
@@ -3433,7 +3433,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		}
 	}
 	break;
-	case (+0 * 9 + 1 * 3 + 1):
+	case (+0*9 +1*3 +1):
 	{ // 0++ : Условный переход -	A*=>(C) при w=0
 		printf("   k6..8[0+-] : A*=>(C) при w=+1\n");
 		int8_t w;
@@ -3448,7 +3448,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		}
 	}
 	break;
-	case (+0 * 9 + 1 * 3 - 1):
+	case (+0*9 +1*3 -1):
 	{ // 0+- : Условный переход -	A*=>(C) при w=-
 		printf("   k6..8[0+-] : A*=>(C) при w=-1\n");
 		int8_t w;
@@ -3463,20 +3463,20 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		}
 	}
 	break;
-	case (+0 * 9 + 0 * 3 + 0):
+	case (+0*9 +0*3 +0):
 	{ //  000 : Безусловный переход	A*=>(C)
 		printf("   k6..8[000] : A*=>(C)\n");
 		copy_trs_setun(&k1_5, &C);
 	}
 	break;
-	case (+0 * 9 + 0 * 3 + 1):
+	case (+0*9 +0*3 +1):
 	{ // 00+ : Запись из C	(C)=>(A*)
 		printf("   k6..8[00+] : (C)=>(A*)\n");
 		st_fram(k1_5, C);
 		C = next_address(C);
 	}
 	break;
-	case (+0 * 9 + 0 * 3 - 1):
+	case (+0*9 +0*3 -1):
 	{ // 00- : Запись из F	(F)=>(A*)
 		printf("   k6..8[00-] : (F)=>(A*)\n");
 		st_fram(k1_5, F);
@@ -3484,7 +3484,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+0 * 9 - 1 * 3 + 0):
+	case (+0*9 -1*3 +0):
 	{ // 0-0 : Посылка в F	(A*)=>(F)
 		printf("   k6..8[0-0] : (A*)=>(F)\n");
 		MR = ld_fram(k1_5);
@@ -3493,7 +3493,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+0 * 9 - 1 * 3 + 1):
+	case (+0*9 -1*3 +1):
 	{ // 0-+ : Сложение в F c (C)	(C)+(A*)=>F
 		printf("   k6..8[0-+] : (C)+(A*)=>F\n");
 		MR = ld_fram(k1_5);
@@ -3502,7 +3502,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (+0 * 9 - 1 * 3 - 1):
+	case (+0*9 -1*3 -1):
 	{ // 0-- : Сложение в F	(F)+(A*)=>(F)
 		printf("   k6..8[0--] : (F)+(A*)=>(F)\n");
 		MR = ld_fram(k1_5);
@@ -3511,7 +3511,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (-1 * 9 + 1 * 3 + 0):
+	case (-1*9 +1*3 +0):
 	{ // -+0 : Сдвиг	Сдвиг (S) на (A*)=>(S)
 		printf("   k6..8[-+0] : (A*)=>(S)\n");
 		/*
@@ -3521,13 +3521,14 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				* при N < 0. При N = 0 содержимое регистра S не изменяется.
 				*/
 		MR = ld_fram(k1_5);
-		S = shift_trs(S, trs2digit(MR));
-		//TODO ~  S.t1 &= ~(((uint32_t)0xFF)<<(SIZE_WORD_LONG*2));
+		S = shift_trs(S, trs2digit(MR));		
+		S.t1 &= ~(((uint32_t)0xFFFC)<<(SIZE_WORD_LONG));
+		S.t0 &= ~(((uint32_t)0xFFFC)<<(SIZE_WORD_LONG));		
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
 	}
 	break;
-	case (-1 * 9 + 1 * 3 + 1):
+	case (-1*9 +1*3 +1):
 	{ // -++ : Запись из S	(S)=>(A*)
 		printf("   k6..8[-++] : (S)=>(A*)\n");
 		st_fram(k1_5, S);
@@ -3535,7 +3536,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (-1 * 9 + 1 * 3 - 1):
+	case (-1*9 +1*3 -1):
 	{ // -+- : Нормализация	Норм.(S)=>(A*); (N)=>(S)
 		printf("   k6..8[-+-] : Норм.(S)=>(A*); (N)=>(S)\n");		
 		/*
@@ -3595,42 +3596,42 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		C = next_address(C);
 	}
 	break;
-	case (-1 * 9 + 0 * 3 + 0):
+	case (-1*9 +0*3 +0):
 	{ // -00 : Ввод в Фа* - Вывод из Фа*
 		printf("   k6..8[-00] : Ввод в Фа* - Вывод из Фа*\n");
 		//TODO добавить реализацию
 		C = next_address(C);
 	}
 	break;
-	case (-1 * 9 + 0 * 3 + 1):
+	case (-1*9 +0*3 +1):
 	{ // -0+ : Запись на МБ	(Фа*)=>(Мд*)
 		printf("   k6..8[-0+] : (Фа*)=>(Мд*)\n");
 		fram_to_drum(k1_5);
 		C = next_address(C);
 	}
 	break;
-	case (-1 * 9 + 0 * 3 - 1):
+	case (-1*9 +0*3 -1):
 	{ // -0- : Считывание с МБ	(Мд*)=>(Фа*)
 		printf("   k6..8[-0-] : (Мд*)=>(Фа*)\n");
 		drum_to_fram(k1_5);
 		C = next_address(C);
 	}
 	break;
-	case (-1 * 9 - 1 * 3 + 0):
+	case (-1*9 -1*3 +0):
 	{ // --0 : Не задействована	Стоп
 		printf("   k6..8[--0] : STOP BREAK\n");
 		view_short_reg(&k6_8, "   k6..8=");
 		return STOP_ERROR;
 	}
 	break;
-	case (-1 * 9 - 1 * 3 + 1):
+	case (-1*9 -1*3 +1):
 	{ // --+ : Не задействована	Стоп
 		printf("   k6..8[--+] : STOP BREAK\n");
 		view_short_reg(&k6_8, "   k6..8=");
 		return STOP_ERROR;
 	}
 	break;
-	case (-1 * 9 - 1 * 3 - 1):
+	case (-1*9 -1*3 -1):
 	{ // --- : Не задействована	Стоп
 		printf("   k6..8[---] : STOP BREAK\n");
 		view_short_reg(&k6_8, "   k6..8=");
@@ -4566,11 +4567,49 @@ void Test3_Setun_Opers(void)
 	printf("\n");
 	// view_short_regs();
 
-	//t3.--
-	//printf("\nt3.10 --- st_drum(...)\n");
-	
-	//t3.--
-	//printf("\nt3.11 --- ld_drum(...)\n");
+	//t3.23 test Oper=k6..8[-+0] : S сд. (A*)=>(S) 
+	printf("\nt3.23:  Oper=k6..8[-+0] : S сд. (A*)=>(S)\n"); 
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("00000000-");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	S = smtr("000000000000000+00");
+	view_short_reg(&S, "S=");
+	//
+	//R = smtr("0000000000000000+0");
+	//view_short_reg(&R, "R=");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("00000-+00");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+	view_short_reg(&S, "S=");
+	// view_short_regs();
+
+	//t3.24 test Oper=k6..8[-+-] : 
+	printf("\nt3.24:  Oper=k6..8[-+-] : \n"); 
+
+	//t3.25 test Oper=k6..8[-00] : 
+	printf("\nt3.25:  Oper=k6..8[-00] : \n"); 
 
 	printf("\n --- END TEST #3 --- \n\n");
 
