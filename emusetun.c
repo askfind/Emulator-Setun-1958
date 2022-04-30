@@ -3461,6 +3461,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ //  000 : Безусловный переход	A*=>(C)
 		printf("   k6..8[000] : A*=>(C)\n");
 		copy_trs_setun(&k1_5, &C);
+		C.l = 5;
 	}
 	break;
 	case (+0*9 +0*3 +1):
@@ -5243,8 +5244,9 @@ int main(int argc, char *argv[])
 	*/
 	for (uint16_t jj = 1; jj < 500; jj++)
 	{
-
-		K = ld_fram(C);
+		K = ld_fram(C);		
+		K = slice_trs_setun(K, 1, 9); 	
+			
 		addr = control_trs(K);
 		oper = slice_trs_setun(K, 6, 8);
 
