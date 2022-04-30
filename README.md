@@ -86,5 +86,5 @@ Everybody is invited and welcome to contribute to Setun VM.
 
 # History
 
-- Current version: 1.33
+- Current version: 1.46
 - Create date: 01.11.2018

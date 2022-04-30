@@ -8,12 +8,7 @@
 *
 * Version: 1.46
 */
-//TODO Добавить тип данных для троичных чисел TRITS-64
-//TODO Тесты для троичных чисел TRITS-32
-//TODO Тесты для троичных регистров Сетунь.
-//TODO Тесты команд Сетунь.
-//TODO чтение и запись зон fram. 
-
+//TODO
 /**
  *  Заголовочные файла
  */
@@ -3496,8 +3491,9 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // 0-+ : Сложение в F c (C)	(C)+(A*)=>F
 		printf("   k6..8[0-+] : (C)+(A*)=>F\n");
 		MR = ld_fram(k1_5);
-		//TODO error F.l != 5
+		MR = shift_trs(MR, -3);
 		F = add_trs(C, MR);
+                F.l = 5;
 		W = set_trit_setun(W, 1, sgn_trs(F));
 		C = next_address(C);
 	}
