@@ -4,9 +4,9 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   28.04.2022
+* Edit date:   30.04.2022
 *
-* Version: 1.44
+* Version: 1.46
 */
 //TODO Добавить тип данных для троичных чисел TRITS-64
 //TODO Тесты для троичных чисел TRITS-32
@@ -696,6 +696,7 @@ trs_t set_trit(trs_t t, uint8_t pos, int8_t trit)
 		r.t1 &= ~(1 << pos);
 		r.t0 &= ~(1 << pos);
 	}
+	r.l = t.l;
 	return r;
 }
 
@@ -821,12 +822,16 @@ void inc_trs(trs_t *t)
 void dec_trs(trs_t *t)
 {
 	trs_t x;
+	trs_t r;
 	x = *t;
 	x.t1 = 0;
 	x.t0 = 0;
-	x = set_trit(x, 0, -1);
-	x = add_trs(*t, x);
-	*t = x;
+	x = set_trit(x, 0, -1);		
+	r = add_trs(*t, x);				
+	
+	t->l = r.l;
+	t->t1 = r.t1;
+	t->t0 = r.t0;	
 }
 
 /* Троичное сложение тритов */
@@ -837,9 +842,7 @@ trs_t add_trs(trs_t x, trs_t y)
 	trs_t r;
 	
 	/* Результат для Сетунь-1958 R,S */
-	uint64_t tl = 0;
-	uint64_t t1 = 0;
-	uint64_t t0 = 0;
+	uint8_t m = 0;
 
 	x.l = min(x.l, SIZE_TRITS_MAX);
 	y.l = min(y.l, SIZE_TRITS_MAX);
@@ -862,29 +865,29 @@ trs_t add_trs(trs_t x, trs_t y)
 	for (i = 0; i < j; i++)
 	{
 		a = get_trit(x, i);
-		b = get_trit(y, i);
-		sum_t(&a, &b, &p0, &s, &p1);
+		b = get_trit(y, i);		
+		sum_t(&a, &b, &p0, &s, &p1);		
 		//
 		if( s > 0) {
-			t1 |= 1<<tl; 
-			t0 |= 1<<tl; 
+			r.t1 |= 1<<m; 
+			r.t0 |= 1<<m; 
 		}
 		else if( s < 0) {
-			t1 &= ~(1<<tl); 
-			t0 |= 1<<tl; 
+			r.t1 &= ~(1<<m); 
+			r.t0 |= 1<<m; 
 		}
 		else {
-			t1 &= ~(1<<tl); 
-			t0 &= ~(1<<tl); 
-		}	
-		tl += 1;
+			r.t1 &= ~(1<<m); 
+			r.t0 &= ~(1<<m); 
+		}		
+		m += 1;
 		p0 = p1;
 	}
 
 	/* Установить трит переполнения */ 
 	/* ph1 */
-	if( t0 & (1<<19) > 0 ) {
-		if( t1 & (1<<19) > 0 ) {
+	if( r.t0 & (1<<19) > 0 ) {
+		if( r.t1 & (1<<19) > 0 ) {
 			set_trit(ph1,1,1);
 		} 
 		else {
@@ -893,13 +896,12 @@ trs_t add_trs(trs_t x, trs_t y)
 	}
 	else {
 		set_trit(ph1,1,0);
-	}
-	t0 &= ~(1<<19); /* очистить трит */
+	}	
 	
 	/* Установить трит переполнения */ 
 	/* ph2 */
-	if( t0 & (1<<18) > 0 ) {
-		if( t1 & (1<<18) > 0 ) {
+	if( r.t0 & (1<<18) > 0 ) {
+		if( r.t1 & (1<<18) > 0 ) {
 			set_trit(ph2,1,1);
 		} 
 		else {
@@ -908,14 +910,13 @@ trs_t add_trs(trs_t x, trs_t y)
 	}
 	else {
 		set_trit(ph2,1,0);
-	}	
-	t0 &= ~(1<<18); /* очистить трит */ 	 
+	}		
 	
 	/* результат */
-	r.t1 = (uint32_t)t1; /* t[1.18] */
-	r.t0 = (uint32_t)t0; /* t[1.18] */
-	r.l = j+2;
-
+	r.t1 &= ~(0xFFFC << (SIZE_WORD_LONG)); /* t[1.18] */
+	r.t0 &= ~(0xFFFC << (SIZE_WORD_LONG)); /* t[1.18] */	
+	r.l = j;
+		
 	return r;
 }
 
@@ -927,9 +928,7 @@ trs_t sub_trs(trs_t x, trs_t y)
 	trs_t r;
 	
 	/* Результат для Сетунь-1958 R,S */
-	uint64_t tl = 0;
-	uint64_t t1 = 0;
-	uint64_t t0 = 0;
+	uint8_t m = 0;
 
 	x.l = min(x.l, SIZE_TRITS_MAX);
 	y.l = min(y.l, SIZE_TRITS_MAX);
@@ -957,25 +956,25 @@ trs_t sub_trs(trs_t x, trs_t y)
 		sum_t(&a, &b, &p0, &s, &p1);
 		//
 		if( s > 0) {
-			t1 |= 1<<tl; 
-			t0 |= 1<<tl; 
+			r.t1 |= 1<<m; 
+			r.t0 |= 1<<m; 
 		}
 		else if( s < 0) {
-			t1 &= ~(1<<tl); 
-			t0 |= 1<<tl; 
+			r.t1 &= ~(1<<m); 
+			r.t0 |= 1<<m; 
 		}
 		else {
-			t1 &= ~(1<<tl); 
-			t0 &= ~(1<<tl); 
+			r.t1 &= ~(1<<m); 
+			r.t0 &= ~(1<<m); 
 		}	
-		tl += 1;
+		m += 1;
 		p0 = p1;
 	}
 
 	/* Установить трит переполнения */ 
 	/* ph1 */
-	if( t0 & (1<<19) > 0 ) {
-		if( t1 & (1<<19) > 0 ) {
+	if( r.t0 & (1<<19) > 0 ) {
+		if( r.t1 & (1<<19) > 0 ) {
 			set_trit(ph1,1,1);
 		} 
 		else {
@@ -984,13 +983,12 @@ trs_t sub_trs(trs_t x, trs_t y)
 	}
 	else {
 		set_trit(ph1,1,0);
-	}
-	t0 &= ~(1<<19); /* очистить трит */
+	}	
 	
 	/* Установить трит переполнения */ 
 	/* ph2 */
-	if( t0 & (1<<18) > 0 ) {
-		if( t1 & (1<<18) > 0 ) {
+	if( r.t0 & (1<<18) > 0 ) {
+		if( r.t1 & (1<<18) > 0 ) {
 			set_trit(ph2,1,1);
 		} 
 		else {
@@ -999,13 +997,12 @@ trs_t sub_trs(trs_t x, trs_t y)
 	}
 	else {
 		set_trit(ph2,1,0);
-	}	
-	t0 &= ~(1<<18); /* очистить трит */ 	 
+	}		
 	
 	/* результат */
-	r.t1 = (uint32_t)t1; /* t[1.18] */
-	r.t0 = (uint32_t)t0; /* t[1.18] */
-	r.l = j+2;
+	r.t1 = r.t1 & ~(0xFFFC << (SIZE_WORD_LONG)); /* t[1.18] */
+	r.t0 = r.t0 & ~(0xFFFC << (SIZE_WORD_LONG)); /* t[1.18] */
+	r.l = j;
 
 	return r;
 }
@@ -3227,6 +3224,8 @@ trs_t control_trs(trs_t a)
 *		+++ (S)+(A*)(R)=>(S) Ok'
 * 		++- (A*)+(S)(R)=>(S) Ok'
 *		+-0 (A*)[x](S)=>(S) Ok'
+*       -+0 (S) сд. (A*)=>(S) OK'
+*       -+- Норм.(S)=>(A*); (N)=>(S) OK'
 */
 
 /**
@@ -3547,27 +3546,23 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				* направлением сдвига, а именно: N > 0 при сдвиге вправо и N < 0 при сдвиге влево. При (S) = 0 или при
 	    		* 1/2 <|(S)| < 3/2 в ячейку А* посылается (S), а в регистр S посылается N = 0.
 				*/
-		/* Определить знак S */
-		//TODO
-		int8_t w;
-		W = set_trit_setun(W, 1, sgn_trs(S));
-		w = sgn_trs(W);
-		if (w != 0)
+		if (S.t0 != 0)
 		{
 			/* Сдвиг S */
 			if (get_trit_setun(S, 1) != 0)
 			{
-				S = shift_trs(S, 1);
+				S = shift_trs(S, -1); /* сдвиг вправо */
 				st_fram(k1_5, S);
 				S.t1 = 0;
-				S = set_trit_setun(S, 18, 1);
+				S.t0 = 0;
+				inc_trs(&S);
 			}
 			else if (get_trit_setun(S, 2) == 0)
 			{
 				uint8_t n = 0;
 				for (uint8_t i = 0; i < 16; i++)
 				{
-					S = shift_trs(S, -1);
+					S = shift_trs(S, 1);
 					n++;
 					if (get_trit_setun(S, 2) != 0)
 					{
@@ -3576,6 +3571,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				}
 				st_fram(k1_5, S);
 				S.t1 = 0;
+				S.t0 = 0;
 				for (uint8_t i = 0; i < n; i++)
 				{
 					dec_trs(&S);
@@ -3585,6 +3581,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			{
 				st_fram(k1_5, S);
 				S.t1 = 0;
+				S.t0 = 0;
 			}
 		}
 		else
@@ -3592,7 +3589,10 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			/* S == 0 */
 			st_fram(k1_5, S);
 			S.t1 = 0;
+			S.t0 = 0;
 		}
+		/* Определить знак S */
+		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
 	}
 	break;
@@ -4605,8 +4605,48 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&S, "S=");
 	// view_short_regs();
 
-	//t3.24 test Oper=k6..8[-+-] : 
-	printf("\nt3.24:  Oper=k6..8[-+-] : \n"); 
+	//t3.24 test Oper=k6..8[-+-] : Норм.(S)=>(A*); (N)=>(S)
+	printf("\nt3.24:  Oper=k6..8[-+-] :  Норм.(S)=>(A*); (N)=>(S)\n");
+	//
+	reset_setun_1958();
+	//
+	addr = smtr("00000");
+	m0 = smtr("00000000-");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	S = smtr("000000000000000+00");
+	view_short_reg(&S, "S=");
+	//
+	//R = smtr("0000000000000000+0");
+	//view_short_reg(&R, "R=");
+	//
+	addr = smtr("0000+");
+	m1 = smtr("00000-+-0");
+	st_fram(addr, m1);
+	view_elem_fram(addr);
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+	view_short_reg(&K, "K=");
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("[status: OK']\n");
+	if( ret_exec != 0) printf("[status: ERR#%d]\n",ret_exec);	
+	printf("\n");
+        printf("S.l=%d\n",S.l);
+	view_short_reg(&S, "S=");
+
+	addr = smtr("00000");		
+	view_elem_fram(addr);
+
+	//view_short_regs();
 
 	//t3.25 test Oper=k6..8[-00] : 
 	printf("\nt3.25:  Oper=k6..8[-00] : \n"); 
