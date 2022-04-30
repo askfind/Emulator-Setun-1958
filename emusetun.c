@@ -1277,7 +1277,7 @@ void copy_trs_setun(trs_t *src, trs_t *dst)
 		int8_t s = dst->l - src->l;
 		dst->t1 = src->t1 << s;
 		dst->t0 = src->t0 << s;
-		dst->t0 &= 0xFFFFFFFF << s;
+		dst->t0 &= ~(0xFFFFFFFF << s);
 	}
 }
 
@@ -3496,6 +3496,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // 0-+ : Сложение в F c (C)	(C)+(A*)=>F
 		printf("   k6..8[0-+] : (C)+(A*)=>F\n");
 		MR = ld_fram(k1_5);
+		//TODO error F.l != 5
 		F = add_trs(C, MR);
 		W = set_trit_setun(W, 1, sgn_trs(F));
 		C = next_address(C);
@@ -3505,7 +3506,9 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // 0-- : Сложение в F	(F)+(A*)=>(F)
 		printf("   k6..8[0--] : (F)+(A*)=>(F)\n");
 		MR = ld_fram(k1_5);
+		MR = shift_trs(MR, -3);
 		F = add_trs(F, MR);
+		F.l = 5; 
 		W = set_trit_setun(W, 1, sgn_trs(F));
 		C = next_address(C);
 	}
@@ -5251,20 +5254,26 @@ int main(int argc, char *argv[])
 
 		ret_exec = execute_trs(addr, oper);
 
-		if ((ret_exec == STOP_DONE) ||
-			(ret_exec == STOP_OVER) ||
-			(ret_exec == STOP_ERROR))
-		{
+		if ((ret_exec == STOP_DONE) ) {
+			printf("\r\n[STOP_DONE]\r\n");
+			break;
+		}
+		else if	(ret_exec == STOP_OVER) {
+			printf("\r\n[STOP_OVER]\r\n");
+			break;
+		}
+		else if	(ret_exec == STOP_ERROR) {
+			printf("\r\n[STOP_ERROR]\r\n");
 			break;
 		}
 	}
 	printf("\n");
 
 	//Prints REGS and FRAM
-	//view_short_regs();
+	view_short_regs();
 	//dump_fram();
 
-	printf("\r\n--- STOP emulator Setun-1958 --- \r\n");
+	printf("\r\n--- END emulator Setun-1958 --- \r\n");
 
 } /* 'main.c' */
 
