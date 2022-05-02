@@ -30,10 +30,10 @@
 // 1 : Test Arithmetic Ternary
 // 2 : Test Arithmetic TRITS-32
 // 3 : Test Arithmetic Registers VM Setun-1958
-// 4 : Test FRAM VM Setun-1958
-// 5 : Test DRAM VM Setun-1958
-// 6 : Test Instructiron VM Setun-1958
-// 7 : Test Program VM Setun-1958
+// TODO 4 : Test FRAM VM Setun-1958
+// TODO 5 : Test DRAM VM Setun-1958
+// TODO 6 : Test Instructiron VM Setun-1958
+// TODO 7 : Test Program VM Setun-1958
 #define TEST_NUMBER (1)
 
 #define POW3_ARG_MAX (1290)
