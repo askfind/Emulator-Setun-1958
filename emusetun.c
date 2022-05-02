@@ -4,11 +4,10 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   30.04.2022
+* Edit date:   02.05.2022
 *
-* Version: 1.46
+* Version: 1.48
 */
-//TODO
 /**
  *  Заголовочные файла
  */
@@ -2100,6 +2099,50 @@ void view_short_reg(trs_t *t, uint8_t *ch)
  * Печать троичного регистра 
  *  
  */
+void view_step_short_reg(trs_t *t, uint8_t *ch)
+{
+	int8_t i;
+	int8_t l;
+	int8_t trit;
+	trs_t tv = *t;
+
+	printf("%s: ", (char *)ch);
+	if (tv.l <= 0)
+	{
+		printf("\n");
+		return;
+	}
+
+	l = min(tv.l, SIZE_TRITS_MAX);
+	printf("[");
+	//printf("\nt1 % 8x\n",t->t1);
+	//printf("t2 % 8x\n",t->t0);
+	for (i = 0; i < l; i++)	{		
+		tv = *t;
+		trit = get_trit(tv, l - 1 - i);
+		printf("%c", numb2symtrs(trit));
+	}
+	printf("], ");
+	//
+	tv = *t;
+	trs2str(tv);
+	printf(", "); //
+	printf("(%li)", (long int)trs2digit(*t));
+	printf(", {");
+	for (i = 0; i < l; i++)	{
+		tv = *t;
+		trit = get_trit(tv, l - 1 - i);
+		printf("%i", trit);
+	}
+	printf("}");
+	//
+	printf("\n\t");
+}
+
+/**
+ * Печать троичного регистра 
+ *  
+ */
 void view_short_long_reg(long_trs_t *t, uint8_t *ch)
 {
 	int8_t i;
@@ -2964,14 +3007,15 @@ void view_fram(trs_t addr1, trs_t addr2)
 
 	if ((a2 >= a1) && (a2 >= ZONE_M_FRAM_BEG && a2 <= ZONE_P_FRAM_END) && (a2 >= ZONE_M_FRAM_BEG && a2 <= ZONE_P_FRAM_END))
 	{
-		for (uint16_t i = 0; i < (abs(a2 - a1)); i++)
+		for (uint16_t i = 0; i < (abs(a2 - a1)+1); i++)
 		{
-			inc_trs(&ad1);			
+			//inc_trs(&ad1);			
 			if (trit2int(ad1) < 0) {
 				inc_trs(&ad1);
 				i += 1;
 			}
 			view_elem_fram(ad1);
+			inc_trs(&ad1);	
 		}
 	}
 }
@@ -3299,10 +3343,11 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		*
 		*/
 
-	printf("A*=[");
-	trit2symtrs(k1_5);
-	printf("]");
-	printf(", (% 4li), ", (long int)trs2digit(k1_5));
+	view_step_short_reg(&k1_5,"A*");
+	//printf("A*=[");
+	//trit2symtrs(k1_5);
+	//printf("]");
+	//printf(", (% 4li), ", (long int)trs2digit(k1_5));
 
 	switch (codeoper)
 	{
@@ -3598,8 +3643,107 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (-1*9 +0*3 +0):
 	{ // -00 : Ввод в Фа* - Вывод из Фа*
-		printf("   k6..8[-00] : Ввод в Фа* - Вывод из Фа*\n");
+		printf("   k6..8[-00] : Ввод в Фа* - Вывод из Фа*\n");		
 		//TODO добавить реализацию
+		trs_t fa;		
+		//view_short_reg(&k1_5,"k1_5");
+		uint8_t s = get_trit(k1_5,1);
+		if(s == -1) {
+			fa = smtr("----0");
+		}
+		else if(s == 1) {
+			fa = smtr("+---0");
+		}
+		else {
+			fa = smtr("0---0");
+		}		
+
+		int8_t codeio = get_trit_setun(k1_5, 2)*27 +
+		                 get_trit_setun(k1_5, 3)*9 +
+						 get_trit_setun(k1_5, 4)*3 +
+						 get_trit_setun(k1_5, 5);		
+		/* Тип устройства ввода/вывода */
+		switch( codeio ) { 
+			case (+0*27 +0*9 +0*3 +1): /* Ввод с ФТ-1 в виде команд */
+				printf("   k2..5[000+] : Ввод с ФТ-1 в виде команд\n");		
+			break;
+			case (+0*27 +0*9 +1*3 +0): /* Ввод с ФТ-2 в виде команд */
+				printf("   k2..5[00+0] : Ввод с ФТ-2 в виде команд\n");		
+			break;
+			case (+0*27 +0*9 +0*3 -1): /* Ввод с ФТ-1 в виде символов */
+				printf("   k2..5[000-] : Ввод с ФТ-1 в виде символов\n");		
+			break;
+			case (+0*27 +0*9 -1*3 +0): /* Ввод с ФТ-2 в виде символов */
+				printf("   k2..5[00-0] : Ввод с ФТ-2 в виде символов\n");		
+			break;
+			case (+1*27 +0*9 +0*3 +0): /* Перфоратор ПЛ (Телетайп ТП)перфорация в виде команд */
+				printf("   k2..5[+000] : Перфоратор ПЛ (Телетайп ТП)перфорация в виде команд\n");		
+			break;
+			case (-1*27 +0*9 +0*3 +0): /* Перфоратор ПЛ (Телетайп ТП)перфорация в виде символов */
+				printf("   k2..5[-000] : Перфоратор ПЛ (Телетайп ТП)перфорация в виде символов\n");		
+			break;
+			case (+0*27 +1*9 +0*3 +0): /* Пишущая машинка ПМ (Телетайп ТП) печать в виде команд */
+				printf("   k2..5[0+00] : Пишущая машинка ПМ (Телетайп ТП) печать в виде команд\n");		
+			break;
+			case (+0*27 -1*9 +0*3 +0): /* Пишущая машинка ПМ (Телетайп ТП) печать одним цветом в виде символов */
+				printf("   k2..5[0-00] : Пишущая машинка ПМ (Телетайп ТП) печать одним цветом в виде символов\n");		
+				printf("[");
+				//Вывод на печать 
+				// for -------------------
+				for(uint8_t i=0;i<SIZE_ZONE_TRIT_FRAM;i++ ) {
+					int32_t symbcode;
+					trs_t symb;
+					symb.l=3;					
+					//
+					MR = ld_fram(fa);								
+					symb = slice_trs_setun(MR, 1, 3); if( trs2digit(symb)== -13) break; 
+					electrified_typewriter(symb, 1);
+					symb = slice_trs_setun(MR, 4, 6); if( trs2digit(symb)== -13) break; 
+					electrified_typewriter(symb, 1);
+					symb = slice_trs_setun(MR, 7, 9); if( trs2digit(symb)== -13) break; 
+					electrified_typewriter(symb, 1);					
+					fa = next_address(fa);		
+				}
+				printf("]\n");
+			break;
+			case (+1*27 -1*9 +0*3 +0): /* Пишущая машинка ПМ (Телетайп ТП) печать в виде символов цветая */
+				printf("   k2..5[0-00] : Пишущая машинка ПМ (Телетайп ТП) печать в виде символов цветая\n");		
+				printf("[");
+				//Вывод на печать 
+				// for -------------------
+				for(uint8_t i=0;i<SIZE_ZONE_TRIT_FRAM;i++ ) {
+					int32_t symbcode;
+					trs_t symb;
+					symb.l=3;					
+					//
+					MR = ld_fram(fa);								
+					symb = slice_trs_setun(MR, 1, 3); if( trs2digit(symb)== -13) break; 
+					electrified_typewriter(symb, 1);
+					symb = slice_trs_setun(MR, 4, 6); if( trs2digit(symb)== -13) break; 
+					electrified_typewriter(symb, 1);
+					symb = slice_trs_setun(MR, 7, 9); if( trs2digit(symb)== -13) break; 
+					electrified_typewriter(symb, 1);					
+					fa = next_address(fa);		
+				}
+				printf("]\n");
+			break;
+			default: /* Ошибка: Не поддерживается устройвтво ввода/вывода */
+				return STOP_ERROR;
+			break;
+		}
+
+		//TODO определить устройство ввода и вывода 
+		
+		//Вывод на печать 
+		// for -------------------
+		for(uint8_t i=0;i<SIZE_ZONE_TRIT_FRAM;i++ ) {
+			MR = ld_fram(fa);			
+			//
+			//view_short_reg(&fa," fa=");			0
+			//view_short_reg(&MR," (fa)=");			
+			fa = next_address(fa);		
+		}
+		
 		C = next_address(C);
 	}
 	break;
@@ -4172,9 +4316,8 @@ void Test3_Setun_Opers(void)
 	printf("\nreg C = 00001\n");
 
 	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
+	K = ld_fram(C);	
+	exK = control_trs(K);	
 	oper = slice_trs_setun(K, 6, 8);
 	ret_exec = execute_trs(exK, oper);
 	//
@@ -5246,7 +5389,7 @@ int main(int argc, char *argv[])
 	{
 		K = ld_fram(C);		
 		K = slice_trs_setun(K, 1, 9); 	
-			
+		//view_short_reg(&K,"K=");	
 		addr = control_trs(K);
 		oper = slice_trs_setun(K, 6, 8);
 
@@ -5270,6 +5413,12 @@ int main(int argc, char *argv[])
 	//Prints REGS and FRAM
 	view_short_regs();
 	//dump_fram();
+	
+	//trs_t ad1;
+	//trs_t ad2;
+	//ad1 = smtr("0---0");
+	//ad2 = smtr("0++++");
+	//view_fram(ad1, ad2);	
 
 	printf("\r\n--- END emulator Setun-1958 --- \r\n");
 
