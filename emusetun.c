@@ -4,9 +4,9 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   02.05.2022
+* Edit date:   03.05.2022
 *
-* Version: 1.48
+* Version: 1.49
 */
 /**
  *  Заголовочные файла
@@ -14,12 +14,18 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <stdarg.h>
 #include <string.h>
 #include <math.h>
 #include <getopt.h>
 #include <errno.h>
 
 #include "emusetun.h"
+
+//TODO параметр командной строки включить/выключить вывод выполнения команд
+#define DEBUG 0 
+#define debug_print(...) \
+            do { if (DEBUG) fprintf(stdout, __VA_ARGS__); } while (0)
 
 /*********************************
  *  Виртуальная машина Сетунь-1958
@@ -30,13 +36,7 @@
 // 1 : Test Arithmetic Ternary
 // 2 : Test Arithmetic TRITS-32
 // 3 : Test Arithmetic Registers VM Setun-1958
-// TODO 4 : Test FRAM VM Setun-1958
-// TODO 5 : Test DRAM VM Setun-1958
-// TODO 6 : Test Instructiron VM Setun-1958
-// TODO 7 : Test Program VM Setun-1958
 #define TEST_NUMBER (1)
-
-#define POW3_ARG_MAX (1290)
 
 /* Макросы максимальное значения тритов */
 #define TRIT1_MAX (+1)
@@ -73,7 +73,6 @@
  *  S(1...18)	S, {t1,t0} = {t1:[b17...b0],t0:[b17...b0]}
  * 
  */
-
 #define SIZE_WORD_SHORT (9) /* короткое слово 9-трит  */
 #define SIZE_WORD_LONG (18) /* длинное слово  18-трит */
 
@@ -84,7 +83,7 @@
 #define SIZE_ZONE_TRIT_FRAM (54) /* количнество коротких 9-тритных слов в зоне */
 #define SIZE_ALL_TRIT_FRAM (162) /* всего количество коротких 9-тритных слов */
 
-#define SIZE_GRFRAM (2)		 /* количнество груп в FRAM */
+#define SIZE_GRFRAM (2)		 /* количнество груп (0...2) в FRAM */
 #define SIZE_GR_TRIT_FRAM (81) /* количнество коротких 9-тритных слов в зоне */
 
 /**
@@ -3249,23 +3248,6 @@ trs_t control_trs(trs_t a)
 ---        жх        -13        Не задействована                 Аварийный стоп
 ------------------------------------------------------------------------------------------
 */
-/* --------------------------------------------------------------------------------------- 
-*  TEST#3  Operations
-*		+00	(A*)=>(S)		Ok'
-*		-++	(S)=>(A*)		Ok'
-*		+-+	(A*)=>(R)		Ok'
-*		0-0	(A*)=>(F)		Ok'
-*		00-	(F)=>(A*)		Ok'
-*		00+	(C)=>(A*)		Ok'
-*		+0+	(S)+(A*)=>(S)	Ok'
-*		+0-	(S)-(A*)=>(S)   Ok'
-*		++0 (S)=>(R); S=0; (A*)(R)=>(S) Ok'
-*		+++ (S)+(A*)(R)=>(S) Ok'
-* 		++- (A*)+(S)(R)=>(S) Ok'
-*		+-0 (A*)[x](S)=>(S) Ok'
-*       -+0 (S) сд. (A*)=>(S) OK'
-*       -+- Норм.(S)=>(A*); (N)=>(S) OK'
-*/
 
 /**
  * Выполнить операцию K(1:9) машины "Сетунь-1958"
@@ -3342,18 +3324,15 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		* Остальные операции, содержащиеся в табл. 1, ясны без дополни­тельных пояснений.
 		*
 		*/
-
+#if (DEBUG == 1)	
 	view_step_short_reg(&k1_5,"A*");
-	//printf("A*=[");
-	//trit2symtrs(k1_5);
-	//printf("]");
-	//printf(", (% 4li), ", (long int)trs2digit(k1_5));
+#endif
 
 	switch (codeoper)
 	{
 	case (+1*9 +0*3 +0):
 	{ // +00 : Посылка в S	(A*)=>(S)
-		printf("   k6..8[+00] : (A*)=>(S)\n");
+		debug_print("   k6..8[+00] : (A*)=>(S)\n");
 		MR = ld_fram(k1_5);
 		copy_trs_setun(&MR, &S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
@@ -3362,7 +3341,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+1*9 + 0*3 +1):
 	{ // +0+ : Сложение в S	(S)+(A*)=>(S)
-		printf("   k6..8[+0+] : (S)+(A*)=>(S)\n");
+		debug_print("   k6..8[+0+] : (S)+(A*)=>(S)\n");
 		MR = ld_fram(k1_5);
 		S = add_trs(S, MR);
 		W = set_trit_setun(W, 1, sgn_trs(S));
@@ -3375,7 +3354,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+1*9 + 0*3 -1):
 	{ // +0- : Вычитание в S	(S)-(A*)=>(S)
-		printf("   k6..8[+0-] : (S)-(A*)=>(S)\n");
+		debug_print("   k6..8[+0-] : (S)-(A*)=>(S)\n");
 		MR = ld_fram(k1_5);
 		S = sub_trs(S, MR);
 		W = set_trit_setun(W, 1, sgn_trs(S));
@@ -3388,7 +3367,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+1*9 +1*3 +0):
 	{ // ++0 : Умножение +	(S)+(A*)(R)=>(S)
-		printf("   k6..8[++0] : (S)+(A*)(R)=>(S)\n");
+		debug_print("   k6..8[++0] : (S)+(A*)(R)=>(S)\n");
 		copy_trs_setun(&S, &R);
 		S.t0 = 0;
 		MR = ld_fram(k1_5);
@@ -3405,7 +3384,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+1*9 +1*3 +1):
 	{ // +++ : Умножение +	(S)+(A*)(R)=>(S)
-		printf("   k6..8[+++] : (S)+(A*)(R)=>(S)\n");
+		debug_print("   k6..8[+++] : (S)+(A*)(R)=>(S)\n");
 		MR = ld_fram(k1_5);		
 		trs_t temp = slice_trs(mul_trs(MR, R), 0, 17);		
 		S = add_trs(temp, S);
@@ -3419,7 +3398,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+1*9 +1*3 -1):
 	{ // ++- : Умножение - (A*)+(S)(R)=>(S)
-		printf("   k6..8[++-] : (A*)+(S)(R)=>(S)\n");
+		debug_print("   k6..8[++-] : (A*)+(S)(R)=>(S)\n");
 		MR = ld_fram(k1_5);
 		trs_t temp = mul_trs(S, R);
 		S = add_trs(slice_trs(temp, 0, 17), MR);
@@ -3433,7 +3412,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+1*9 -1*3 +0):
 	{ // +-0 : Поразрядное умножение	(A*)[x](S)=>(S)
-		printf("   k6..8[+-0] : (A*)[x](S)=>(S)\n");
+		debug_print("   k6..8[+-0] : (A*)[x](S)=>(S)\n");
 		MR = ld_fram(k1_5);
 		S = xor_trs(MR, S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
@@ -3442,7 +3421,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+1*9 -1*3 +1):
 	{ // +-+ : Посылка в R	(A*)=>(R)
-		printf("   k6..8[+-+] : (A*)=>(R)\n");
+		debug_print("   k6..8[+-+] : (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
 		copy_trs_setun(&MR, &R);
 		W = set_trit_setun(W, 1, sgn_trs(S));
@@ -3451,7 +3430,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+1*9 -1*3 -1):
 	{ // +-- : Останов	Стоп; (A*)=>(R)
-		printf("   k6..8[+--] : (A*)=>(R)\n");
+		debug_print("   k6..8[+--] : (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
 		copy_trs_setun(&MR, &R);
 		C = next_address(C);
@@ -3459,7 +3438,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+0*9 +1*3 +0):
 	{ // 0+0 : Условный переход -	A*=>(C) при w=0
-		printf("   k6..8[0+-] : A*=>(C) при w=0\n");
+		debug_print("   k6..8[0+-] : A*=>(C) при w=0\n");
 		int8_t w;
 		w = sgn_trs(W);
 		if (w == 0)
@@ -3474,7 +3453,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+0*9 +1*3 +1):
 	{ // 0++ : Условный переход -	A*=>(C) при w=0
-		printf("   k6..8[0+-] : A*=>(C) при w=+1\n");
+		debug_print("   k6..8[0+-] : A*=>(C) при w=+1\n");
 		int8_t w;
 		w = sgn_trs(W);
 		if (w == 1)
@@ -3489,7 +3468,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+0*9 +1*3 -1):
 	{ // 0+- : Условный переход -	A*=>(C) при w=-
-		printf("   k6..8[0+-] : A*=>(C) при w=-1\n");
+		debug_print("   k6..8[0+-] : A*=>(C) при w=-1\n");
 		int8_t w;
 		w = sgn_trs(W);
 		if (w < 0)
@@ -3504,21 +3483,21 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+0*9 +0*3 +0):
 	{ //  000 : Безусловный переход	A*=>(C)
-		printf("   k6..8[000] : A*=>(C)\n");
+		debug_print("   k6..8[000] : A*=>(C)\n");
 		copy_trs_setun(&k1_5, &C);
 		C.l = 5;
 	}
 	break;
 	case (+0*9 +0*3 +1):
 	{ // 00+ : Запись из C	(C)=>(A*)
-		printf("   k6..8[00+] : (C)=>(A*)\n");
+		debug_print("   k6..8[00+] : (C)=>(A*)\n");
 		st_fram(k1_5, C);
 		C = next_address(C);
 	}
 	break;
 	case (+0*9 +0*3 -1):
 	{ // 00- : Запись из F	(F)=>(A*)
-		printf("   k6..8[00-] : (F)=>(A*)\n");
+		debug_print("   k6..8[00-] : (F)=>(A*)\n");
 		st_fram(k1_5, F);
 		W = set_trit_setun(W, 1, sgn_trs(F));
 		C = next_address(C);
@@ -3526,7 +3505,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+0*9 -1*3 +0):
 	{ // 0-0 : Посылка в F	(A*)=>(F)
-		printf("   k6..8[0-0] : (A*)=>(F)\n");
+		debug_print("   k6..8[0-0] : (A*)=>(F)\n");
 		MR = ld_fram(k1_5);
 		copy_trs_setun(&MR, &F);
 		W = set_trit_setun(W, 1, sgn_trs(F));
@@ -3535,7 +3514,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+0*9 -1*3 +1):
 	{ // 0-+ : Сложение в F c (C)	(C)+(A*)=>F
-		printf("   k6..8[0-+] : (C)+(A*)=>F\n");
+		debug_print("   k6..8[0-+] : (C)+(A*)=>F\n");
 		MR = ld_fram(k1_5);
 		MR = shift_trs(MR, -3);
 		F = add_trs(C, MR);
@@ -3546,7 +3525,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+0*9 -1*3 -1):
 	{ // 0-- : Сложение в F	(F)+(A*)=>(F)
-		printf("   k6..8[0--] : (F)+(A*)=>(F)\n");
+		debug_print("   k6..8[0--] : (F)+(A*)=>(F)\n");
 		MR = ld_fram(k1_5);
 		MR = shift_trs(MR, -3);
 		F = add_trs(F, MR);
@@ -3557,13 +3536,13 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (-1*9 +1*3 +0):
 	{ // -+0 : Сдвиг	Сдвиг (S) на (A*)=>(S)
-		printf("   k6..8[-+0] : (A*)=>(S)\n");
+		debug_print("   k6..8[-+0] : (A*)=>(S)\n");
 		/*
-				* Операция сдвига производит сдвиг содержимого регистра S на N
-				* разрядов, где N рассматривается как 5-разрядный код, хранящийся в
-				* ячейке А*, т. е. N = (А*). Сдвиг производится влево при N > 0 и вправо
-				* при N < 0. При N = 0 содержимое регистра S не изменяется.
-				*/
+		* Операция сдвига производит сдвиг содержимого регистра S на N
+		* разрядов, где N рассматривается как 5-разрядный код, хранящийся в
+		* ячейке А*, т. е. N = (А*). Сдвиг производится влево при N > 0 и вправо
+		* при N < 0. При N = 0 содержимое регистра S не изменяется.
+		*/
 		MR = ld_fram(k1_5);
 		S = shift_trs(S, trs2digit(MR));		
 		S.t1 &= ~(((uint32_t)0xFFFC)<<(SIZE_WORD_LONG));
@@ -3574,7 +3553,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (-1*9 +1*3 +1):
 	{ // -++ : Запись из S	(S)=>(A*)
-		printf("   k6..8[-++] : (S)=>(A*)\n");
+		debug_print("   k6..8[-++] : (S)=>(A*)\n");
 		st_fram(k1_5, S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
@@ -3582,15 +3561,15 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (-1*9 +1*3 -1):
 	{ // -+- : Нормализация	Норм.(S)=>(A*); (N)=>(S)
-		printf("   k6..8[-+-] : Норм.(S)=>(A*); (N)=>(S)\n");		
+		debug_print("   k6..8[-+-] : Норм.(S)=>(A*); (N)=>(S)\n");		
 		/*
-				* Операция нормализации производит сдвиг (S) при (S) != 0 в таком направлении и на такое число
-				* разрядов |N|, чтобы результат, посылаемый в ячейку A*, был но модулю больше 1/2 , но меньше 3/2,
-				* т.е. чтобы в двух старших разрядах результата была записана комбинация троичных цифр 01 или 0-1.
-				* При этом в регистр S посылается число N (5-разрядный код), знак которого определяется 
-				* направлением сдвига, а именно: N > 0 при сдвиге вправо и N < 0 при сдвиге влево. При (S) = 0 или при
-	    		* 1/2 <|(S)| < 3/2 в ячейку А* посылается (S), а в регистр S посылается N = 0.
-				*/
+		* Операция нормализации производит сдвиг (S) при (S) != 0 в таком направлении и на такое число
+		* разрядов |N|, чтобы результат, посылаемый в ячейку A*, был но модулю больше 1/2 , но меньше 3/2,
+		* т.е. чтобы в двух старших разрядах результата была записана комбинация троичных цифр 01 или 0-1.
+		* При этом в регистр S посылается число N (5-разрядный код), знак которого определяется 
+		* направлением сдвига, а именно: N > 0 при сдвиге вправо и N < 0 при сдвиге влево. При (S) = 0 или при
+	    * 1/2 <|(S)| < 3/2 в ячейку А* посылается (S), а в регистр S посылается N = 0.
+		*/
 		if (S.t0 != 0)
 		{
 			/* Сдвиг S */
@@ -3643,10 +3622,12 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (-1*9 +0*3 +0):
 	{ // -00 : Ввод в Фа* - Вывод из Фа*
-		printf("   k6..8[-00] : Ввод в Фа* - Вывод из Фа*\n");		
-		//TODO добавить реализацию
-		trs_t fa;		
-		//view_short_reg(&k1_5,"k1_5");
+		debug_print("   k6..8[-00] : Ввод в Фа* - Вывод из Фа*\n");		
+		//TODO добавить реализацию чтения из файла виртуального устройства ввода
+		trs_t fa;
+#if (DEBUG == 1)				
+		view_short_reg(&k1_5,"k1_5");
+#endif		
 		uint8_t s = get_trit(k1_5,1);
 		if(s == -1) {
 			fa = smtr("----0");
@@ -3665,31 +3646,36 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		/* Тип устройства ввода/вывода */
 		switch( codeio ) { 
 			case (+0*27 +0*9 +0*3 +1): /* Ввод с ФТ-1 в виде команд */
-				printf("   k2..5[000+] : Ввод с ФТ-1 в виде команд\n");		
+				debug_print("   k2..5[000+] : Ввод с ФТ-1 в виде команд\n");
+				//TODO  добавить реализацию запись из файла виртуального устройства ввода		
 			break;
 			case (+0*27 +0*9 +1*3 +0): /* Ввод с ФТ-2 в виде команд */
-				printf("   k2..5[00+0] : Ввод с ФТ-2 в виде команд\n");		
+				debug_print("   k2..5[00+0] : Ввод с ФТ-2 в виде команд\n");		
+				//TODO  добавить реализацию запись из файла виртуального устройства ввода		
 			break;
 			case (+0*27 +0*9 +0*3 -1): /* Ввод с ФТ-1 в виде символов */
-				printf("   k2..5[000-] : Ввод с ФТ-1 в виде символов\n");		
+				debug_print("   k2..5[000-] : Ввод с ФТ-1 в виде символов\n");		
+				//TODO  добавить реализацию запись из файла виртуального устройства ввода		
 			break;
 			case (+0*27 +0*9 -1*3 +0): /* Ввод с ФТ-2 в виде символов */
-				printf("   k2..5[00-0] : Ввод с ФТ-2 в виде символов\n");		
+				debug_print("   k2..5[00-0] : Ввод с ФТ-2 в виде символов\n");		
+				//TODO  добавить реализацию запись из файла виртуального устройства ввода		
 			break;
 			case (+1*27 +0*9 +0*3 +0): /* Перфоратор ПЛ (Телетайп ТП)перфорация в виде команд */
-				printf("   k2..5[+000] : Перфоратор ПЛ (Телетайп ТП)перфорация в виде команд\n");		
+				debug_print("   k2..5[+000] : Перфоратор ПЛ (Телетайп ТП)перфорация в виде команд\n");		
+				//TODO  добавить реализацию запись из файла виртуального устройства ввода		
 			break;
 			case (-1*27 +0*9 +0*3 +0): /* Перфоратор ПЛ (Телетайп ТП)перфорация в виде символов */
-				printf("   k2..5[-000] : Перфоратор ПЛ (Телетайп ТП)перфорация в виде символов\n");		
+				debug_print("   k2..5[-000] : Перфоратор ПЛ (Телетайп ТП)перфорация в виде символов\n");		
+				//TODO  добавить реализацию запись из файла виртуального устройства ввода		
 			break;
 			case (+0*27 +1*9 +0*3 +0): /* Пишущая машинка ПМ (Телетайп ТП) печать в виде команд */
-				printf("   k2..5[0+00] : Пишущая машинка ПМ (Телетайп ТП) печать в виде команд\n");		
+				debug_print("   k2..5[0+00] : Пишущая машинка ПМ (Телетайп ТП) печать в виде команд\n");		
+				//TODO  добавить реализацию запись из файла виртуального устройства ввода		
 			break;
 			case (+0*27 -1*9 +0*3 +0): /* Пишущая машинка ПМ (Телетайп ТП) печать одним цветом в виде символов */
-				printf("   k2..5[0-00] : Пишущая машинка ПМ (Телетайп ТП) печать одним цветом в виде символов\n");		
-				printf("[");
-				//Вывод на печать 
-				// for -------------------
+				debug_print("   k2..5[0-00] : Пишущая машинка ПМ (Телетайп ТП) печать одним цветом в виде символов\n");		
+				//Вывод на печать 				
 				for(uint8_t i=0;i<SIZE_ZONE_TRIT_FRAM;i++ ) {
 					int32_t symbcode;
 					trs_t symb;
@@ -3704,13 +3690,10 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 					electrified_typewriter(symb, 1);					
 					fa = next_address(fa);		
 				}
-				printf("]\n");
 			break;
 			case (+1*27 -1*9 +0*3 +0): /* Пишущая машинка ПМ (Телетайп ТП) печать в виде символов цветая */
-				printf("   k2..5[0-00] : Пишущая машинка ПМ (Телетайп ТП) печать в виде символов цветая\n");		
-				printf("[");
-				//Вывод на печать 
-				// for -------------------
+				debug_print("   k2..5[0-00] : Пишущая машинка ПМ (Телетайп ТП) печать в виде символов цветая\n");						
+				//Вывод на печать 				
 				for(uint8_t i=0;i<SIZE_ZONE_TRIT_FRAM;i++ ) {
 					int32_t symbcode;
 					trs_t symb;
@@ -3725,66 +3708,53 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 					electrified_typewriter(symb, 1);					
 					fa = next_address(fa);		
 				}
-				printf("]\n");
 			break;
 			default: /* Ошибка: Не поддерживается устройвтво ввода/вывода */
 				return STOP_ERROR;
 			break;
 		}
-
-		//TODO определить устройство ввода и вывода 
-		
-		//Вывод на печать 
-		// for -------------------
-		for(uint8_t i=0;i<SIZE_ZONE_TRIT_FRAM;i++ ) {
-			MR = ld_fram(fa);			
-			//
-			//view_short_reg(&fa," fa=");			0
-			//view_short_reg(&MR," (fa)=");			
-			fa = next_address(fa);		
-		}
-		
+		debug_print("\n");	
 		C = next_address(C);
 	}
 	break;
 	case (-1*9 +0*3 +1):
 	{ // -0+ : Запись на МБ	(Фа*)=>(Мд*)
-		printf("   k6..8[-0+] : (Фа*)=>(Мд*)\n");
+		debug_print("   k6..8[-0+] : (Фа*)=>(Мд*)\n");
 		fram_to_drum(k1_5);
 		C = next_address(C);
 	}
 	break;
 	case (-1*9 +0*3 -1):
 	{ // -0- : Считывание с МБ	(Мд*)=>(Фа*)
-		printf("   k6..8[-0-] : (Мд*)=>(Фа*)\n");
+		debug_print("   k6..8[-0-] : (Мд*)=>(Фа*)\n");
 		drum_to_fram(k1_5);
 		C = next_address(C);
 	}
 	break;
 	case (-1*9 -1*3 +0):
 	{ // --0 : Не задействована	Стоп
-		printf("   k6..8[--0] : STOP BREAK\n");
+		debug_print("   k6..8[--0] : STOP BREAK\n");
 		view_short_reg(&k6_8, "   k6..8=");
 		return STOP_ERROR;
 	}
 	break;
 	case (-1*9 -1*3 +1):
 	{ // --+ : Не задействована	Стоп
-		printf("   k6..8[--+] : STOP BREAK\n");
+		debug_print("   k6..8[--+] : STOP BREAK\n");
 		view_short_reg(&k6_8, "   k6..8=");
 		return STOP_ERROR;
 	}
 	break;
 	case (-1*9 -1*3 -1):
 	{ // --- : Не задействована	Стоп
-		printf("   k6..8[---] : STOP BREAK\n");
+		debug_print("   k6..8[---] : STOP BREAK\n");
 		view_short_reg(&k6_8, "   k6..8=");
 		return STOP_ERROR;
 	}
 	break;
 	default:
 	{ // Не допустимая команда машины
-		printf("   k6..8 =[]   : STOP! NO OPERATION\n");
+		debug_print("   k6..8 =[]   : STOP! NO OPERATION\n");
 		view_short_reg(&k6_8, "   k6..8=");
 		return STOP_ERROR;
 	}
@@ -3796,9 +3766,9 @@ error_over:
 	return STOP_ERROR;
 }
 
-/** *********************************************
- *  Тестирование функций операций с тритами 
- *  ---------------------------------------------
+/* ****************************************
+ * Тестирование функций операций с тритами 
+ * ----------------------------------------
  */
 void pl(int8_t a, int8_t c)
 {
@@ -5326,15 +5296,11 @@ int main(int argc, char *argv[])
 	//---------------------------------------------------
 	printf("\r\n --- START emulator Setun-1958 --- \r\n");
 
-	//trs_t k;
 	trs_t inr;
-	//addr pM;
 
 	uint8_t cmd[20];
 	trs_t dst;
 
-	//trs_t sc;
-	//trs_t ka;
 	trs_t addr;
 	trs_t oper;
 	uint8_t ret_exec;
@@ -5342,7 +5308,9 @@ int main(int argc, char *argv[])
 	/* Сброс виртуальной машины "Сетунь-1958" */
 	printf("\r\n --- Reset Setun-1958 --- \r\n");
 	reset_setun_1958();
+#if (DEBUG == 1)	
 	view_short_regs();
+#endif
 
 	/**
 	 * Загрузить из файла тест-программу
@@ -5355,19 +5323,20 @@ int main(int argc, char *argv[])
 	while (fscanf(file, "%s\r\n", cmd) != EOF)
 	{		
 		cmd_str_2_trs(cmd, &dst);
-		printf("%s -> [", cmd );
+		debug_print("%s -> [", cmd );
 		trs2str(dst);
-		printf("]");
+		debug_print("]");
+#if (DEBUG == 1)	
 		view_short_reg(&inr, " addr");
-		//printf(" [ri=%d][zi=%d] ",addr2row_fram(inr),addr2grfram(inr));
+#endif
 		st_fram(inr, dst);
 		inr = next_address(inr);
 	}
 	printf(" --- EOF 'test-1.txs' --- \r\n\r\n");
-
-	//
-	//dump_drum(); //TODO dbg
-	dump_fram(); //TODO dbg
+	
+#if (DEBUG == 1)
+	dump_fram();
+#endif	
 
 	/**
 	 * Выполнить первый код "Сетунь-1958"
@@ -5411,16 +5380,9 @@ int main(int argc, char *argv[])
 	printf("\n");
 
 	//Prints REGS and FRAM
-	view_short_regs();
-	//dump_fram();
-	
-	//trs_t ad1;
-	//trs_t ad2;
-	//ad1 = smtr("0---0");
-	//ad2 = smtr("0++++");
-	//view_fram(ad1, ad2);	
+	//view_short_regs();
 
-	printf("\r\n--- END emulator Setun-1958 --- \r\n");
+	debug_print("\r\n--- END emulator Setun-1958 --- \r\n");
 
 } /* 'main.c' */
 
