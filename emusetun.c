@@ -23,7 +23,7 @@
 #include "emusetun.h"
 
 //TODO параметр командной строки включить/выключить вывод выполнения команд
-#define DEBUG 0
+#define DEBUG 1
 #define debug_print(...) \
             do { if (DEBUG) fprintf(stdout, __VA_ARGS__); } while (0)
 
@@ -4289,6 +4289,7 @@ void Test3_Setun_Opers(void)
 
 	// work VM Setun-1958
 	K = ld_fram(C);	
+	
 	exK = control_trs(K);	
 	oper = slice_trs_setun(K, 6, 8);
 	ret_exec = execute_trs(exK, oper);
@@ -5319,7 +5320,12 @@ int main(int argc, char *argv[])
 	 */
 	printf("\r\n --- Load 'ur0/01-test.txs' --- \r\n");
 	inr = smtr("----0"); /* cчетчик адреса коротких слов */
-	dst.l = 9;
+        trs_t sum;
+        sum.l=18;
+        sum.t1 = 0;
+        sum.t0 = 0;
+        //
+        dst.l = 9;
 	MR.l = 18;
 	file = fopen("ur0/01-test.txs", "r");
 	while (fscanf(file, "%s\r\n", cmd) != EOF)
@@ -5331,10 +5337,12 @@ int main(int argc, char *argv[])
 #if (DEBUG == 1)	
 		view_short_reg(&inr, " addr");
 #endif
+        sum = add_trs(sum,dst);
 		st_fram(inr, dst);
 		inr = next_address(inr);
 	}
-	printf(" --- EOF '01-test.txs' --- \r\n\r\n");
+    view_short_reg(&sum,"\nsum=");
+	printf(" --- EOF 'ur0/01-test.txs' --- \r\n\r\n");
 	
 #if (DEBUG == 1)
 	dump_fram();
@@ -5356,11 +5364,11 @@ int main(int argc, char *argv[])
 	/** 
 	* work VM Setun-1958
 	*/
-	for (uint16_t jj = 1; jj < 500; jj++)
+	for (uint16_t jj = 1; jj < 50; jj++)
 	{
 		K = ld_fram(C);		
 		K = slice_trs_setun(K, 1, 9); 	
-		//view_short_reg(&K,"K=");	
+		view_short_reg(&K,"\nK=");	
 		addr = control_trs(K);
 		oper = slice_trs_setun(K, 6, 8);
 
