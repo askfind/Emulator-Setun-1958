@@ -4,9 +4,9 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   03.05.2022
+* Edit date:   04.05.2022
 *
-* Version: 1.49
+* Version: 1.50
 */
 /**
  *  Заголовочные файла
@@ -23,7 +23,7 @@
 #include "emusetun.h"
 
 //TODO параметр командной строки включить/выключить вывод выполнения команд
-#define DEBUG 0 
+#define DEBUG 0
 #define debug_print(...) \
             do { if (DEBUG) fprintf(stdout, __VA_ARGS__); } while (0)
 
@@ -3580,6 +3580,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				S.t1 = 0;
 				S.t0 = 0;
 				inc_trs(&S);
+                                S = shift_trs(S, 13);
 			}
 			else if (get_trit_setun(S, 2) == 0)
 			{
@@ -3600,6 +3601,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				{
 					dec_trs(&S);
 				}
+                                S = shift_trs(S, 13);
 			}
 			else
 			{
@@ -5332,7 +5334,7 @@ int main(int argc, char *argv[])
 		st_fram(inr, dst);
 		inr = next_address(inr);
 	}
-	printf(" --- EOF 'test-1.txs' --- \r\n\r\n");
+	printf(" --- EOF '01-test.txs' --- \r\n\r\n");
 	
 #if (DEBUG == 1)
 	dump_fram();
