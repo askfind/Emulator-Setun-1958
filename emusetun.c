@@ -3324,7 +3324,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		* Остальные операции, содержащиеся в табл. 1, ясны без дополни­тельных пояснений.
 		*
 		*/
-#if (DEBUG == 1)	
+#if (DEBUG == 1)
 	view_step_short_reg(&k1_5,"A*");
 #endif
 
@@ -5359,7 +5359,6 @@ int main(int argc, char *argv[])
 
 	/* Begin address fram */
 	C = smtr("0000+");
-	printf("\nreg C = 00001\n");
 
 	/** 
 	* work VM Setun-1958
@@ -5368,7 +5367,10 @@ int main(int argc, char *argv[])
 	{
 		K = ld_fram(C);		
 		K = slice_trs_setun(K, 1, 9); 	
-		view_short_reg(&K,"\nK=");	
+
+                view_step_short_reg(&C,"\nС");
+                view_short_reg(&K,"K=");
+
 		addr = control_trs(K);
 		oper = slice_trs_setun(K, 6, 8);
 
