@@ -3402,8 +3402,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	case (+1*9 + 0*3 +1):
 	{ // +0+ : Сложение в S	(S)+(A*)=>(S)
 		debug_print(" k6..8[+0+]: (S)+(A*)=>(S)\n");
-		MR = ld_fram(k1_5);
-		view_short_reg(&MR,"MR");
+		MR = ld_fram(k1_5);		
 		if(MR.l != 18) {
 			MR.l=18;
 			MR = shift_trs(MR,9);
@@ -3508,6 +3507,10 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // +-+ : Посылка в R	(A*)=>(R)
 		debug_print(" k6..8[+-+]: (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
+		if(MR.l != 18) {
+			MR.l=18;
+			MR = shift_trs(MR,9);
+		}		
 		copy_trs_setun(&MR, &R);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
@@ -3810,6 +3813,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		debug_print(" k6..8[-0+]: (Фа*)=>(Мд*)\n");
 		fram_to_drum(k1_5);
 		MB=slice_trs_setun(K,2,5);
+		MB.l=4;
 		C = next_address(C);
 	}
 	break;
@@ -3818,6 +3822,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		debug_print(" k6..8[-0-]: (Мд*)=>(Фа*)\n");
 		drum_to_fram(k1_5);
 		MB=slice_trs_setun(K,2,5);
+		MB.l=4;
 		C = next_address(C);
 	}
 	break;
@@ -5469,7 +5474,7 @@ int main(int argc, char *argv[])
 	/** 
 	* work VM Setun-1958
 	*/
-	for (uint16_t jj = 1; jj < 200; jj++)
+	for (uint16_t jj = 1; jj < 500; jj++)
 	{
 		K = ld_fram(C);		
 		K = slice_trs_setun(K, 1, 9); 	
