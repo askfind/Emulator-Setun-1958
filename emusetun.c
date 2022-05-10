@@ -2177,7 +2177,7 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 	printf(", "); //
 	printf("(%li)", (long int)trs2digit(*t));
 
-	printf(" => FRAM : "); //	
+	printf(" => FRAM[%i] : ",get_trit(tv,1)); //	
 	MR = ld_fram(tv);
 	trs2str(MR);
 
