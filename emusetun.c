@@ -6,7 +6,7 @@
 * Create date: 01.11.2018
 * Edit date:   10.05.2022
 *
-* Version: 1.52
+* Version: 1.53
 */
 
 //TODO
@@ -3809,6 +3809,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // -0+ : Запись на МБ	(Фа*)=>(Мд*)
 		debug_print(" k6..8[-0+]: (Фа*)=>(Мд*)\n");
 		fram_to_drum(k1_5);
+		MB=slice_trs_setun(K,2,5);
 		C = next_address(C);
 	}
 	break;
@@ -3816,6 +3817,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // -0- : Считывание с МБ	(Мд*)=>(Фа*)
 		debug_print(" k6..8[-0-]: (Мд*)=>(Фа*)\n");
 		drum_to_fram(k1_5);
+		MB=slice_trs_setun(K,2,5);
 		C = next_address(C);
 	}
 	break;
