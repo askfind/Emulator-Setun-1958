@@ -15,6 +15,7 @@
 // Исправить вывод в 9-ном виде.
 //TODO 
 // Вывод работы Сетунь по шагам с распечаткой адреса во fram.
+//TODO test #2 2.16 ERROR ошибка в знаке.
 
 /**
  *  Заголовочные файла
@@ -883,34 +884,35 @@ trs_t add_trs(trs_t x, trs_t y)
 		}		
 		m += 1;
 		p0 = p1;
+		p1 = 0;
 	}
 
 	/* Установить трит переполнения */ 
 	/* ph1 */
 	if( r.t0 & (1<<19) > 0 ) {
 		if( r.t1 & (1<<19) > 0 ) {
-			set_trit(ph1,1,1);
+			set_trit_setun(ph1,1,1);
 		} 
 		else {
-			set_trit(ph1,1,-1);
+			set_trit_setun(ph1,1,-1);
 		}
 	}
 	else {
-		set_trit(ph1,1,0);
+		set_trit_setun(ph1,1,0);
 	}	
 	
 	/* Установить трит переполнения */ 
 	/* ph2 */
 	if( r.t0 & (1<<18) > 0 ) {
 		if( r.t1 & (1<<18) > 0 ) {
-			set_trit(ph2,1,1);
+			set_trit_setun(ph2,1,1);
 		} 
 		else {
-			set_trit(ph2,1,-1);
+			set_trit_setun(ph2,1,-1);
 		}
 	}
 	else {
-		set_trit(ph2,1,0);
+		set_trit_setun(ph2,1,0);
 	}		
 	
 	/* результат */
@@ -970,6 +972,7 @@ trs_t sub_trs(trs_t x, trs_t y)
 		}	
 		m += 1;
 		p0 = p1;
+		p1 = 0;
 	}
 
 	/* Установить трит переполнения */ 
@@ -990,14 +993,14 @@ trs_t sub_trs(trs_t x, trs_t y)
 	/* ph2 */
 	if( r.t0 & (1<<18) > 0 ) {
 		if( r.t1 & (1<<18) > 0 ) {
-			set_trit(ph2,1,1);
+			set_trit_setun(ph2,1,1);
 		} 
 		else {
-			set_trit(ph2,1,-1);
+			set_trit_setun(ph2,1,-1);
 		}
 	}
 	else {
-		set_trit(ph2,1,0);
+		set_trit_setun(ph2,1,0);
 	}		
 	
 	/* результат */
@@ -4161,6 +4164,26 @@ void Test2_Opers_TRITS_32(void)
 	printf("tr1 = add_trs(tr1,tr2)\n");
 	view_short_reg(&tr1, "tr1 =");
 
+//t2.14.1
+	printf("\nt2.14.1 --- add_trs(...)\n");
+	tr1 = smtr("0+0000000+++++++++");
+	view_short_reg(&tr1, "tr1 =");
+	tr2 = smtr("0+0000000");
+	view_short_reg(&tr2, "tr2 =");
+	tr1 = add_trs(tr1, tr2);
+	printf("tr1 = add_trs(tr1,tr2)\n");
+	view_short_reg(&tr1, "tr1 =");
+
+//t2.14.2
+	printf("\nt2.14.2 --- add_trs(...)\n");
+	tr1 = smtr("0+0000000+++++++++");
+	view_short_reg(&tr1, "tr1 =");
+	tr2 = smtr("0+0000000000000000");
+	view_short_reg(&tr2, "tr2 =");
+	tr1 = add_trs(tr1, tr2);
+	printf("tr1 = add_trs(tr1,tr2)\n");
+	view_short_reg(&tr1, "tr1 =");
+	
 	//t2.15
 	printf("\nt2.15 --- sub_trs(...)\n");
 	tr1 = smtr("+0-+00--");
