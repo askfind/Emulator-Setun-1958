@@ -750,7 +750,7 @@ trs_t or_trs(trs_t x, trs_t y)
 	{
 		a = get_trit(x, i);
 		b = get_trit(y, i);
-		and_t(&a, &b, &s);
+		or_t(&a, &b, &s);
 		r = set_trit(x, i, s);
 	}
 
@@ -1482,20 +1482,28 @@ trs_t ld_fram(trs_t ea)
 
 	res.t1 = 0;
 	res.t0 = 0;
+	res.l=9;
 
 	eap5 = get_trit_setun(ea, 5);
 	if (eap5 < 0)
 	{
 		/* Прочитать 18-тритное число */
 		/* прочитать 1...9 старшую часть 18-тритного числа */
+		rrr.l = 9;
 		res = mem_fram[rind][zind];
-		res.l = 18;
-		res = shift_trs(res,9);
+		res.l=18;		
+		copy_trs_setun(&rrr,&res);
+		res.l=18;
 		/* прочитать 10...18 младшую часть 18-тритного числа */
 		rrr = mem_fram[rind][zind+1];
 		rrr.l = 18;
 		//		
-		res = or_trs(res,rrr);		
+		view_short_reg(&rrr,"\nrrr");
+		trs_t sss;
+		sss.l=18;		
+		sss = or_trs(res,rrr);
+		res = sss;		
+		view_short_reg(&sss,"\nres");
 	}
 	else if (eap5 == 0)
 	{
@@ -2141,9 +2149,18 @@ void view_step_short_reg(trs_t *t, uint8_t *ch)
 		printf("%i", trit);
 	}
 	printf("}");
-#endif	
-	//
+#endif
+	printf("\t\t-> fram[%i] : ",get_trit_setun(tv,1)); //	
+	MR = ld_fram(tv);
+	trs2str(MR);
 	printf("\n");
+	//	
+	//tv = next_address(tv);	
+	//MR = ld_fram(tv);
+	//printf("                                \t");
+	//trs2str(MR);
+	//
+	//printf("\n");
 }
 
 /**
@@ -2180,8 +2197,8 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 	printf(", "); //
 	printf("(%li)", (long int)trs2digit(*t));
 
-	printf(" => FRAM[%i] : ",get_trit(tv,1)); //	
-	MR = ld_fram(tv);
+	printf("\t\t-> fram[%i] : ",get_trit_setun(tv,1)); //	
+	MR = ld_fram(*t);
 	trs2str(MR);
 
 #if 0	
@@ -3524,6 +3541,10 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		//TODO test
 		debug_print(" k6..8[+--]: (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
+		if(MR.l != 18) {
+			MR.l=18;
+			MR = shift_trs(MR,9);
+		}		
 		copy_trs_setun(&MR, &R);
 		C = next_address(C);
 	}
@@ -3825,7 +3846,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		debug_print(" k6..8[-0-]: (Мд*)=>(Фа*)\n");
 		drum_to_fram(k1_5);
 		MB=slice_trs_setun(K,2,5);
-		MB.l=4;
+		MB.l=4;		
 		C = next_address(C);
 	}
 	break;
@@ -5455,26 +5476,36 @@ int main(int argc, char *argv[])
 	printf("\r\n --- Load 'ur0/03-input-checksum.txs' --- \r\n");
 	inr = smtr("0---0"); /* cчетчик адреса коротких слов */
     trs_t sum;
+	trs_t tmp;
+	
+	tmp.l=18;
+    tmp.t1 = 0;
+    tmp.t0 = 0;
+
     sum.l=18;
     sum.t1 = 0;
     sum.t0 = 0;
     //
     dst.l = 9;
 	MR.l = 18;
+	int i = 0;
 	file = fopen("ur0/03-input-checksum.txs", "r");
 	while (fscanf(file, "%s\r\n", cmd) != EOF)
 	{		
-		cmd_str_2_trs(cmd, &dst);
+		cmd_str_2_trs(cmd, &dst);		
+		sum = add_trs(sum,dst);
+		i += 1;
+
 		debug_print("%s -> [", cmd );
 		trs2str(dst);
 		debug_print("]");
 #if (DEBUG == 1)	
 		view_short_reg(&inr, " addr");
-#endif
-        sum = add_trs(sum,dst);
+#endif        
 		st_fram(inr, dst);
 		inr = next_address(inr);
 	}
+	printf(" i=%i\n",i);
     view_short_reg(&sum,"\nsum=");
 	printf(" --- EOF '03-input-checksum.txs' --- \r\n\r\n");
 	
