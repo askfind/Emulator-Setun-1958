@@ -5594,13 +5594,18 @@ int main(int argc, char *argv[])
     //view_short_reg(&sum,"\nsum=");
 	
 	trs_t psum;
-	psum = smtr("000000000000000000");
-	
-	psum = sub_trs(psum,sum);
-	//view_short_reg(&psum,"\npsum=");
 
-	sum = slice_trs_setun(psum,1,9);
+	psum = slice_trs_setun(sum,1,9);
 	printf("KC:\n");
+	view_short_reg(&psum,"");
+	psum = slice_trs_setun(sum,10,18);
+	view_short_reg(&psum,"");
+	printf("\n");
+
+	psum = smtr("000000000000000000");
+	psum = sub_trs(psum,sum);	
+	sum = slice_trs_setun(psum,1,9);
+	printf("-KC = 0-KC:\n");
 	view_short_reg(&sum,"");
 	sum = slice_trs_setun(psum,10,18);
 	view_short_reg(&sum,"");
