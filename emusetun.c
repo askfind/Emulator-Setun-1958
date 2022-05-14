@@ -4,9 +4,9 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   10.05.2022
+* Edit date:   14.05.2022
 *
-* Version: 1.53
+* Version: 1.54
 */
 
 //TODO
@@ -916,8 +916,8 @@ trs_t add_trs(trs_t x, trs_t y)
 	}		
 	
 	/* результат */
-	r.t1 &= ~(0xFFFC << (SIZE_WORD_LONG)); /* t[1.18] */
-	r.t0 &= ~(0xFFFC << (SIZE_WORD_LONG)); /* t[1.18] */	
+	r.t1 &= ~(0xFFFC0000); /* t[1.18] */
+	r.t0 &= ~(0xFFFC0000); /* t[1.18] */	
 	r.l = j;
 		
 	return r;
@@ -1004,8 +1004,8 @@ trs_t sub_trs(trs_t x, trs_t y)
 	}		
 	
 	/* результат */
-	r.t1 = r.t1 & ~(0xFFFC << (SIZE_WORD_LONG)); /* t[1.18] */
-	r.t0 = r.t0 & ~(0xFFFC << (SIZE_WORD_LONG)); /* t[1.18] */
+	r.t1 = r.t1 & ~(0xFFFC0000); /* t[1.18] */
+	r.t0 = r.t0 & ~(0xFFFC0000); /* t[1.18] */
 	r.l = j;
 
 	return r;
@@ -1491,7 +1491,7 @@ trs_t ld_fram(trs_t ea)
 		/* прочитать 1...9 старшую часть 18-тритного числа */
 		rrr.l = 9;
 		res = mem_fram[rind][zind];
-		res.l=18;		
+		res.l=18;
 		copy_trs_setun(&rrr,&res);
 		res.l=18;
 		/* прочитать 10...18 младшую часть 18-тритного числа */
@@ -2234,8 +2234,8 @@ void view_short_long_reg(long_trs_t *t, uint8_t *ch)
 
 	l = min(tv.l, SIZE_LONG_TRITS_MAX);
 	printf("[");
-	//printf("\nt1 %p\n",t->t1);
-	//printf("t2 %p\n",t->t0);
+	//printf("\nt1 %p\n",(* long unsigned int)t->t1);
+	//printf("t2 %p\n",(* long unsigned int)t->t0);
 	for (i = 0; i < l; i++)	{		
 		tv = *t;
 		trit = get_long_trit(tv, l - 1 - i);
@@ -4252,8 +4252,8 @@ void Test2_Opers_TRITS_32(void)
 	ltr1.t1 = tr1.t1;
 	ltr1.t0 = tr1.t0;
 
-	printf("ltr1.t1=%p\n",ltr1.t1);
-	printf("ltr1.t0=%p\n",ltr1.t0);
+	//printf("ltr1.t1=%p\n",(long int)ltr1.t1);
+	//printf("ltr1.t0=%p\n",(long int)ltr1.t0);
 
 	view_short_long_reg(&ltr1, "ltr1 =");
 	ltr1 = shift_long_trs(ltr1, -2);
