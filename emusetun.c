@@ -6,7 +6,7 @@
 * Create date: 01.11.2018
 * Edit date:   14.05.2022
 *
-* Version: 1.54
+* Version: 1.55
 */
 
 //TODO 
@@ -1289,6 +1289,19 @@ void copy_trs_setun(trs_t *src, trs_t *dst)
 }
 
 /* Проверить на переполнение 18-тритного числа */
+int8_t over_check(void)
+{
+	if (get_trit_setun(ph1, 1) != 0)
+	{
+		return 1; /* OVER Error  */
+	}
+	else
+	{
+		return 0;
+	}
+}	
+
+/* Проверить на переполнение 18-тритного числа */
 int8_t over_word_long(trs_t x)
 {	
 	ph1 = set_trit_setun(ph1, 1, get_trit_setun(x, 1));
@@ -2148,7 +2161,7 @@ void view_step_short_reg(trs_t *t, uint8_t *ch)
 	}
 	printf("}");
 #endif
-	printf("\t\t-> fram[%i] : ",get_trit_setun(tv,1)); //	
+	printf("\t\t-> zone[%i] : ",get_trit_setun(tv,1)); //	
 	MR = ld_fram(tv);
 	trs2str(MR);
 	printf("\n");
@@ -2195,7 +2208,7 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 	printf(", "); //
 	printf("(%li)", (long int)trs2digit(*t));
 
-	printf("\t\t-> fram[%i] : ",get_trit_setun(tv,1)); //	
+	printf("\t\t-> zone[%i] : ",get_trit_setun(tv,1)); //	
 	MR = ld_fram(*t);
 	trs2str(MR);
 
@@ -3430,7 +3443,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		}		
 		S = add_trs(S, MR);
 		W = set_trit_setun(W, 1, sgn_trs(S));
-		if (over_word_long(S) > 0)
+		if (over_check() > 0)
 		{
 			goto error_over;
 		}
@@ -3447,7 +3460,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		}
 		S = sub_trs(S, MR);
 		W = set_trit_setun(W, 1, sgn_trs(S));
-		if (over_word_long(S) > 0)
+		if (over_check() > 0)
 		{
 			goto error_over;
 		}
@@ -3468,7 +3481,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		temp = slice_trs(temp, 0, 17);		
 		copy_trs_setun(&temp,&S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
-		if (over_word_long(S) > 0)
+		if (over_check() > 0)
 		{
 			goto error_over;
 		}
@@ -3486,7 +3499,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		trs_t temp = slice_trs(mul_trs(MR, R), 0, 17);		
 		S = add_trs(temp, S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
-		if (over_word_long(S) > 0)
+		if (over_check() > 0)
 		{
 			goto error_over;
 		}
@@ -3504,7 +3517,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		trs_t temp = mul_trs(S, R);
 		S = add_trs(slice_trs(temp, 0, 17), MR);
 		W = set_trit_setun(W, 1, sgn_trs(S));
-		if (over_word_long(S) > 0)
+		if (over_check() > 0)
 		{
 			goto error_over;
 		}
@@ -5549,6 +5562,7 @@ int main(int argc, char *argv[])
     tmp.t1 = 0;
     tmp.t0 = 0;
 
+	int64_t dsun = 0;
     sum.l=18;
     sum.t1 = 0;
     sum.t0 = 0;
@@ -5563,6 +5577,8 @@ int main(int argc, char *argv[])
 		sum = add_trs(sum,dst);
 		i += 1;
 
+		dsun += trs2digit(dst);
+
 		debug_print("%s -> [", cmd );
 		trs2str(dst);
 		debug_print("]");
@@ -5573,7 +5589,23 @@ int main(int argc, char *argv[])
 		inr = next_address(inr);
 	}
 	printf(" i=%i\n",i);
-    view_short_reg(&sum,"\nsum=");
+	
+	//printf(" dsun=%lu\n",dsun);
+    //view_short_reg(&sum,"\nsum=");
+	
+	trs_t psum;
+	psum = smtr("000000000000000000");
+	
+	psum = sub_trs(psum,sum);
+	//view_short_reg(&psum,"\npsum=");
+
+	sum = slice_trs_setun(psum,1,9);
+	printf("KC:\n");
+	view_short_reg(&sum,"");
+	sum = slice_trs_setun(psum,10,18);
+	view_short_reg(&sum,"");
+	printf("\n");
+	
 	printf(" --- EOF '03-input-checksum.txs' --- \r\n\r\n");
 	
 #if (DEBUG == 1)
@@ -5617,7 +5649,7 @@ int main(int argc, char *argv[])
 			break;
 		}
 		else if	(ret_exec == STOP_ERROR) {
-			printf("\r\n[STOP_ERROR]\r\n");
+			printf("\r\nERR#:%i[STOP_ERROR]\r\n",ret_exec);
 			break;
 		}
 	}
