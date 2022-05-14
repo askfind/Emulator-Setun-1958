@@ -4275,6 +4275,7 @@ void ps(int8_t t, uint8_t p)
 {
 	printf("S[% 3i]=% 2i\n", p, t);
 }
+
 void Test3_Setun_Opers(void)
 {
 	int8_t trit;
@@ -4922,9 +4923,71 @@ void Test3_Setun_Opers(void)
 	printf("\nt3.25:  Oper=k6..8[-00]: \n"); 
 
 	printf("\n --- END TEST #3 --- \n\n");
-
-	//	TODO instaruction Setum-1958
+	
 }
+
+void Test4_Setun_Opers(void)
+{
+	int8_t trit;
+	trs_t aa;
+	trs_t ad1;
+	trs_t ad2;
+	trs_t addr;
+	trs_t oper;
+	trs_t exK;
+	trs_t m0;
+	trs_t m1;
+	int8_t ret_exec;
+
+	printf("\n --- TEST #4  Operations for VM SETUN-1958 --- \n\n");
+
+	//t4.1 test Oper=k6..8[+00]: (A*)=>(S)
+	printf("\nt4.1:  Oper=k6..8[+00]: (A*)=>(S)\n");
+	//
+	reset_setun_1958();
+	
+	printf("\n");
+	// FRAM(-1) test	
+	addr = smtr("-0000");
+	m0 = smtr("00000000+");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	addr = smtr("-000+");
+	m0 = smtr("-0000000+");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+	addr = smtr("-00+-");
+	m0 = smtr("0000000+0");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	
+
+	/* Begin address fram */
+	addr = smtr("0000+");
+	m1 = smtr("-000-+000");	
+	st_fram(addr, m1);
+	view_short_reg(&m1,"m1");
+	view_elem_fram(addr);
+	
+	printf("\n");
+	
+	// work VM Setun-1958
+	C = smtr("0000+");
+	K = ld_fram(C);	
+	view_short_reg(&K,"C(0000+)");
+
+	exK = control_trs(K);	
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if( ret_exec == 0) printf("\n [status: OK']\n");
+	if( ret_exec != 0) printf("\n [status: ERR#%d]\n",ret_exec);			
+
+	printf("\n --- END TEST #4 --- \n");
+}
+
 
 void TestN(void)
 {
@@ -5443,6 +5506,9 @@ int main(int argc, char *argv[])
 			Test3_Setun_Opers();
 			break;
 		default:
+		case 4:
+			Test4_Setun_Opers();
+			break;
 			break;
 		}
 
