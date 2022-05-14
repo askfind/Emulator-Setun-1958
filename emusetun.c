@@ -495,7 +495,15 @@ void xor_t(int8_t *a, int8_t *b, int8_t *s)
 	}
 }
 
-/* Троичное xor тритов */
+/* Троичное or тритов */
+/* OR (A, B)
+*   A ∨ B
+*       B
+*	  - 0 +
+*   - - 0 +
+* A	0 0	0 +
+*   + + + +
+*/
 void or_t(int8_t *a, int8_t *b, int8_t *s)
 {
 	if (*a == -1 && *b == -1)
@@ -520,7 +528,7 @@ void or_t(int8_t *a, int8_t *b, int8_t *s)
 	}
 	else if (*a == 0 && *b == -1)
 	{
-		*s = 0;
+		*s = -1;
 	}
 	else if (*a == 1 && *b == 0)
 	{
@@ -697,8 +705,7 @@ trs_t set_trit(trs_t t, uint8_t pos, int8_t trit)
 	{
 		r.t1 &= ~(1 << pos);
 		r.t0 &= ~(1 << pos);
-	}
-	r.l = t.l;
+	}	
 	return r;
 }
 
@@ -727,9 +734,7 @@ int8_t sgn_trs(trs_t x)
 /* Операция OR trs */
 trs_t or_trs(trs_t x, trs_t y)
 {
-
 	trs_t r;
-
 	int8_t i, j;
 	int8_t a, b, s;
 
@@ -751,9 +756,9 @@ trs_t or_trs(trs_t x, trs_t y)
 		a = get_trit(x, i);
 		b = get_trit(y, i);
 		or_t(&a, &b, &s);
-		r = set_trit(x, i, s);
+		r = set_trit(x, i, s);				
 	}
-
+	
 	return r;
 }
 
@@ -1488,22 +1493,18 @@ trs_t ld_fram(trs_t ea)
 	if (eap5 < 0)
 	{
 		/* Прочитать 18-тритное число */
-		/* прочитать 1...9 старшую часть 18-тритного числа */
-		rrr.l = 9;
-		res = mem_fram[rind][zind];
+		/* прочитать 1...9 старшую часть 18-тритного числа */		
+		rrr = mem_fram[rind][zind];
+		rrr.l=18;
+		rrr = shift_trs(rrr,9);
 		res.l=18;
 		copy_trs_setun(&rrr,&res);
-		res.l=18;
+
 		/* прочитать 10...18 младшую часть 18-тритного числа */
 		rrr = mem_fram[rind][zind+1];
-		rrr.l = 18;
-		//		
-		view_short_reg(&rrr,"\nrrr");
-		trs_t sss;
-		sss.l=18;		
-		sss = or_trs(res,rrr);
-		res = sss;		
-		view_short_reg(&sss,"\nres");
+		rrr.l = 18;		
+		res.l = 18;
+		res = add_trs(res,rrr);				
 	}
 	else if (eap5 == 0)
 	{
@@ -3253,34 +3254,37 @@ void reset_setun_1958(void)
  */
 trs_t control_trs(trs_t a)
 {
-	//TODO
-
+	//TODO debug
 	int8_t k9;
 	trs_t k1_5;
 	trs_t cn;
 
 	clear(&cn);
 
+	/* Адресная часть K(9) */
 	k1_5 = slice_trs_setun(a, 1, 5);
+
 	/* Признак модификации адремной части K(9) */
-	k9 = trit2int(a);
+	k9 = get_trit_setun(a,9);
 
 	/* Модицикация адресной части K(1:5) */
 	if (k9 > 0)
 	{ /* A(1:5) = A(1:5) + F(1:5) */
+		//TODO debug
 		cn = add_trs(k1_5, F);
-		cn.t1 <<= 4;
-		cn.t0 <<= 4;
-		cn.t1 &= (0xFFF << 4); /* Очистить неиспользованные триты */
-		cn.t0 &= (0xFFF << 4);
+		cn = shift_trs(cn,4);
+		cn = add_trs(k1_5,slice_trs_setun(a, 6, 9));
+		cn.t1 &= ~(0xFFFC0000); /* Очистить неиспользованные триты */
+		cn.t0 &= ~(0xFFFC0000);
 	}
 	else if (k9 < 0)
 	{ /* A(1:5) = A(1:5) - F(1:5) */
+		//TODO debug
 		cn = sub_trs(k1_5, F);
-		cn.t1 <<= 4;
-		cn.t0 <<= 4;
-		cn.t1 &= (0xFFF << 4); /* Очистить неиспользованные триты */
-		cn.t0 &= (0xFFF << 4);
+		cn = shift_trs(cn,4);
+		cn = add_trs(k1_5,slice_trs_setun(a, 6, 9));
+		cn.t1 &= ~(0xFFFC0000); /* Очистить неиспользованные триты */
+		cn.t0 &= ~(0xFFFC0000);
 	}
 	else
 	{ /* r = K(1:9) */
@@ -3409,11 +3413,11 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	case (+1*9 +0*3 +0):
 	{ // +00 : Посылка в S	(A*)=>(S)
 		debug_print(" k6..8[+00]: (A*)=>(S)\n");
-		MR = ld_fram(k1_5);
+		MR = ld_fram(k1_5);		
 		if(MR.l != 18) {
 			MR.l=18;
 			MR = shift_trs(MR,9);
-		}
+		}		
 		copy_trs_setun(&MR, &S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
