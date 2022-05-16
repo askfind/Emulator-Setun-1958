@@ -6,7 +6,7 @@
 * Create date: 01.11.2018
 * Edit date:   16.05.2022
 *
-* Version: 1.56
+* Version: 1.57
 */
 
 //TODO 
@@ -16,7 +16,6 @@
 // - [ ] test #2 2.16 ERROR ошибка в знаке.
 // - [ ] digit2trs edit
 // - [ ] параметр командной строки включить/выключить вывод выполнения команд
-// - [ ] исправить trs_t mul_trs(trs_t a, trs_t b)
 // - [ ] trs_t div_trs(trs_t a, trs_t b)
 // - [ ] проверить ошибку void copy_trs_setun(trs_t *src, trs_t *dst)
 // - [ ] проверить int8_t trit2grfram(trs_t t)
@@ -101,6 +100,7 @@
  */
 #define SIZE_WORD_SHORT (9) /* короткое слово 9-трит  */
 #define SIZE_WORD_LONG (18) /* длинное слово  18-трит */
+#define SIZE_WORD_LONG_LONG (36) /* двойное длинное слово  36-трит */
 
 /**
  * Описание ферритовой памяти FRAM
@@ -263,6 +263,9 @@ trs_t sub_trs(trs_t a, trs_t b);
 trs_t mul_trs(trs_t a, trs_t b);
 trs_t div_trs(trs_t a, trs_t b);
 trs_t shift_trs(trs_t t, int8_t s);
+
+/* Long trits */
+long_trs_t add_long_trs(long_trs_t a, long_trs_t b);
 
 /* Преобразование тритов в другие типы данных */
 int32_t trs2digit(trs_t t);
@@ -644,13 +647,13 @@ long_trs_t shift_long_trs(long_trs_t t, int8_t d)
 {	
 	if (d > 0) /* сдвиг  */
 	{
-		t.t1 <<= d;
-		t.t0 <<= d;
+		t.t1 = t.t1 << d;
+		t.t0 = t.t0 << d;
 	}
 	else if (d < 0)
 	{
-		t.t1 >>= -d;
-		t.t0 >>= -d;
+		t.t1 = t.t1 >> (-d);
+		t.t0 = t.t0 >> (-d);
 	}
 	return t;
 }
@@ -944,6 +947,79 @@ trs_t add_trs(trs_t x, trs_t y)
 	return r;
 }
 
+/* Троичное сложение тритов для длинных слов */
+long_trs_t add_long_trs(long_trs_t xx, long_trs_t yy)
+{
+	int8_t i, j;
+	int8_t a, b, s, p0, p1;
+	long_trs_t rr;
+		
+	uint8_t m = 0;
+
+	xx.l = min(xx.l, SIZE_LONG_TRITS_MAX);
+	yy.l = min(yy.l, SIZE_LONG_TRITS_MAX);
+	if (xx.l >= yy.l)
+	{
+		j = xx.l;
+	}
+	else
+	{
+		j = yy.l;
+	}
+
+	rr.l = j;
+	rr.t1 = 0;
+	rr.t0 = 0;
+
+	p0 = 0;
+	p1 = 0;
+
+	for (i = 0; i < j; i++)
+	{
+		a = get_long_trit(xx, i);
+		b = get_long_trit(yy, i);		
+		sum_t(&a, &b, &p0, &s, &p1);		
+		//
+		if( s > 0) {
+			rr.t1 = rr.t1 | (uint64_t)(1)<<m; 
+			rr.t0 = rr.t0 | (uint64_t)(1)<<m; 
+		}
+		else if( s < 0) {
+			rr.t1 = rr.t1 & ~((uint64_t)(1)<<m); 
+			rr.t0 = rr.t0 | (uint64_t)(1)<<m; 
+		}
+		else {
+			rr.t1 = rr.t1 & ~((uint64_t)(1)<<m); 
+			rr.t0 = rr.t0 & ~((uint64_t)(1)<<m); 
+		}		
+		m += 1;
+		p0 = p1;
+		p1 = 0;
+	}
+
+	if(p1 != 0) {
+		if( s > 0) {
+			rr.t1 |= 1<<(j+1); 
+			rr.t0 |= 1<<(j+1); 
+		}
+		else if( s < 0) {
+			rr.t1 &= ~(1<<(j+1)); 
+			rr.t0 |= 1<<(j+1); 
+		}
+		else {
+			rr.t1 &= ~(1<<(j+1)); 
+			rr.t0 &= ~(1<<(j+1)); 
+		}		
+	}
+
+	/* Результат */
+	rr.t1 &= ~((~(uint64_t)(0))<<(j+1));
+	rr.t0 &= ~((~(uint64_t)(0))<<(j+1));
+	rr.l = j+1;
+		
+	return rr;
+}
+
 /* Троичное вычитание тритов */
 trs_t sub_trs(trs_t x, trs_t y)
 {
@@ -1032,6 +1108,80 @@ trs_t sub_trs(trs_t x, trs_t y)
 	return r;
 }
 
+/* Троичное сложение тритов для длинных слов */
+long_trs_t sub_long_trs(long_trs_t xx, long_trs_t yy)
+{
+	int8_t i, j;
+	int8_t a, b, s, p0, p1;
+	long_trs_t rr;
+		
+	uint8_t m = 0;
+
+	xx.l = min(xx.l, SIZE_LONG_TRITS_MAX);
+	yy.l = min(yy.l, SIZE_LONG_TRITS_MAX);
+	if (xx.l >= yy.l)
+	{
+		j = xx.l;
+	}
+	else
+	{
+		j = yy.l;
+	}
+
+	rr.l = j;
+	rr.t1 = 0;
+	rr.t0 = 0;
+
+	p0 = 0;
+	p1 = 0;
+
+	for (i = 0; i < j; i++)
+	{
+		a = get_long_trit(xx, i);
+		b = -get_long_trit(yy, i);		
+		sum_t(&a, &b, &p0, &s, &p1);		
+		//
+		if( s > 0) {
+			rr.t1 = rr.t1 | (uint64_t)(1)<<m; 
+			rr.t0 = rr.t0 | (uint64_t)(1)<<m; 
+		}
+		else if( s < 0) {
+			rr.t1 = rr.t1 & ~((uint64_t)(1)<<m); 
+			rr.t0 = rr.t0 | (uint64_t)(1)<<m; 
+		}
+		else {
+			rr.t1 = rr.t1 & ~((uint64_t)(1)<<m); 
+			rr.t0 = rr.t0 & ~((uint64_t)(1)<<m); 
+		}		
+		m += 1;
+		p0 = p1;
+		p1 = 0;
+	}
+
+	if(p1 != 0) {
+		if( s > 0) {
+			rr.t1 |= 1<<(j+1); 
+			rr.t0 |= 1<<(j+1); 
+		}
+		else if( s < 0) {
+			rr.t1 &= ~(1<<(j+1)); 
+			rr.t0 |= 1<<(j+1); 
+		}
+		else {
+			rr.t1 &= ~(1<<(j+1)); 
+			rr.t0 &= ~(1<<(j+1)); 
+		}		
+	}
+
+	/* Результат */
+	rr.t1 &= ~((~(uint64_t)(0))<<(j+1));
+	rr.t0 &= ~((~(uint64_t)(0))<<(j+1));
+	rr.l = j+1;
+		
+	return rr;
+}
+
+
 /**
  * Операция сдвига тритов
  * Параметр:
@@ -1057,83 +1207,59 @@ trs_t shift_trs(trs_t t, int8_t d)
 
 /* Троичное умножение тритов */
 trs_t mul_trs(trs_t a, trs_t b)
-{
-
-	//TODO edit error
-#if 1
+{	
 	int8_t i;
-	int8_t l;
-	trs_t temp;
-	trs_t r;
-
-	/* Результат для Сетунь-1958 R,S */
-	uint64_t xl = 0;
-	uint64_t x1 = 0;
-	uint64_t x0 = 0;
-
-	uint64_t yl = 0;
-	uint64_t y1 = 0;
-	uint64_t y0 = 0;
-	
-	/* Уменьшить количество операций */
-	a.l = min(a.l, SIZE_WORD_LONG);
-	b.l = min(b.l, SIZE_WORD_LONG);
-	r.l = a.l + b.l;
-	
-	/* Копировать троичные числа */
-	x1 = (uint64_t)a.t1;
-	x0 = (uint64_t)a.t0;
-	y1 = 0;
-	y0 = 0;
-
-	for (i = 0; i < l; i++)
-	{	
-		x1 <<= i;
-		x0 <<= i;
-		
-		if (get_trit(b, i) > 0)
-		{			
-			//sum_t(&a, &b, &p0, &s, &p1);
-		}
-		else if (get_trit(b, i) < 0)
-		{
-			//sum_t(&a, &b, &p0, &s, &p1);			
-		}
-	}
-	clear(&r);
-	r.l = 18;
-
-#else //viv- old version
-	int8_t i;
-	int8_t l;
-	trs_t temp;
-	long_trs_t r;
-	
-	/* Уменьшить количество операций */
-	a.l = min(a.l, SIZE_WORD_LONG);
-	b.l = min(b.l, SIZE_WORD_LONG);
-	r.l = a.l + b.l;	
 	//
-	temp.l = r.l;
+	int8_t s;
+	int8_t l;
+	trs_t r;
 	
-	/* */
+	long_trs_t aa;
+	long_trs_t bb;
+	long_trs_t rr;
+	
+	/* a => aa */
+	aa.t1 = (uint64_t)a.t1;
+	aa.t0 = (uint64_t)a.t0;
+	aa.l = a.l;
+	
+	/* b => bb */
+	bb.t1 = (uint64_t)b.t1;
+	bb.t0 = (uint64_t)b.t0;
+	bb.l = b.l;
 
-	for (i = 0; i < b.l; i++)
+	/* rr => 0 */
+	rr.t1 = 0;
+	rr.t0 = 0;	
+
+	/* Уменьшить количество операций */
+	aa.l = min(aa.l, SIZE_WORD_LONG_LONG);
+	bb.l = min(bb.l, SIZE_WORD_LONG_LONG);
+	rr.l = SIZE_WORD_LONG_LONG;
+
+	/* Умножение троичных числа */	
+	for (i = 0; i < bb.l; i++)
 	{			
-		temp = shift_trs(a,i);	 
-		if (get_trit(b, i) > 0)
-		{			
-			r = add_trs(r, temp);
+		s = get_long_trit(bb, i);		
+		if( s > 0 ) {
+			rr = add_long_trs(rr,shift_long_trs(aa,i));
 		}
-		else if (get_trit(b, i) < 0)
-		{
-			r = sub_trs(r, temp);
+		else if( s < 0) {
+			rr = sub_long_trs( rr,shift_long_trs(aa,i));		
+		}
+		else { /* s == 0 */			
+			/* no calculate */
 		}
 	}
-	temp.l  = 18;
-	temp.t0 = (uint32_t)(r.t0 >> 18) & ~(0xFFFC0000);
-	temp.t1 = (uint32_t)(r.t1 >> 18) & ~(0xFFFC0000);
-#endif
+
+	rr = shift_long_trs(rr,-18);
+	rr.t1 &= ~((~(uint64_t)(0))<<SIZE_WORD_LONG);
+	rr.t0 &= ~((~(uint64_t)(0))<<SIZE_WORD_LONG);
+
+	/* b => bb */
+	r.t1 = (uint32_t)rr.t1;
+	r.t0 = (uint32_t)rr.t0;
+	r.l = SIZE_WORD_LONG;
 	return r;
 }
 
@@ -4257,10 +4383,13 @@ void Test2_Opers_TRITS_32(void)
 
 	//t2.16
 	printf("\nt2.16 --- mul_trs(...)\n");
-	tr1 = smtr("0000000++");
+	tr1 = smtr("+0000000000000000+");
+	tr1.l=18;
 	view_short_reg(&tr1, "tr1 =");
-	tr2 = smtr("000000000000000+++");
+	tr2 = smtr("0-0000000000000000");
+	tr2.l=18;
 	view_short_reg(&tr2, "tr2 =");
+	
 	tr2 = mul_trs(tr1, tr2);
 	view_short_reg(&tr2, "tr2 =");
 
