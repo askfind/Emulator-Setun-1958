@@ -4,15 +4,34 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   14.05.2022
+* Edit date:   16.05.2022
 *
-* Version: 1.55
+* Version: 1.56
 */
 
 //TODO 
-// Исправить вывод в 9-ном виде.
-// Вывод работы Сетунь по шагам с распечаткой адреса во fram.
-// test #2 2.16 ERROR ошибка в знаке.
+// - [ ] Ревизия проекта: проверка TODO и лишние функции 
+// - [ ] Исправить вывод в 9-ном виде.
+// - [ ] Вывод работы Сетунь по шагам с распечаткой адреса во fram.
+// - [ ] test #2 2.16 ERROR ошибка в знаке.
+// - [ ] digit2trs edit
+// - [ ] параметр командной строки включить/выключить вывод выполнения команд
+// - [ ] исправить trs_t mul_trs(trs_t a, trs_t b)
+// - [ ] trs_t div_trs(trs_t a, trs_t b)
+// - [ ] проверить ошибку void copy_trs_setun(trs_t *src, trs_t *dst)
+// - [ ] проверить int8_t trit2grfram(trs_t t)
+// - [ ] проверить int16_t addr_trit2addr_index(trs_t t)
+// - [ ] проверить uint8_t zone_drum_to_index(trs_t z)
+// - [ ] проверить void clean_drum(void)
+// - [ ] проверить void drum_to_fram(trs_t ea)
+// - [ ] реализовать trs_t digit2trs(int8_t n)
+// - [ ] реализовать void trit2linetape(trs_t v, uint8_t *lp)
+// - [ ] реализовать uint8_t linetape2trit(uint8_t *lp, trs_t *v)
+// - [ ] реализовать void view_drum(trs_t zone)
+// - [ ] реализовать trs_t mul_trs(trs_t a, trs_t b)
+// - [ ] реализовать trs_t div_trs(trs_t a, trs_t b)
+// - [ ] проверить void copy_trs_setun(trs_t *src, trs_t *dst)
+
 
 /**
  *  Заголовочные файла
@@ -28,21 +47,22 @@
 
 #include "emusetun.h"
 
-//TODO параметр командной строки включить/выключить вывод выполнения команд
 #define DEBUG 1
 #define debug_print(...) \
             do { if (DEBUG) fprintf(stdout, __VA_ARGS__); } while (0)
 
 /*********************************
- *  Виртуальная машина Сетунь-1958
- * -------------------------------
- */
+*  Виртуальная машина Сетунь-1958
+*---------------------------------
+*/
 
 // TEST_NUMBER:
 // 1 : Test Arithmetic Ternary
 // 2 : Test Arithmetic TRITS-32
 // 3 : Test Arithmetic Registers VM Setun-1958
-#define TEST_NUMBER (1)
+// 4 : Test operattion VM Setun-1958
+
+#define TEST_NUMBER (4)
 
 /* Макросы максимальное значения тритов */
 #define TRIT1_MAX (+1)
@@ -141,11 +161,10 @@ typedef struct mem_elm
 enum
 {
 	OK = 0,		   /* Успешное выполнение операции */
-	WORK = 1,	   /* Выполнение операций виртуальной машины */
-	END = 2,	   /* TODO для чего ? */
-	STOP_DONE = 3, /* Успешный останов машины */
-	STOP_OVER = 4, /* Останов по переполнению результата операции машины */
-	STOP_ERROR = 5 /* Аварийный останов машины */
+	WORK = 1,	   /* Выполнение операций виртуальной машины */	
+	STOP_DONE = 2, /* Успешный останов машины */
+	STOP_OVER = 3, /* Останов по переполнению результата операции машины */
+	STOP_ERROR = 4 /* Аварийный останов машины */
 };
 
 /**
@@ -1039,7 +1058,8 @@ trs_t shift_trs(trs_t t, int8_t d)
 /* Троичное умножение тритов */
 trs_t mul_trs(trs_t a, trs_t b)
 {
-	//TODO edit
+
+	//TODO edit error
 #if 1
 	int8_t i;
 	int8_t l;
@@ -1077,29 +1097,28 @@ trs_t mul_trs(trs_t a, trs_t b)
 		}
 		else if (get_trit(b, i) < 0)
 		{
-			//r = sub_trs(r, temp);
+			//sum_t(&a, &b, &p0, &s, &p1);			
 		}
-		else
-		{
-			r = r;
-		}		
 	}
-	r.l = a.l + b.l - 1;
+	clear(&r);
+	r.l = 18;
 
 #else //viv- old version
 	int8_t i;
 	int8_t l;
 	trs_t temp;
-	trs_t r;
+	long_trs_t r;
 	
 	/* Уменьшить количество операций */
 	a.l = min(a.l, SIZE_WORD_LONG);
 	b.l = min(b.l, SIZE_WORD_LONG);
-	r.l = a.l + b.l;
-
+	r.l = a.l + b.l;	
+	//
+	temp.l = r.l;
+	
 	/* */
 
-	for (i = 0; i < l; i++)
+	for (i = 0; i < b.l; i++)
 	{			
 		temp = shift_trs(a,i);	 
 		if (get_trit(b, i) > 0)
@@ -1110,14 +1129,11 @@ trs_t mul_trs(trs_t a, trs_t b)
 		{
 			r = sub_trs(r, temp);
 		}
-		else
-		{
-			r = r;
-		}		
 	}
-	r.l = a.l + b.l - 1;
+	temp.l  = 18;
+	temp.t0 = (uint32_t)(r.t0 >> 18) & ~(0xFFFC0000);
+	temp.t1 = (uint32_t)(r.t1 >> 18) & ~(0xFFFC0000);
 #endif
-
 	return r;
 }
 
@@ -3084,8 +3100,7 @@ void view_elem_fram(trs_t ea)
 }
 
 void view_fram(trs_t addr1, trs_t addr2)
-{
-	//TODO ~
+{	
 	trs_t ad1 = addr1;
 	trs_t ad2 = addr2;
 	int16_t a1 = trs2digit(ad1);
