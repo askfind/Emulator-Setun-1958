@@ -4,18 +4,15 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   16.05.2022
+* Edit date:   21.05.2022
 *
-* Version: 1.57
+* Version: 1.59
 */
 
 //TODO 
-// - [ ] Ревизия проекта: проверка TODO и лишние функции 
-// - [ ] Исправить вывод в 9-ном виде.
-// - [ ] Вывод работы Сетунь по шагам с распечаткой адреса во fram.
-// - [ ] test #2 2.16 ERROR ошибка в знаке.
+// - [ ] ревизия проекта: проверка TODO и лишние функции 
+// - [ ] исправить вывод в 9-ном виде.
 // - [ ] digit2trs edit
-// - [ ] параметр командной строки включить/выключить вывод выполнения команд
 // - [ ] trs_t div_trs(trs_t a, trs_t b)
 // - [ ] проверить ошибку void copy_trs_setun(trs_t *src, trs_t *dst)
 // - [ ] проверить int8_t trit2grfram(trs_t t)
@@ -46,7 +43,7 @@
 
 #include "emusetun.h"
 
-#define DEBUG 1
+
 #define debug_print(...) \
             do { if (DEBUG) fprintf(stdout, __VA_ARGS__); } while (0)
 
@@ -54,7 +51,6 @@
 *  Виртуальная машина Сетунь-1958
 *---------------------------------
 */
-
 // TEST_NUMBER:
 // 1 : Test Arithmetic Ternary
 // 2 : Test Arithmetic TRITS-32
@@ -166,6 +162,11 @@ enum
 	STOP_OVER = 3, /* Останов по переполнению результата операции машины */
 	STOP_ERROR = 4 /* Аварийный останов машины */
 };
+
+/**
+ * Вывод отладочной информации памяти машины "Сетунь-1958"
+ */
+static uint8_t DEBUG = 1;
 
 /**
  * Определение памяти машины "Сетунь-1958"
@@ -2411,6 +2412,37 @@ void view_short_long_reg(long_trs_t *t, uint8_t *ch)
 	printf("\n");
 }
 
+/**
+ * Печать контрольных сумм
+ *  
+ */
+void view_checksum_setun( trs_t t)
+{
+	trs_t check;
+	trs_t ncheck;
+
+	printf("KC:\n");
+	//
+	check = slice_trs_setun(t,1,9);	
+	view_short_reg(&check,"");
+	//
+	check = slice_trs_setun(t,10,18);
+	view_short_reg(&check,"");
+	printf("\n");
+
+	printf("-KC = 0-KC:\n");
+	check = neg_trs(t);
+	ncheck = slice_trs_setun(check,1,9);
+	ncheck.l = 9;
+	view_short_reg(&ncheck,"");
+	//
+	check = slice_trs_setun(check,10,18);
+	check.l = 9;
+	view_short_reg(&check,"");
+	//
+	printf("\n");
+}
+
 
 /**
  * Печать на электрифицированную пишущую машинку
@@ -3555,9 +3587,9 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	* Остальные операции, содержащиеся в табл. 1, ясны без дополни­тельных пояснений.
 	*
 	*/
-#if (DEBUG == 1)	
-	view_step_new_addres(&k1_5,"A*");
-#endif
+	if (DEBUG > 0) {	
+		view_step_new_addres(&k1_5,"A*");
+	}	
 
 	switch (codeoper)
 	{
@@ -3895,9 +3927,10 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		debug_print(" k6..8[-00]: Ввод в Фа* - Вывод из Фа*\n");		
 		//TODO добавить реализацию чтения из файла виртуального устройства ввода
 		trs_t fa;
-#if (DEBUG == 1)				
-		view_short_reg(&k1_5,"k1_5");
-#endif		
+		if (DEBUG > 0) {				
+			view_short_reg(&k1_5,"k1_5");
+		}
+
 		uint8_t s = get_trit(k1_5,1);
 		if(s == -1) {
 			fa = smtr("----0");
@@ -3989,7 +4022,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (-1*9 +0*3 +1):
 	{ // -0+ : Запись на МБ	(Фа*)=>(Мд*)
-		debug_print(" k6..8[-0+]: (Фа*)=>(Мд*)\n");
+		debug_print(" k6..8[-0+]: (Фа*)=>(Мд*)\n");		
 		fram_to_drum(k1_5);
 		MB=slice_trs_setun(K,2,5);
 		MB.l=4;
@@ -4035,9 +4068,9 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	}
 
-#if (DEBUG == 1)
-	view_short_regs();
-#endif	
+	if (DEBUG > 0) {
+		view_short_regs();
+	}
 
 	return OK;
 
@@ -5600,6 +5633,7 @@ int usage(const char *argv0)
 {
 	printf("usage: %s [options] FILE SCRIPT(s)...\n", argv0);
 	printf("\t--test : number test VM Setun-1958)\n");
+	printf("\t--debug : view step VM Setun-1958)\n");
 	exit(0);
 }
 /** -------------------------------
@@ -5615,13 +5649,15 @@ int main(int argc, char *argv[])
 	int test = 0;
 	char *output = "-";
 	int ret = 0;
-	
+	DEBUG = 0;
+
 	while (1)
 	{
 		int option_index;
 		struct option long_options[] = {
 			{"help", 0, 0, 0},
 			{"test", 1, 0, 0},
+			{"debug", 0, 0, 0},
 			{0},
 		};
 		int c = getopt_long(argc, argv, "o:", long_options, &option_index);
@@ -5635,10 +5671,14 @@ int main(int argc, char *argv[])
 			if (strcmp(name, "help") == 0) {
 				usage(argv[0]);				
 			}
-			else if (strcmp(name, "test") == 0)
+			else if (strcmp(name, "test") == 0) {
 				test = atoi(optarg);
-			break;
+			}
+			else if (strcmp(name, "debug") == 0) {				
+				DEBUG = 1;
+			}
 		}
+		break;
 		case 'o':
 			output = strdup(optarg);
 			break;
@@ -5646,7 +5686,6 @@ int main(int argc, char *argv[])
 			break;
 		}
 	}
-
 	if (test > 0)
 	{
 		/* Run number test */
@@ -5690,14 +5729,14 @@ int main(int argc, char *argv[])
 	printf("\r\n --- Reset Setun-1958 --- \r\n");
 	reset_setun_1958();
 
-#if (DEBUG == 1)	
-	view_short_regs();
-#endif
+	if (DEBUG > 0) {	
+		view_short_regs();
+	}
 
 	/**
 	 * Загрузить из файла тест-программу
 	 */
-	printf("\r\n --- Load 'ur0/03-input-checksum.txs' --- \r\n");
+	printf("\r\n --- Load 'ur0/01-test.txs' --- \r\n");
 	inr = smtr("0---0"); /* cчетчик адреса коротких слов */
     trs_t sum;
 	trs_t tmp;
@@ -5714,8 +5753,8 @@ int main(int argc, char *argv[])
     dst.l = 9;
 	MR.l = 18;
 	int i = 0;
-	file = fopen("ur0/03-input-checksum.txs", "r");
-	while (fscanf(file, "%s\r\n", cmd) != EOF)
+	file = fopen("ur0/01-test.txs", "r");
+	while (fscanf(file, "%s", cmd) != EOF)
 	{		
 		cmd_str_2_trs(cmd, &dst);		
 		sum = add_trs(sum,dst);
@@ -5725,41 +5764,28 @@ int main(int argc, char *argv[])
 
 		debug_print("%s -> [", cmd );
 		trs2str(dst);
-		debug_print("]");
-#if (DEBUG == 1)	
-		view_short_reg(&inr, " addr");
-#endif        
+		debug_print("]");		
+		if (DEBUG > 0) {	 
+			view_short_reg(&inr, " addr");
+		}
+		else {
+			printf("\n");		
+		}
+
 		st_fram(inr, dst);
 		inr = next_address(inr);
 	}
-	printf(" i=%i\n",i);
+	printf("\n i=%i\n",i);
 	
-	//printf(" dsun=%lu\n",dsun);
-    //view_short_reg(&sum,"\nsum=");
+	/* Печать контрольных сумм */
+	printf("\n");	
+	view_checksum_setun(sum);
+	//
+	printf(" --- EOF '01-test.txs' --- \r\n\r\n");
 	
-	trs_t psum;
-
-	psum = slice_trs_setun(sum,1,9);
-	printf("KC:\n");
-	view_short_reg(&psum,"");
-	psum = slice_trs_setun(sum,10,18);
-	view_short_reg(&psum,"");
-	printf("\n");
-
-	psum = smtr("000000000000000000");
-	psum = sub_trs(psum,sum);	
-	sum = slice_trs_setun(psum,1,9);
-	printf("-KC = 0-KC:\n");
-	view_short_reg(&sum,"");
-	sum = slice_trs_setun(psum,10,18);
-	view_short_reg(&sum,"");
-	printf("\n");
-	
-	printf(" --- EOF '03-input-checksum.txs' --- \r\n\r\n");
-	
-#if (DEBUG == 1)
-	dump_fram();
-#endif	
+	if (DEBUG > 0) {
+		//viv- dbg  dump_fram();
+	}
 
 	/**
 	 * Выполнить первый код "Сетунь-1958"
@@ -5776,14 +5802,14 @@ int main(int argc, char *argv[])
 	/** 
 	* work VM Setun-1958
 	*/
-	for (uint16_t jj = 1; jj < 500; jj++)
+	for (uint16_t jj = 1; jj < 1000; jj++)
 	{
 		K = ld_fram(C);		
 		K = slice_trs_setun(K, 1, 9); 	
 
-#if (DEBUG == 1)
-        view_step_short_reg(&C,"\n С");        
-#endif
+		if (DEBUG > 0) {
+        	view_step_short_reg(&C,"\n С");        
+		}
 		addr = control_trs(K);
 		oper = slice_trs_setun(K, 6, 8);
 

@@ -57,10 +57,12 @@ A*: [0+---], 02W, (14)          -> fram[0] : 3020123X4
 
 ```
 
+## Print  list commands 
 ```shell
 ./emu --help 
 ```
 
+## Run Test #1
 ```shell
 ./emu --test 1
 
@@ -98,6 +100,29 @@ A*: [0+---], 02W, (14)          -> fram[0] : 3020123X4
 
 ```
 
+## Execute a program 'Setun-1958' with debugging information
+```shell
+
+./emu --debug
+
+ С: [0-0+0], 0X3, (-24)         -> zone[0] : 01233
+A*: [00++-], 012, (11)          -> zone[0] : 431302000
+ k6..8[+0+]: (S)+(A*)=>(S)
+
+  K  : [00++-+0+0], 01233, (921)
+  F  : [00-0+], 0Z1, (-8)
+  C  : [0-0++], 0X4, (-23)
+  W  : [+], 1, (1)
+  ph1: [0], 0, (0)
+  ph2: [0], 0, (0)
+  S  : [+++00++00+-++00000], 43131Y300, (187249725)
+  R  : [+--+00000000000000], 2Y0000000, (76527504)
+  MB : [0+--], 1W, (5)
+
+
+--- END emulator Setun-1958 --- 
+```
+
 ## Notes
 
 * `lpt0`, `ptp0` ... `ur0`, `ur1` folders - virtual device files like tty and others
@@ -105,9 +130,11 @@ A*: [0+---], 02W, (14)          -> fram[0] : 3020123X4
 
 # Links
 
-*Materials on ternary computer science* - <http://ternarycomp.cs.msu.su/>
-*Emulator of the first ternary Soviet "Setun"* - <http://trinary.su/projects/>
-*Unique Setun based on the ternary code* - <https://habr.com/ru/company/ua-hosting/blog/273929/>
+ 1. *Materials on ternary computer science* - <http://ternarycomp.cs.msu.su/>
+ 2. *Emulator of the first ternary Soviet "Setun"* - <http://trinary.su/projects/>
+ 3. *Unique Setun based on the ternary code* - <https://habr.com/ru/company/ua-hosting/blog/273929/>
+ 4. *Group users in social network VK* - <https://vk.com/setunsu/>
+ 5. *Group users in social network Telegram* - <https://t.me/setun_1958/>
 
 # Contributing
 
@@ -117,6 +144,6 @@ Everybody is invited and welcome to contribute to Setun VM.
 
 
 - Create date: 01.11.2018
-- Edit date:   16.05.2022
+- Edit date:   21.05.2022
 
-- Current version: 1.57
+- Current version: 1.59
