@@ -123,6 +123,12 @@ A*: [00++-], 012, (11)          -> zone[0] : 431302000
 --- END emulator Setun-1958 --- 
 ```
 
+## Execute STEP=10  program 'Setun-1958' with debugging information
+```shell
+
+./emu --step 10
+```
+
 ## Notes
 
 * `lpt0`, `ptp0` ... `ur0`, `ur1` folders - virtual device files like tty and others
@@ -144,6 +150,6 @@ Everybody is invited and welcome to contribute to Setun VM.
 
 
 - Create date: 01.11.2018
-- Edit date:   21.05.2022
+- Edit date:   22.05.2022
 
 - Current version: 1.59

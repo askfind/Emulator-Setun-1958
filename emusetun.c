@@ -4,9 +4,9 @@
 * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
 *
 * Create date: 01.11.2018
-* Edit date:   21.05.2022
+* Edit date:   22.05.2022
 *
-* Version: 1.59
+* Version: 1.60
 */
 
 //TODO 
@@ -16,17 +16,10 @@
 // - [ ] trs_t div_trs(trs_t a, trs_t b)
 // - [ ] проверить ошибку void copy_trs_setun(trs_t *src, trs_t *dst)
 // - [ ] проверить int8_t trit2grfram(trs_t t)
-// - [ ] проверить int16_t addr_trit2addr_index(trs_t t)
-// - [ ] проверить uint8_t zone_drum_to_index(trs_t z)
-// - [ ] проверить void clean_drum(void)
-// - [ ] проверить void drum_to_fram(trs_t ea)
 // - [ ] реализовать trs_t digit2trs(int8_t n)
 // - [ ] реализовать void trit2linetape(trs_t v, uint8_t *lp)
 // - [ ] реализовать uint8_t linetape2trit(uint8_t *lp, trs_t *v)
-// - [ ] реализовать void view_drum(trs_t zone)
-// - [ ] реализовать trs_t mul_trs(trs_t a, trs_t b)
 // - [ ] реализовать trs_t div_trs(trs_t a, trs_t b)
-// - [ ] проверить void copy_trs_setun(trs_t *src, trs_t *dst)
 
 
 /**
@@ -167,6 +160,7 @@ enum
  * Вывод отладочной информации памяти машины "Сетунь-1958"
  */
 static uint8_t DEBUG = 1;
+static uint32_t STEP = 0;
 
 /**
  * Определение памяти машины "Сетунь-1958"
@@ -1604,8 +1598,7 @@ void clean_fram(void)
 
 /* Операция очистить память на магнитном барабане */
 void clean_drum(void)
-{
-	//TODO ~
+{	
 	int8_t zone;
 	int8_t row;
 	for (zone = 0; zone < NUMBER_ZONE_DRUM; zone++)
@@ -5658,6 +5651,7 @@ int main(int argc, char *argv[])
 			{"help", 0, 0, 0},
 			{"test", 1, 0, 0},
 			{"debug", 0, 0, 0},
+			{"step", 1, 0, 0},
 			{0},
 		};
 		int c = getopt_long(argc, argv, "o:", long_options, &option_index);
@@ -5676,6 +5670,9 @@ int main(int argc, char *argv[])
 			}
 			else if (strcmp(name, "debug") == 0) {				
 				DEBUG = 1;
+			}
+			if (strcmp(name, "step") == 0) {
+				STEP = atoi(optarg);
 			}
 		}
 		break;
@@ -5802,8 +5799,10 @@ int main(int argc, char *argv[])
 	/** 
 	* work VM Setun-1958
 	*/
-	for (uint16_t jj = 1; jj < 1000; jj++)
-	{
+	static uint32_t counter_step = 0; 
+	while( 1 ) 
+	//for (uint16_t jj = 1; jj < 1000; jj++)
+	{		
 		K = ld_fram(C);		
 		K = slice_trs_setun(K, 1, 9); 	
 
@@ -5825,6 +5824,13 @@ int main(int argc, char *argv[])
 		}
 		else if	(ret_exec == STOP_ERROR) {
 			printf("\r\nERR#:%i[STOP_ERROR]\r\n",ret_exec);
+			break;
+		}
+		
+		counter_step++;
+
+		if(STEP	== counter_step) {
+			printf("\r\nSTEP=%i [STOP]\r\n",counter_step);
 			break;
 		}
 	}
