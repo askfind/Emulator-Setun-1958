@@ -5371,7 +5371,7 @@ void Test5_Setun_Load(void)
 			MR.l = 18;
 			int i = 0;
 			
-			strcat(path_str,"ur1/\000");
+			strcat(path_str,"ur1/");
 			if( str[strlen(str)-1] == 0x0A ) {
 				str[strlen(str)-1] = 0;	
 			}
