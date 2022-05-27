@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   24.05.2022
+ * Edit date:   27.05.2022
  *
- * Version: 1.61
+ * Version: 1.62
  */
 
 // TODO
@@ -3659,6 +3659,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			MR.l = 18;
 			MR = shift_trs(MR, 9);
 		}
+		view_short_reg(&MR,"MR->(S)");
 		copy_trs_setun(&MR, &S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
@@ -5143,8 +5144,8 @@ void Test3_Setun_Opers(void)
 	//
 	reset_setun_1958();
 	//
-	addr = smtr("00000");
-	m0 = smtr("00000000-");
+	addr = smtr("-000-");
+	m0 = smtr("+0000000-+000-000-");
 	st_fram(addr, m0);
 	view_elem_fram(addr);
 	//
@@ -5155,7 +5156,7 @@ void Test3_Setun_Opers(void)
 	// view_short_reg(&R, "R=");
 	//
 	addr = smtr("0000+");
-	m1 = smtr("00000-+00");
+	m1 = smtr("-000-0-+00");
 	st_fram(addr, m1);
 	view_elem_fram(addr);
 
@@ -5424,6 +5425,270 @@ void Test5_Setun_Load(void)
 	printf("\n --- END TEST #5 --- \n");
 }
 
+void Test6_Setun_Load(void)
+{
+	printf("\n --- TEST #6  Load program FT1,FT2 for VM SETUN-1958 --- \n\n");
+
+	FILE *file_lst;
+
+	/* Переменная, в которую поочередно будут помещаться считываемые строки */
+	char str[80] = {0};
+	
+	/* Указатель, в который будет помещен адрес массива, в который считана */
+	/* строка, или NULL если достигнут коней файла или произошла ошибка */
+	char *estr;
+
+	file_lst = fopen("software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst", "r");
+	if (file_lst == NULL)
+	{
+		printf("ERR fopen software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst\n");
+		return;
+	}
+	else
+	{
+		printf("fopen: software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst\n");
+
+		/* Чтение (построчно) данных из файла в бесконечном цикле */
+		while (1)
+		{
+			/* Чтение одной строки  из файла */
+			estr = fgets(str, sizeof(str), file_lst);
+
+			/* Проверка на конец файла или ошибку чтения */
+			if (estr == NULL)
+			{
+				/* Проверяем, что именно произошло: кончился файл */
+				/* или это ошибка чтения */
+				if (feof(file_lst) != 0)
+				{
+					/* Если файл закончился, выводим сообщение о завершении */
+					/* чтения и выходим из бесконечного цикла */
+					printf("\nЧтение файла закончено\n");
+					break;
+				}
+				else
+				{
+					/* Если при чтении произошла ошибка, выводим сообщение */
+					/* об ошибке и выходим из бесконечного цикла */
+					printf("\nОшибка чтения из файла\n");
+					break;
+				}
+			}
+
+			/* ---------------------------------
+			 * Загрузить из файла тест-программу
+			 * ---------------------------------
+			 */
+			printf("\r\n --- Load software/ip5_in_out_10_3/%s --- \r\n", str);
+
+			FILE *file;
+			char path_str[160] = {0};
+			uint8_t cmd[20];
+			trs_t inr;
+			trs_t dst;
+
+			inr = smtr("0---0"); /* cчетчик адреса коротких слов */
+			trs_t sum;
+			trs_t tmp;
+
+			tmp.l = 18;
+			tmp.t1 = 0;
+			tmp.t0 = 0;
+
+			int64_t dsun = 0;
+			sum.l = 18;
+			sum.t1 = 0;
+			sum.t0 = 0;
+			//
+			dst.l = 9;
+			MR.l = 18;
+			int i = 0;
+			
+			strcat(path_str,"software/ip5_in_out_10_3/");
+			if( str[strlen(str)-1] == 0x0A ) {
+				str[strlen(str)-1] = 0;	
+			}
+			str[strlen(str)] = 0;
+			strcat(path_str,str);						
+
+			file = fopen(path_str, "r");
+			if (file == NULL)
+			{
+				printf("ERR fopen %s\n", path_str);
+				return;
+			}
+
+			while (fscanf(file, "%s", cmd) != EOF)
+			{
+				cmd_str_2_trs(cmd, &dst);
+				sum = add_trs(sum, dst);
+				i += 1;
+
+				dsun += trs2digit(dst);
+
+				debug_print("%s -> [", cmd);
+				trs2str(dst);
+				debug_print("]");
+				if (DEBUG > 0)
+				{
+					view_short_reg(&inr, " addr");
+				}
+				else
+				{
+					printf("\n");
+				}
+
+				st_fram(inr, dst);
+				inr = next_address(inr);
+			}
+			fclose(file);
+
+			printf("\n i=%i\n", i);
+
+			/* Печать контрольных сумм */
+			printf("\n");
+			view_checksum_setun(sum);
+			//
+		}
+	}
+	fclose(file_lst);
+	printf("fclose: software/ip5_in_out_10_3/00_ip5_in_out.lst\n");
+
+	printf("\n --- END TEST #6 --- \n");
+}
+
+void Test7_Setun_Load(void)
+{
+	printf("\n --- TEST #7  Load program FT1,FT2 for VM SETUN-1958 --- \n\n");
+
+	FILE *file_lst;
+
+	/* Переменная, в которую поочередно будут помещаться считываемые строки */
+	char str[80] = {0};
+	
+	/* Указатель, в который будет помещен адрес массива, в который считана */
+	/* строка, или NULL если достигнут коней файла или произошла ошибка */
+	char *estr;
+
+	file_lst = fopen("software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst", "r");
+	if (file_lst == NULL)
+	{
+		printf("ERR fopen software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
+		return;
+	}
+	else
+	{
+		printf("fopen: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
+
+		/* Чтение (построчно) данных из файла в бесконечном цикле */
+		while (1)
+		{
+			/* Чтение одной строки  из файла */
+			estr = fgets(str, sizeof(str), file_lst);
+
+			/* Проверка на конец файла или ошибку чтения */
+			if (estr == NULL)
+			{
+				/* Проверяем, что именно произошло: кончился файл */
+				/* или это ошибка чтения */
+				if (feof(file_lst) != 0)
+				{
+					/* Если файл закончился, выводим сообщение о завершении */
+					/* чтения и выходим из бесконечного цикла */
+					printf("\nЧтение файла закончено\n");
+					break;
+				}
+				else
+				{
+					/* Если при чтении произошла ошибка, выводим сообщение */
+					/* об ошибке и выходим из бесконечного цикла */
+					printf("\nОшибка чтения из файла\n");
+					break;
+				}
+			}
+
+			/* ---------------------------------
+			 * Загрузить из файла тест-программу
+			 * ---------------------------------
+			 */
+			printf("\r\n --- Load software/ip5_in_out_3_10/%s --- \r\n", str);
+
+			FILE *file;
+			char path_str[160] = {0};
+			uint8_t cmd[20];
+			trs_t inr;
+			trs_t dst;
+
+			inr = smtr("0---0"); /* cчетчик адреса коротких слов */
+			trs_t sum;
+			trs_t tmp;
+
+			tmp.l = 18;
+			tmp.t1 = 0;
+			tmp.t0 = 0;
+
+			int64_t dsun = 0;
+			sum.l = 18;
+			sum.t1 = 0;
+			sum.t0 = 0;
+			//
+			dst.l = 9;
+			MR.l = 18;
+			int i = 0;
+			
+			strcat(path_str,"software/ip5_in_out_3_10/");
+			if( str[strlen(str)-1] == 0x0A ) {
+				str[strlen(str)-1] = 0;	
+			}
+			str[strlen(str)] = 0;
+			strcat(path_str,str);						
+
+			file = fopen(path_str, "r");
+			if (file == NULL)
+			{
+				printf("ERR fopen %s\n", path_str);
+				return;
+			}
+
+			while (fscanf(file, "%s", cmd) != EOF)
+			{
+				cmd_str_2_trs(cmd, &dst);
+				sum = add_trs(sum, dst);
+				i += 1;
+
+				dsun += trs2digit(dst);
+
+				debug_print("%s -> [", cmd);
+				trs2str(dst);
+				debug_print("]");
+				if (DEBUG > 0)
+				{
+					view_short_reg(&inr, " addr");
+				}
+				else
+				{
+					printf("\n");
+				}
+
+				st_fram(inr, dst);
+				inr = next_address(inr);
+			}
+			fclose(file);
+
+			printf("\n i=%i\n", i);
+
+			/* Печать контрольных сумм */
+			printf("\n");
+			view_checksum_setun(sum);
+			//
+		}
+	}
+	fclose(file_lst);
+	printf("fclose: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
+
+	printf("\n --- END TEST #7 --- \n");
+}
+
 void TestN(void)
 {
 
@@ -5539,9 +5804,9 @@ void TestN(void)
 	m0 = smtr("0++++++++");
 	st_fram(addr, m0);
 
-	addr = smtr("000--");
+	addr = smtr("-000-");
 	view_short_reg(&addr, "addr=");
-	m0 = smtr("0++++++++");
+	m0 = smtr("0++++++++0-------");
 	st_fram(addr, m0);
 
 	addr = smtr("000-0");
@@ -5555,7 +5820,7 @@ void TestN(void)
 	st_fram(addr, m0);
 
 	addr = smtr("0000+");
-	m1 = smtr("00000+0-0");
+	m1 = smtr("-000-0+000");
 	st_fram(addr, m1);
 
 	/* Begin address fram */
@@ -5575,7 +5840,7 @@ void TestN(void)
 	printf("\n");
 
 	addr = smtr("0000+");
-	m1 = smtr("00000+00+");
+	m1 = smtr("-000-+000");
 	st_fram(addr, m1);
 
 	/* Begin address fram */
@@ -5958,6 +6223,12 @@ int main(int argc, char *argv[])
 		case 5:
 			Test5_Setun_Load();
 			break;
+		case 6:
+			Test6_Setun_Load();
+			break;
+		case 7:
+			Test7_Setun_Load();
+			break;
 		default:
 			break;
 		}
@@ -6112,7 +6383,9 @@ int main(int argc, char *argv[])
 	// view_short_regs();
 	// view_drum(smtr("---0"));
 
+	TestN();
 	debug_print("\r\n--- END emulator Setun-1958 --- \r\n");
+
 
 } /* 'main.c' */
 

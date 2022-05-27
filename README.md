@@ -159,6 +159,39 @@ fclose: ur1/00_ip5.lst
  --- END TEST #5 ---
 ```
 
+## Run Test #6
+```shell
+
+./emu --test 6
+
+--- TEST #6  Load program FT1,FT2 for VM SETUN-1958 ---
+
+fopen: software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst
+
+ --- Load software/ip5_in_out_10_3/01_ip5_in_out_10_3_fram_0_setun.txs
+ ---
+00010
+ZW3W1
+00001
+
+...
+
+KC:
+: [0000000+0], 00003, (3)
+: [+++++0+0+], 14411, (9811)
+
+-KC = 0-KC:
+: [0000000-0], 0000X, (-3)
+: [-----0-0-], ZWWZZ, (-9811)
+
+
+Чтение файла закончено
+fclose: software/ip5_in_out_10_3/00_ip5_in_out.lst
+
+ --- END TEST #6 ---
+```
+
+
 ## Notes
 
 * `lpt0`, `ptp0` ... `ur0`, `ur1` folders - virtual device files like tty and others
@@ -180,6 +213,6 @@ Everybody is invited and welcome to contribute to Setun VM.
 
 
 - Create date: 01.11.2018
-- Edit date:   24.05.2022
+- Edit date:   27.05.2022
 
-- Current version: 1.61
+- Current version: 1.62
