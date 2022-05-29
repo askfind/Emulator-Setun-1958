@@ -6,7 +6,7 @@
  * Create date: 01.11.2018
  * Edit date:   29.05.2022
  *
- * Version: 1.63
+ * Version: 1.64
  */
 
 // TODO
@@ -120,6 +120,8 @@
 #define SIZE_TRIT_DRUM (1944)	 /* количество хранения коротких слов из 9-тритов */
 #define SIZE_ZONE_TRIT_DRUM (54) /* количество 9-тритных слов в зоне */
 #define NUMBER_ZONE_DRUM (36)	 /* количество зон на магнитном барабане */
+#define ZONE_DRUM_BEG (5)   	 /* 01-- */
+#define ZONE_DRUM_END (40)  	 /* ++++ */
 
 /**
  * Типы данных для виртуальной троичной машины "Сетунь-1958"
@@ -169,7 +171,7 @@ static uint32_t STEP = 0;
  * Определение памяти машины "Сетунь-1958"
  */
 trs_t mem_fram[SIZE_GR_TRIT_FRAM][SIZE_GRFRAM];		   /* оперативное запоминающее устройство на ферритовых сердечниках */
-trs_t mem_drum[NUMBER_ZONE_DRUM][SIZE_ZONE_TRIT_DRUM]; /* запоминающее устройство на магнитном барабане */
+trs_t mem_drum[NUMBER_ZONE_DRUM+ZONE_DRUM_BEG][SIZE_ZONE_TRIT_DRUM]; /* запоминающее устройство на магнитном барабане */
 
 /** ***********************************
  *  Определение регистров "Сетунь-1958"
@@ -1534,11 +1536,11 @@ uint8_t zone_drum_to_index(trs_t z)
 	// TODO
 	int8_t r;
 
-	r = trs2digit(z) - 1;
+	r = trs2digit(z);
 
-	if (r > NUMBER_ZONE_DRUM - 1)
+	if (r > NUMBER_ZONE_DRUM + ZONE_DRUM_BEG - 1)
 	{
-		r = NUMBER_ZONE_DRUM - 1;
+		r = NUMBER_ZONE_DRUM + ZONE_DRUM_BEG - 1;
 	}
 	else if (r < 0)
 	{
@@ -1651,7 +1653,7 @@ void clean_drum(void)
 {
 	int8_t zone;
 	int8_t row;
-	for (zone = 0; zone < NUMBER_ZONE_DRUM; zone++)
+	for (zone = ZONE_DRUM_BEG; zone < NUMBER_ZONE_DRUM + ZONE_DRUM_BEG; zone++)
 	{
 		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
 		{
@@ -3596,16 +3598,15 @@ void dump_fram_zone(trs_t z)
 /**
  * Печать короткого слова BRUM машины Сетунь-1958
  */
-void view_drum(trs_t zone)
-{
-	// TODO test
+void view_drum_zone(trs_t zone)
+{	
 	int8_t j;
 	trs_t zr;
 	uint8_t zind;
 	uint8_t rind;
 	trs_t tv;
 
-	/* Зона памяти FRAM */
+	/* Зона памяти DRUM */
 	zr = slice_trs_setun(zone, 1, 4);
 	zind = zone_drum_to_index(zr);
 
@@ -3647,11 +3648,10 @@ void dump_drum(void)
 
 	printf("\n[ BRUM Setun-1958 ]\n");
 
-	for (zone = 0; zone < NUMBER_ZONE_DRUM; zone++)
+	for (zone = ZONE_DRUM_BEG; zone < ZONE_DRUM_END; zone++)
 	{
 		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
 		{
-
 			copy_trs_setun(&mem_drum[zone][row], &r);
 
 			printf("drum[%3i:%3i] = [", zone, row - SIZE_ZONE_TRIT_DRUM / 2);
@@ -4017,7 +4017,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	case (+1 * 9 - 1 * 3 - 1):
 	{ // +-- : Останов	Стоп; (A*)=>(R)
 		// TODO test
-		debug_print(" k6..8[+--]: (A*)=>(R)\n");
+		debug_print(" k6..8[+--]: STOP (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
 		if (MR.l != 18)
 		{
@@ -4025,7 +4025,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			MR = shift_trs(MR, 9);
 		}
 		copy_trs_setun(&MR, &R);
-		C = next_address(C);
+		
+		return STOP_DONE;		
 	}
 	break;
 	case (+0 * 9 + 1 * 3 + 0):
@@ -6055,10 +6056,9 @@ void Test8_Setun_Load(void)
 	printf("\n --- END TEST #8 --- \n");
 }
 
-void TestN(void)
+void Test9_Setun_Load(void)
 {
-
-	printf("\n --- TEST electrified_typewriter() --- \n");
+	printf("\n --- TEST #9 electrified_typewriter() and dump --- \n");
 
 	trs_t inr;
 	trs_t cp;
@@ -6347,8 +6347,7 @@ void TestN(void)
 	view_fram(ad1, ad2);
 
 	view_short_regs();
-
-	// t22 test Oper=k6..8[-+-]: Норм.(S)=>(A*); (N)=>(S)
+	
 	printf("\nt22: test Oper=k6..8[-+-]: Норм.(S)=>(A*); (N)=>(S)\n");
 
 	reset_setun_1958();
@@ -6426,13 +6425,13 @@ void TestN(void)
 
 	printf("t23 test zone for view_brum()\n");
 
-	printf(" z ='000+'");
-	ad1 = smtr("000+");
-	// view_drum(ad1);
+	printf(" z ='0+--'");
+	ad1 = smtr("0+--");
+	view_drum_zone(ad1);
 
-	printf(" z ='0+++'");
-	ad1 = smtr("0+++");
-	// view_drum(ad1);
+	printf(" z ='++++'");
+	ad1 = smtr("++++");
+	 view_drum_zone(ad1);
 
 	printf("\nt24 test DRUN fill index and view \n");
 
@@ -6453,10 +6452,10 @@ void TestN(void)
 		inc_trs(&zi);
 	}
 
-	printf("\nt25 test oper='-0-' '-0+' \n");
+	printf("\nt25 test oper='-0-' (Мд*)=>(Фа*) \n");
 
 	addr = smtr("0000+");
-	m1 = smtr("0000+-0-0"); //-0-
+	m1 = smtr("00+---0-0"); //-0-
 	st_fram(addr, m1);
 
 	S = smtr("000000000-00+000-+");
@@ -6489,17 +6488,17 @@ void TestN(void)
 	ret_exec = execute_trs(exK, oper);
 	printf("ret_exec = %i\r\n", ret_exec);
 
-	printf("BRUM zone='000+'");
-	ad1 = smtr("000+");
-	// view_drum(ad1);
+	printf("BRUM zone='0+--'");
+	ad1 = smtr("0+--");
+	view_drum_zone(ad1);
+	printf("\n");
+	//
+	printf("BRUM zone='0+--'");
+	ad1 = smtr("0+--");
+	view_drum_zone(ad1);
 	printf("\n");
 
-	// dump_fram();
-
-	printf("BRUM zone='00+-'");
-	ad1 = smtr("00+-");
-	// view_drum(ad1);
-	printf("\n");
+	printf("\n --- END TEST #9 --- \n");	
 }
 
 int usage(const char *argv0)
@@ -6598,6 +6597,9 @@ int main(int argc, char *argv[])
 		case 8:
 			Test8_Setun_Load();
 			break;
+		case 9:
+			Test9_Setun_Load();
+			break;
 		default:
 			break;
 		}
@@ -6629,8 +6631,7 @@ int main(int argc, char *argv[])
 	/**
 	 * Загрузить из файла тест-программу
 	 */
-	printf("\r\n --- Load 'ur0/01_ip5_fram_00_setun.txs' --- \r\n");
-	inr = smtr("0---0"); /* cчетчик адреса коротких слов */
+	printf("\r\n --- Load 'ur0/file.txs' --- \r\n");	
 	trs_t sum;
 	trs_t tmp;
 
@@ -6646,10 +6647,12 @@ int main(int argc, char *argv[])
 	dst.l = 9;
 	MR.l = 18;
 	int i = 0;
-	file = fopen("ur0/01_ip5_fram_00_setun.txs", "r");
+
+	inr = smtr("0---0"); /* cчетчик адреса коротких слов */
+	file = fopen("ur0/00-test.txs", "r");
 	if (file == NULL)
 	{
-		printf("ERR fopen ur0/01_ip5_fram_00_setun.txs\n");
+		printf("ERR fopen ur0/00-test.txs\n");
 		return 0;
 	}
 	
@@ -6689,11 +6692,9 @@ int main(int argc, char *argv[])
 
 	if (DEBUG > 0)
 	{
-		// viv- dbg  dump_fram();
-	}
-
-	dump_fram();
-	dump_fram_zone(smtr("0"));
+		dump_fram_zone(smtr("0"));
+	}	
+	
 
 	/**
 	 * Выполнить первый код "Сетунь-1958"
@@ -6754,9 +6755,8 @@ int main(int argc, char *argv[])
 
 	// Prints REGS and FRAM
 	// view_short_regs();
-	// view_drum(smtr("---0"));
-
-	TestN();
+	// view_drum_zone(smtr("---0"));
+	
 	debug_print("\r\n--- END emulator Setun-1958 --- \r\n");
 
 } /* 'main.c' */

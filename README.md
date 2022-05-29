@@ -215,4 +215,4 @@ Everybody is invited and welcome to contribute to Setun VM.
 - Create date: 01.11.2018
 - Edit date:   29.05.2022
 
-- Current version: 1.63
+- Current version: 1.64
