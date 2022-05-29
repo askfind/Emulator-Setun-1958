@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   27.05.2022
+ * Edit date:   29.05.2022
  *
- * Version: 1.62
+ * Version: 1.63
  */
 
 // TODO
@@ -834,12 +834,16 @@ trs_t neg_trs(trs_t t)
 void inc_trs(trs_t *t)
 {
 	trs_t x;
-	x = *t;
+	trs_t y;
+	
+	y = *t;
+	y.l = t->l;
+
 	x.t1 = 0;
 	x.t0 = 0;
+	x.l = 1;
 	x = set_trit(x, 0, 1);
-	x = add_trs(*t, x);
-	*t = x;
+	*t = add_trs(y, x);
 }
 
 /* Операция DEC trs */
@@ -850,6 +854,7 @@ void dec_trs(trs_t *t)
 	x = *t;
 	x.t1 = 0;
 	x.t0 = 0;
+	x.l = t->l;
 	x = set_trit(x, 0, -1);
 	r = add_trs(*t, x);
 
@@ -1390,24 +1395,24 @@ int8_t get_trit_setun(trs_t t, uint8_t pos)
 trs_t set_trit_setun(trs_t t, uint8_t pos, int8_t trit)
 {
 	trs_t r = t;
+				
 	t.l = min(t.l, SIZE_WORD_LONG);
 	pos = min(pos, SIZE_WORD_LONG);
 	if (trit > 0)
 	{
-		r.t1 |= 1 << (t.l - pos);
-		r.t0 |= 1 << (t.l - pos);
+		r.t1 |= (1 << (t.l - pos));
+		r.t0 |= (1 << (t.l - pos));
 	}
 	else if (trit < 0)
 	{
 		r.t1 &= ~(1 << (t.l - pos));
-		r.t0 |= 1 << (t.l - pos);
+		r.t0 |= (1 << (t.l - pos));
 	}
 	else
 	{
 		r.t1 &= ~(1 << (t.l - pos));
 		r.t0 &= ~(1 << (t.l - pos));
 	}
-
 	return r;
 }
 
@@ -3369,6 +3374,226 @@ void dump_fram(void)
 }
 
 /**
+ * Печать дампа зоны FRAM машины Сетунь-1958
+ * по шаблону из книг математического обеспечения
+ */
+void dump_fram_zone(trs_t z)
+{
+	int8_t grfram;
+	int8_t row;
+	int8_t j;
+	int8_t sng = 0;
+
+	trs_t fram_row1;
+	trs_t fram_row2;
+
+	trs_t tv;
+	trs_t r;
+	
+	trs_t ksum;	
+	
+
+
+	printf("\r\n[ Dump FRAM Setun-1958: ]\r\n");
+
+	sng = get_trit_setun(z, 1);
+
+	/* Какая страница FRAM */
+	if (sng < 0)
+	{
+		fram_row1 = smtr("-----");
+		fram_row2 = smtr("-00+-");
+	}
+	else if (sng == 0)
+	{
+		fram_row1 = smtr("0----");
+		fram_row2 = smtr("000+-");
+	}
+	else
+	{
+		fram_row1 = smtr("+----");
+		fram_row2 = smtr("+00+-");
+	}
+
+	/* print FRAM */
+	clear(&ksum);
+	ksum.l = 18;
+
+	trs_t inr = fram_row1;	
+	inr = set_trit_setun(inr,5,0);	
+	for(uint8_t i = 0;i<SIZE_ZONE_TRIT_FRAM;i++){
+		tv = ld_fram(inr);		
+		ksum = add_trs(ksum,tv);
+		inr = next_address(inr);
+	}	
+
+	printf("\n");
+	printf("Zone =% 2i\n", sng);
+	printf("\n");
+	
+	for (uint8_t i = 0; i < 14; i++)
+	{
+		/* Print ROW1 */
+		// addr -1
+		r = slice_trs_setun(fram_row1, 2, 3);
+		trs2str(r);
+		r = slice_trs_setun(fram_row1, 4, 5);
+		trs2str(r);
+		printf(" ");
+		// addr 0
+		fram_row1 = set_trit_setun(fram_row1, 5, 0);
+		r = slice_trs_setun(fram_row1, 2, 3);
+		trs2str(r);
+		r = slice_trs_setun(fram_row1, 4, 5);
+		trs2str(r);
+		printf("  ");
+		// addr 1
+		tv = ld_fram(fram_row1);		
+		r = slice_trs_setun(tv, 1, 1);		
+		trs2str(r);
+		printf(" ");
+		r = slice_trs_setun(tv, 2, 3);
+		trs2str(r);
+		r = slice_trs_setun(tv, 4, 5);
+		trs2str(r);
+		printf(" ");
+		r = slice_trs_setun(tv, 6, 7);
+		trs2str(r);
+		r = slice_trs_setun(tv, 8, 9);
+		trs2str(r);
+
+		printf("        ");
+		if (i <= 12)
+		{
+			/* print ROW2 */
+			r = slice_trs_setun(fram_row2, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(fram_row2, 4, 5);
+			trs2str(r);
+			printf(" ");
+
+			fram_row2 = set_trit_setun(fram_row2, 5, 0);
+			r = slice_trs_setun(fram_row2, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(fram_row2, 4, 5);
+			trs2str(r);
+			printf("  ");
+
+			tv = ld_fram(fram_row2);
+			r = slice_trs_setun(tv, 1, 1);			
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(tv, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(tv, 4, 5);
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(tv, 6, 7);
+			trs2str(r);
+			r = slice_trs_setun(tv, 8, 9);
+			trs2str(r);
+			printf(" ");
+			printf("\n");
+		}
+		else {
+			printf("KC     ");
+			r = slice_trs_setun(ksum, 1, 1);
+			trs2str(r);			
+			printf(" ");
+			r = slice_trs_setun(ksum, 2, 3);
+			trs2str(r);			
+			r = slice_trs_setun(ksum, 4, 5);
+			trs2str(r);			
+			printf(" ");
+			r = slice_trs_setun(ksum, 6, 7);
+			trs2str(r);			
+			r = slice_trs_setun(ksum, 8, 9);
+			trs2str(r);
+			printf("\n");			
+		}
+		/* print ROW1 */
+		printf("   ");
+		fram_row1 = set_trit_setun(fram_row1, 5, 1);
+		r = slice_trs_setun(fram_row1, 2, 3);
+		trs2str(r);
+		r = slice_trs_setun(fram_row1, 4, 5);
+		trs2str(r);
+		printf("  ");
+		//
+		//
+		tv = ld_fram(fram_row1);
+		r = slice_trs_setun(tv, 1, 1);		
+		trs2str(r);
+		printf(" ");
+		r = slice_trs_setun(tv, 2, 3);
+		trs2str(r);
+		r = slice_trs_setun(tv, 4, 5);
+		trs2str(r);
+		printf(" ");
+		r = slice_trs_setun(tv, 6, 7);
+		trs2str(r);
+		r = slice_trs_setun(tv, 8, 9);
+		trs2str(r);
+		fram_row1 = set_trit_setun(fram_row1, 5, -1);
+
+		printf("        ");
+
+		if (i <= 12)
+		{
+			/* print ROW2 */
+			printf("   ");
+			fram_row2 = set_trit_setun(fram_row2, 5, 1);
+			r = slice_trs_setun(fram_row2, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(fram_row2, 4, 5);
+			trs2str(r);
+			printf("  ");
+			//
+			tv = ld_fram(fram_row2);
+			r = slice_trs_setun(tv, 1, 1);			
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(tv, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(tv, 4, 5);
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(tv, 6, 7);
+			trs2str(r);
+			r = slice_trs_setun(tv, 8, 9);
+			trs2str(r);
+			fram_row2 = set_trit_setun(fram_row2, 5, -1);
+			printf("\n");
+		}
+		else
+		{
+			printf("       ");
+			r = slice_trs_setun(ksum, 10, 10);
+			trs2str(r);			
+			printf(" ");
+			r = slice_trs_setun(ksum, 11, 12);
+			trs2str(r);			
+			r = slice_trs_setun(ksum, 13, 14);
+			trs2str(r);			
+			printf(" ");
+			r = slice_trs_setun(ksum, 15, 16);
+			trs2str(r);			
+			r = slice_trs_setun(ksum, 17, 18);
+			trs2str(r);
+			printf("\n");			
+		}
+
+		/* Next address*/
+		inc_trs(&fram_row1);
+		inc_trs(&fram_row1);
+		inc_trs(&fram_row1);		
+		inc_trs(&fram_row2);
+		inc_trs(&fram_row2);
+		inc_trs(&fram_row2);		
+	}
+}
+
+/**
  * Печать короткого слова BRUM машины Сетунь-1958
  */
 void view_drum(trs_t zone)
@@ -3659,7 +3884,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			MR.l = 18;
 			MR = shift_trs(MR, 9);
 		}
-		view_short_reg(&MR,"MR->(S)");
+		// viv- dbg  view_short_reg(&MR,"MR->(S)");
 		copy_trs_setun(&MR, &S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
@@ -5301,7 +5526,7 @@ void Test5_Setun_Load(void)
 
 	/* Переменная, в которую поочередно будут помещаться считываемые строки */
 	char str[80] = {0};
-	
+
 	/* Указатель, в который будет помещен адрес массива, в который считана */
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
 	char *estr;
@@ -5371,13 +5596,14 @@ void Test5_Setun_Load(void)
 			dst.l = 9;
 			MR.l = 18;
 			int i = 0;
-			
-			strcat(path_str,"ur1/");
-			if( str[strlen(str)-1] == 0x0A ) {
-				str[strlen(str)-1] = 0;	
+
+			strcat(path_str, "ur1/");
+			if (str[strlen(str) - 1] == 0x0A)
+			{
+				str[strlen(str) - 1] = 0;
 			}
 			str[strlen(str)] = 0;
-			strcat(path_str,str);						
+			strcat(path_str, str);
 
 			file = fopen(path_str, "r");
 			if (file == NULL)
@@ -5433,7 +5659,7 @@ void Test6_Setun_Load(void)
 
 	/* Переменная, в которую поочередно будут помещаться считываемые строки */
 	char str[80] = {0};
-	
+
 	/* Указатель, в который будет помещен адрес массива, в который считана */
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
 	char *estr;
@@ -5503,13 +5729,14 @@ void Test6_Setun_Load(void)
 			dst.l = 9;
 			MR.l = 18;
 			int i = 0;
-			
-			strcat(path_str,"software/ip5_in_out_10_3/");
-			if( str[strlen(str)-1] == 0x0A ) {
-				str[strlen(str)-1] = 0;	
+
+			strcat(path_str, "software/ip5_in_out_10_3/");
+			if (str[strlen(str) - 1] == 0x0A)
+			{
+				str[strlen(str) - 1] = 0;
 			}
 			str[strlen(str)] = 0;
-			strcat(path_str,str);						
+			strcat(path_str, str);
 
 			file = fopen(path_str, "r");
 			if (file == NULL)
@@ -5565,7 +5792,7 @@ void Test7_Setun_Load(void)
 
 	/* Переменная, в которую поочередно будут помещаться считываемые строки */
 	char str[80] = {0};
-	
+
 	/* Указатель, в который будет помещен адрес массива, в который считана */
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
 	char *estr;
@@ -5635,13 +5862,14 @@ void Test7_Setun_Load(void)
 			dst.l = 9;
 			MR.l = 18;
 			int i = 0;
-			
-			strcat(path_str,"software/ip5_in_out_3_10/");
-			if( str[strlen(str)-1] == 0x0A ) {
-				str[strlen(str)-1] = 0;	
+
+			strcat(path_str, "software/ip5_in_out_3_10/");
+			if (str[strlen(str) - 1] == 0x0A)
+			{
+				str[strlen(str) - 1] = 0;
 			}
 			str[strlen(str)] = 0;
-			strcat(path_str,str);						
+			strcat(path_str, str);
 
 			file = fopen(path_str, "r");
 			if (file == NULL)
@@ -5687,6 +5915,144 @@ void Test7_Setun_Load(void)
 	printf("fclose: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
 
 	printf("\n --- END TEST #7 --- \n");
+}
+
+void Test8_Setun_Load(void)
+{
+	printf("\n --- TEST #8  Load program FT1,FT2 anf DUMP FRAM  for VM SETUN-1958 --- \n\n");
+
+	FILE *file_lst;
+
+	/* Переменная, в которую поочередно будут помещаться считываемые строки */
+	char str[80] = {0};
+
+	/* Указатель, в который будет помещен адрес массива, в который считана */
+	/* строка, или NULL если достигнут коней файла или произошла ошибка */
+	char *estr;
+
+	file_lst = fopen("software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst", "r");
+	if (file_lst == NULL)
+	{
+		printf("ERR fopen software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
+		return;
+	}
+	else
+	{
+		printf("fopen: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
+
+		/* Чтение (построчно) данных из файла в бесконечном цикле */
+		while (1)
+		{
+			/* Чтение одной строки  из файла */
+			estr = fgets(str, sizeof(str), file_lst);
+
+			/* Проверка на конец файла или ошибку чтения */
+			if (estr == NULL)
+			{
+				/* Проверяем, что именно произошло: кончился файл */
+				/* или это ошибка чтения */
+				if (feof(file_lst) != 0)
+				{
+					/* Если файл закончился, выводим сообщение о завершении */
+					/* чтения и выходим из бесконечного цикла */
+					printf("\nЧтение файла закончено\n");
+					break;
+				}
+				else
+				{
+					/* Если при чтении произошла ошибка, выводим сообщение */
+					/* об ошибке и выходим из бесконечного цикла */
+					printf("\nОшибка чтения из файла\n");
+					break;
+				}
+			}
+
+			/* ---------------------------------
+			 * Загрузить из файла тест-программу
+			 * ---------------------------------
+			 */
+			printf("\r\n --- Load software/ip5_in_out_3_10/%s --- \r\n", str);
+
+			FILE *file;
+			char path_str[160] = {0};
+			uint8_t cmd[20];
+			trs_t inr;
+			trs_t dst;
+
+			inr = smtr("0---0"); /* cчетчик адреса коротких слов */
+			trs_t sum;
+			trs_t tmp;
+						
+			tmp.l = 18;
+			tmp.t1 = 0;
+			tmp.t0 = 0;
+
+			int64_t dsun = 0;
+			sum.l = 18;
+			sum.t1 = 0;
+			sum.t0 = 0;
+			//
+			dst.l = 9;
+			MR.l = 18;
+			int i = 0;
+
+			strcat(path_str, "software/ip5_in_out_3_10/");
+			if (str[strlen(str) - 1] == 0x0A)
+			{
+				str[strlen(str) - 1] = 0;
+			}
+			str[strlen(str)] = 0;
+			strcat(path_str, str);
+
+			file = fopen(path_str, "r");
+			if (file == NULL)
+			{
+				printf("ERR fopen %s\n", path_str);
+				return;
+			}
+
+			while (fscanf(file, "%s", cmd) != EOF)
+			{
+				cmd_str_2_trs(cmd, &dst);
+				sum = add_trs(sum, dst);
+				i += 1;
+
+				dsun += trs2digit(dst);
+
+				debug_print("%s -> [", cmd);
+				trs2str(dst);
+				debug_print("]");
+				if (DEBUG > 0)
+				{
+					view_short_reg(&inr, " addr");
+				}
+				else
+				{
+					printf("\n");
+				}
+
+				st_fram(inr, dst);
+				inr = next_address(inr);				
+			}
+			fclose(file);
+
+			printf("\n i=%i\n", i);
+
+			/* Печать контрольных сумм */
+			printf("\n");
+			view_checksum_setun(sum);
+			//
+			break; //viv+ dbg 
+		}
+	}
+	fclose(file_lst);
+	printf("fclose: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
+	
+	/* DUMP */
+	//dump_fram();
+	dump_fram_zone(smtr("0"));
+
+	printf("\n --- END TEST #8 --- \n");
 }
 
 void TestN(void)
@@ -6229,6 +6595,9 @@ int main(int argc, char *argv[])
 		case 7:
 			Test7_Setun_Load();
 			break;
+		case 8:
+			Test8_Setun_Load();
+			break;
 		default:
 			break;
 		}
@@ -6283,10 +6652,10 @@ int main(int argc, char *argv[])
 		printf("ERR fopen ur0/01_ip5_fram_00_setun.txs\n");
 		return 0;
 	}
-
+	
 	while (fscanf(file, "%s", cmd) != EOF)
 	{
-		cmd_str_2_trs(cmd, &dst);
+		cmd_str_2_trs(cmd, &dst);		
 		sum = add_trs(sum, dst);
 		i += 1;
 
@@ -6306,6 +6675,7 @@ int main(int argc, char *argv[])
 
 		st_fram(inr, dst);
 		inr = next_address(inr);
+		inr.l = 5;
 	}
 	fclose(file);
 
@@ -6315,12 +6685,15 @@ int main(int argc, char *argv[])
 	printf("\n");
 	view_checksum_setun(sum);
 	//
-	printf(" --- EOF '01-test.txs' --- \r\n\r\n");
+	printf(" --- EOF 'file.txs' --- \r\n\r\n");
 
 	if (DEBUG > 0)
 	{
 		// viv- dbg  dump_fram();
 	}
+
+	dump_fram();
+	dump_fram_zone(smtr("0"));
 
 	/**
 	 * Выполнить первый код "Сетунь-1958"
@@ -6385,7 +6758,6 @@ int main(int argc, char *argv[])
 
 	TestN();
 	debug_print("\r\n--- END emulator Setun-1958 --- \r\n");
-
 
 } /* 'main.c' */
 
