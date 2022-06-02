@@ -57,6 +57,40 @@ A*: [0+---], 02W, (14)          -> fram[0] : 3020123X4
 
 ```
 
+## Load software Setun-1958 and Start Setun-1958
+```shell
+
+./emu --load
+
+--- Load software anf DUMP FRAM  for VM SETUN-1958 ---
+
+fopen: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst
+
+ Load software/ip5_in_out_3_10/01_ip5_in_out_3_10_fram_0_setun .txs
+
+00003
+02Z10
+0000Y
+00310
+
+...
+
+[ Start Setun-1958 ]
+
+<STOP_DONE>
+
+  K  : [00000+--0], 0002X, (15)
+  F  : [00000], 000, (0)
+  C  : [0000+], 001, (1)
+  W  : [0], 0, (0)
+  ph1: [0], 0, (0)
+  ph2: [0], 0, (0)
+  S  : [000000000000000000], 000000000, (0)
+  R  : [000000000000000000], 000000000, (0)
+  MB : [0000], 00, (0)
+
+```
+
 ## Print  list commands 
 ```shell
 ./emu --help 
@@ -192,6 +226,7 @@ fclose: software/ip5_in_out_10_3/00_ip5_in_out.lst
 ```
 
 
+
 ## Notes
 
 * `lpt0`, `ptp0` ... `ur0`, `ur1` folders - virtual device files like tty and others
@@ -213,6 +248,6 @@ Everybody is invited and welcome to contribute to Setun VM.
 
 
 - Create date: 01.11.2018
-- Edit date:   29.05.2022
+- Edit date:   02.06.2022
 
-- Current version: 1.65
+- Current version: 1.66

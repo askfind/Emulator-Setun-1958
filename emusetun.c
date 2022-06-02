@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   29.05.2022
+ * Edit date:   02.06.2022
  *
- * Version: 1.65
+ * Version: 1.66
  */
 
 // TODO
@@ -3394,7 +3394,7 @@ void dump_fram_zone(trs_t z)
 
 	trs_t ksum;
 
-	printf("\r\n[ Dump FRAM Setun-1958: ]\r\n");
+	printf("\n[ Dump FRAM Setun-1958: ]\n");
 
 	sng = get_trit_setun(z, 1);
 
@@ -3427,8 +3427,7 @@ void dump_fram_zone(trs_t z)
 		ksum = add_trs(ksum, tv);
 		inr = next_address(inr);
 	}
-
-	printf("\n");
+	
 	printf("Zone =% 2i\n", sng);
 	printf("\n");
 
@@ -3610,7 +3609,9 @@ void view_drum_zone(trs_t zone)
 	zr = slice_trs_setun(zone, 1, 4);
 	zind = zone_drum_to_index(zr);
 
-	printf("\n[ BRUM Zone = %2i ]\n", zind);
+	printf("\n[ Dump DRUM Setun-1958: ]\n");
+	printf("[ Zone = %2i ]\n", zind);
+	printf("\n");
 
 	for (uint8_t i = 0; i < SIZE_ZONE_TRIT_DRUM; i++)
 	{
@@ -5918,9 +5919,9 @@ void Test7_Setun_Load(void)
 	printf("\n --- END TEST #7 --- \n");
 }
 
-void Test8_Setun_Load(void)
+void LoadSWSetun(void)
 {
-	printf("\n --- TEST #8  Load program FT1,FT2 anf DUMP FRAM  for VM SETUN-1958 --- \n\n");
+	printf("\n --- Load software anf DUMP FRAM  for VM SETUN-1958 --- \n\n");
 
 	FILE *file_lst;
 
@@ -5972,7 +5973,7 @@ void Test8_Setun_Load(void)
 			 * Загрузить из файла тест-программу
 			 * ---------------------------------
 			 */
-			printf("\r\n --- Load software/ip5_in_out_3_10/%s --- \r\n", str);
+			printf("\r\n Load software/ip5_in_out_3_10/%s\r\n", str);
 
 			FILE *file;
 			char path_str[160] = {0};
@@ -6049,11 +6050,7 @@ void Test8_Setun_Load(void)
 	fclose(file_lst);
 	printf("fclose: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
 
-	/* DUMP */
-	// dump_fram();
-	dump_fram_zone(smtr("0"));
-
-	printf("\n --- END TEST #8 --- \n");
+	printf("\n END Load software\n");
 }
 
 void Test9_Setun_Load(void)
@@ -6506,6 +6503,7 @@ int usage(const char *argv0)
 	printf("usage: %s [options] FILE SCRIPT(s)...\n", argv0);
 	printf("\t--test : number test VM Setun-1958)\n");
 	printf("\t--debug : view step VM Setun-1958)\n");
+	printf("\t--load : load software VM Setun-1958)\n");	
 	exit(0);
 }
 /** -------------------------------
@@ -6528,6 +6526,7 @@ int main(int argc, char *argv[])
 		int option_index;
 		struct option long_options[] = {
 			{"help", 0, 0, 0},
+			{"load", 0, 0, 0},
 			{"test", 1, 0, 0},
 			{"debug", 0, 0, 0},
 			{"step", 1, 0, 0},
@@ -6553,10 +6552,15 @@ int main(int argc, char *argv[])
 			{
 				DEBUG = 1;
 			}
+			else if (strcmp(name, "load") == 0)
+			{
+				LoadSWSetun();
+			}
 			if (strcmp(name, "step") == 0)
 			{
 				STEP = atoi(optarg);
 			}
+
 		}
 		break;
 		case 'o':
@@ -6595,7 +6599,7 @@ int main(int argc, char *argv[])
 			Test7_Setun_Load();
 			break;
 		case 8:
-			Test8_Setun_Load();
+			// no used
 			break;
 		case 9:
 			Test9_Setun_Load();
@@ -6760,9 +6764,13 @@ int main(int argc, char *argv[])
 
 	// Prints REGS and FRAM
 	view_short_regs();
-	dump_fram_zone(smtr("0"));
-	// view_drum_zone(smtr("---0"));
-
+	printf("\n");
+	
+	if (DEBUG > 0)
+	{	
+		dump_fram_zone(smtr("0"));
+		view_drum_zone(MB);
+	}
 	debug_print("\r\n--- END emulator Setun-1958 --- \r\n");
 
 } /* 'main.c' */
