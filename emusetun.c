@@ -4,10 +4,15 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   02.06.2022
+ * Edit date:   05.06.2022
  *
- * Version: 1.66
+ * Version: 1.67
  */
+
+//TODO ERROR
+// Сдвиг на 9  A*(1:9) в арифимических операциях 
+// -0+ : Запись на МБ	(Фа*)=>(Мд*) проверить номер зоны MB на значение
+// -0- : Считывание с МБ	(Мд*)=>(Фа*) проверить номер зоны MB на значение
 
 // TODO
 //  - [ ] ревизия проекта: проверка TODO и лишние функции
@@ -43,17 +48,7 @@
 			fprintf(stdout, __VA_ARGS__); \
 	} while (0)
 
-/*********************************
- *  Виртуальная машина Сетунь-1958
- *---------------------------------
- */
-// TEST_NUMBER:
-// 1 : Test Arithmetic Ternary
-// 2 : Test Arithmetic TRITS-32
-// 3 : Test Arithmetic Registers VM Setun-1958
-// 4 : Test operattion VM Setun-1958
-
-#define TEST_NUMBER (4)
+//  - [ ] исправить вывод в 9-ном виде.
 
 /* Макросы максимальное значения тритов */
 #define TRIT1_MAX (+1)
@@ -156,7 +151,7 @@ enum
 {
 	OK = 0,		   /* Успешное выполнение операции */
 	WORK = 1,	   /* Выполнение операций виртуальной машины */
-	STOP_DONE = 2, /* Успешный останов машины */
+	STOP = 2, 	   /* Успешный останов машины */
 	STOP_OVER = 3, /* Останов по переполнению результата операции машины */
 	STOP_ERROR = 4 /* Аварийный останов машины */
 };
@@ -206,6 +201,7 @@ trs_t bit2trit(int8_t b);
 void and_t(int8_t *a, int8_t *b, int8_t *s);
 void xor_t(int8_t *a, int8_t *b, int8_t *s);
 void or_t(int8_t *a, int8_t *b, int8_t *s);
+//  - [ ] исправить вывод в 9-ном виде.
 void not_t(int8_t *a, int8_t *s);
 void sum_t(int8_t *a, int8_t *b, int8_t *p0, int8_t *s, int8_t *p1);
 
@@ -250,6 +246,7 @@ void copy_trs_setun(trs_t *src, trs_t *dst);
  * Общие функции для троичных чисел из тритов
  */
 void clear(trs_t *t);
+void mod_3_n(trs_t *t, uint8_t n);
 void clear_full(trs_t *t);
 
 void inc_trs(trs_t *tr);
@@ -327,6 +324,16 @@ void clear(trs_t *t)
 	t->t1 = 0;
 	t->t0 = 0;
 }
+
+/**
+ * Операция Mod 3^N 
+ */
+void mod_3_n(trs_t *t, uint8_t n)
+{
+	t->t1 &= (0xFFFFFFFF >> (SIZE_TRITS_MAX - n));
+	t->t0 &= (0xFFFFFFFF >> (SIZE_TRITS_MAX - n));
+}
+
 
 /**
  * Очистить длину троичного числа и поле битов троичного числа
@@ -758,7 +765,13 @@ trs_t or_trs(trs_t x, trs_t y)
 	int8_t a, b, s;
 
 	x.l = min(x.l, SIZE_TRITS_MAX);
+	x.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-x.l);
+	x.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-x.l);	
+
 	y.l = min(y.l, SIZE_TRITS_MAX);
+	y.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-y.l);
+	y.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-y.l);	
+
 	if (x.l >= y.l)
 	{
 		j = x.l;
@@ -790,7 +803,13 @@ trs_t xor_trs(trs_t x, trs_t y)
 	int8_t a, b, s;
 
 	x.l = min(x.l, SIZE_TRITS_MAX);
+	x.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-x.l);
+	x.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-x.l);	
+	
 	y.l = min(y.l, SIZE_TRITS_MAX);
+	y.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-y.l);
+	y.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-y.l);	
+
 	if (x.l >= y.l)
 	{
 		j = y.l;
@@ -813,6 +832,45 @@ trs_t xor_trs(trs_t x, trs_t y)
 	return r;
 }
 
+/* Операции Setun XOR trs */
+trs_t xor_setun_trs(trs_t x, trs_t y)
+{
+	trs_t r;
+
+	int8_t i, j, ll;
+	int8_t a, b, s;
+
+	x.l = min(x.l, SIZE_TRITS_MAX);
+	x.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-x.l);
+	x.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-x.l);	
+	
+	y.l = min(y.l, SIZE_TRITS_MAX);
+	y.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-y.l);
+	y.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-y.l);	
+
+	if (x.l >= y.l)
+	{
+		j = y.l;
+		ll = x.l;
+	}
+	else
+	{
+		j = x.l;
+		ll = y.l;
+	}
+
+	for (i = 0; i < j; i++)
+	{
+		a = get_trit(x, i);
+		b = get_trit(y, i);
+		xor_t(&a, &b, &s);
+		r = set_trit(x, i, s);
+	}
+	r.l = ll;
+	return r;
+}
+
+
 /* Операция NOT trs */
 trs_t not_trs(trs_t x)
 {
@@ -822,7 +880,9 @@ trs_t not_trs(trs_t x)
 	r.l = x.l;
 
 	r.t1 = ~r.t1;
-
+	r.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-r.l);
+	r.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-r.l);
+	
 	return r;
 }
 
@@ -876,7 +936,13 @@ trs_t add_trs(trs_t x, trs_t y)
 	uint8_t m = 0;
 
 	x.l = min(x.l, SIZE_TRITS_MAX);
-	y.l = min(y.l, SIZE_TRITS_MAX);
+	x.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-x.l);
+	x.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-x.l);
+
+	y.l = min(y.l, SIZE_TRITS_MAX);	
+	y.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-y.l);
+	y.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX-y.l);
+
 	if (x.l >= y.l)
 	{
 		j = x.l;
@@ -901,13 +967,13 @@ trs_t add_trs(trs_t x, trs_t y)
 		//
 		if (s > 0)
 		{
-			r.t1 |= 1 << m;
-			r.t0 |= 1 << m;
+			r.t1 |= (1 << m);
+			r.t0 |= (1 << m);
 		}
 		else if (s < 0)
 		{
 			r.t1 &= ~(1 << m);
-			r.t0 |= 1 << m;
+			r.t0 |= (1 << m);
 		}
 		else
 		{
@@ -1756,6 +1822,7 @@ void st_fram(trs_t ea, trs_t v)
 /* Копировать страницу из память fram на магнитного барабана brum */
 void fram_to_drum(trs_t ea)
 {
+	//TODO test	
 	int8_t sng;
 	trs_t fram_inc;
 	trs_t k1;
@@ -1840,6 +1907,7 @@ void st_drum(trs_t ea, uint8_t ind, trs_t v)
 void drum_to_fram(trs_t ea)
 {
 	// TODO test
+
 	int8_t sng;
 	trs_t zram;
 	trs_t fram_inc;
@@ -3879,7 +3947,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	case (+1 * 9 + 0 * 3 + 0):
 	{ // +00 : Посылка в S	(A*)=>(S)
 		debug_print(" k6..8[+00]: (A*)=>(S)\n");
-		MR = ld_fram(k1_5);
+		MR = ld_fram(k1_5);		
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 
 		if (MR.l != 18)
 		{
 			MR.l = 18;
@@ -3895,11 +3964,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // +0+ : Сложение в S	(S)+(A*)=>(S)
 		debug_print(" k6..8[+0+]: (S)+(A*)=>(S)\n");
 		MR = ld_fram(k1_5);
-		if (MR.l != 18)
-		{
-			MR.l = 18;
-			MR = shift_trs(MR, 9);
-		}
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 
 		S = add_trs(S, MR);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		if (over_check() > 0)
@@ -3913,11 +3978,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // +0- : Вычитание в S	(S)-(A*)=>(S)
 		debug_print(" k6..8[+0-]: (S)-(A*)=>(S)\n");
 		MR = ld_fram(k1_5);
-		if (MR.l != 18)
-		{
-			MR.l = 18;
-			MR = shift_trs(MR, 9);
-		}
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 
 		S = sub_trs(S, MR);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		if (over_check() > 0)
@@ -3933,11 +3994,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		copy_trs_setun(&S, &R);
 		S.t0 = 0;
 		MR = ld_fram(k1_5);
-		if (MR.l != 18)
-		{
-			MR.l = 18;
-			MR = shift_trs(MR, 9);
-		}
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 		
+		
 		trs_t temp = mul_trs(MR, R);
 		temp = slice_trs(temp, 0, 17);
 		copy_trs_setun(&temp, &S);
@@ -3953,11 +4011,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // +++ : Умножение +	(S)+(A*)(R)=>(S)
 		debug_print(" k6..8[+++]: (S)+(A*)(R)=>(S)\n");
 		MR = ld_fram(k1_5);
-		if (MR.l != 18)
-		{
-			MR.l = 18;
-			MR = shift_trs(MR, 9);
-		}
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 		
+		
 		trs_t temp = slice_trs(mul_trs(MR, R), 0, 17);
 		S = add_trs(temp, S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
@@ -3972,11 +4027,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // ++- : Умножение - (A*)+(S)(R)=>(S)
 		debug_print(" k6..8[++-]: (A*)+(S)(R)=>(S)\n");
 		MR = ld_fram(k1_5);
-		if (MR.l != 18)
-		{
-			MR.l = 18;
-			MR = shift_trs(MR, 9);
-		}
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 		
+
 		trs_t temp = mul_trs(S, R);
 		S = add_trs(slice_trs(temp, 0, 17), MR);
 		W = set_trit_setun(W, 1, sgn_trs(S));
@@ -3991,11 +4043,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // +-0 : Поразрядное умножение	(A*)[x](S)=>(S)
 		debug_print(" k6..8[+-0]: (A*)[x](S)=>(S)\n");
 		MR = ld_fram(k1_5);
-		if (MR.l != 18)
-		{
-			MR.l = 18;
-			MR = shift_trs(MR, 9);
-		}
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 
 		S = xor_trs(MR, S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
@@ -4005,6 +4053,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // +-+ : Посылка в R	(A*)=>(R)
 		debug_print(" k6..8[+-+]: (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 
 		if (MR.l != 18)
 		{
 			MR.l = 18;
@@ -4020,6 +4069,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		// TODO test
 		debug_print(" k6..8[+--]: STOP (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 		
 		if (MR.l != 18)
 		{
 			MR.l = 18;
@@ -4027,7 +4077,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		}
 		copy_trs_setun(&MR, &R);
 
-		return STOP_DONE;
+		return STOP;
 	}
 	break;
 	case (+0 * 9 + 1 * 3 + 0):
@@ -4101,6 +4151,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // 0-0 : Посылка в F	(A*)=>(F)
 		debug_print(" k6..8[0-0]: (A*)=>(F)\n");
 		MR = ld_fram(k1_5);
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 		
 		copy_trs_setun(&MR, &F);
 		W = set_trit_setun(W, 1, sgn_trs(F));
 		C = next_address(C);
@@ -4110,9 +4161,10 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // 0-+ : Сложение в F c (C)	(C)+(A*)=>F
 		debug_print(" k6..8[0-+]: (C)+(A*)=>F\n");
 		MR = ld_fram(k1_5);
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 		
 		MR = shift_trs(MR, -3);
 		F = add_trs(C, MR);
-		F.l = 5;
+		mod_3_n(&F,5); /*очистиь неиспользованные триты */ 				
 		W = set_trit_setun(W, 1, sgn_trs(F));
 		C = next_address(C);
 	}
@@ -4121,9 +4173,10 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // 0-- : Сложение в F	(F)+(A*)=>(F)
 		debug_print(" k6..8[0--]: (F)+(A*)=>(F)\n");
 		MR = ld_fram(k1_5);
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 		
 		MR = shift_trs(MR, -4);
 		F = add_trs(F, MR);
-		F.l = 5;
+		mod_3_n(&F,5); /*очистиь неиспользованные триты */ 				
 		W = set_trit_setun(W, 1, sgn_trs(F));
 		C = next_address(C);
 	}
@@ -4138,6 +4191,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		 * при N < 0. При N = 0 содержимое регистра S не изменяется.
 		 */
 		MR = ld_fram(k1_5);
+		mod_3_n(&MR,MR.l); /*очистиь неиспользованные триты */ 		
 		S = shift_trs(S, trs2digit(slice_trs_setun(MR, 1, 5)));
 		S.t1 &= ~(((uint32_t)0xFFFC) << (SIZE_WORD_LONG));
 		S.t0 &= ~(((uint32_t)0xFFFC) << (SIZE_WORD_LONG));
@@ -4164,8 +4218,9 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		 * направлением сдвига, а именно: N > 0 при сдвиге вправо и N < 0 при сдвиге влево. При (S) = 0 или при
 		 * 1/2 <|(S)| < 3/2 в ячейку А* посылается (S), а в регистр S посылается N = 0.
 		 */
-		if (S.t0 != 0)
-		{
+		mod_3_n(&S,18); /*очистиь неиспользованные триты */ 		
+		if ( S.t0 != 0)
+		{			
 			/* Сдвиг S */
 			if (get_trit_setun(S, 1) != 0)
 			{
@@ -4338,7 +4393,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		debug_print(" k6..8[-0+]: (Фа*)=>(Мд*)\n");
 		fram_to_drum(k1_5);
 		MB = slice_trs_setun(K, 2, 5);
-		MB.l = 4;
+		mod_3_n(&MB,4); /*очистиь неиспользованные триты */
+		//TODO проверить номер зоны
 		C = next_address(C);
 	}
 	break;
@@ -4347,7 +4403,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		debug_print(" k6..8[-0-]: (Мд*)=>(Фа*)\n");
 		drum_to_fram(k1_5);
 		MB = slice_trs_setun(K, 2, 5);
-		MB.l = 4;
+		//TODO проверить номер зоны 
+		mod_3_n(&MB,4); /*очистиь неиспользованные триты */
 		C = next_address(C);
 	}
 	break;
@@ -5932,15 +5989,15 @@ void LoadSWSetun(void)
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
 	char *estr;
 
-	file_lst = fopen("software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst", "r");
+	file_lst = fopen("software/tests/01-test-fram.lst", "r");
 	if (file_lst == NULL)
 	{
-		printf("ERR fopen software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
+		printf("ERR fopen software/tests/01-test-fram.lst\n");
 		return;
 	}
 	else
 	{
-		printf("fopen: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
+		printf("fopen: software/tests/01-test-fram.lst\n");
 
 		/* Чтение (построчно) данных из файла в бесконечном цикле */
 		while (1)
@@ -5968,12 +6025,13 @@ void LoadSWSetun(void)
 					break;
 				}
 			}
-
+					
+			
 			/* ---------------------------------
 			 * Загрузить из файла тест-программу
 			 * ---------------------------------
 			 */
-			printf("\r\n Load software/ip5_in_out_3_10/%s\r\n", str);
+			printf("\r\n Load software/tests/%s\r\n", str);
 
 			FILE *file;
 			char path_str[160] = {0};
@@ -5998,7 +6056,7 @@ void LoadSWSetun(void)
 			MR.l = 18;
 			int i = 0;
 
-			strcat(path_str, "software/ip5_in_out_3_10/");
+			strcat(path_str, "software/tests/");
 			if (str[strlen(str) - 1] == 0x0A)
 			{
 				str[strlen(str) - 1] = 0;
@@ -6043,12 +6101,14 @@ void LoadSWSetun(void)
 			/* Печать контрольных сумм */
 			printf("\n");
 			view_checksum_setun(sum);
-			//
-			break; // viv+ dbg
+			
 		}
 	}
-	fclose(file_lst);
-	printf("fclose: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
+	fclose(file_lst);	
+
+	//dump_fram_zone(smtr("0"));
+	//dump_fram_zone(smtr("+"));
+	//dump_fram_zone(smtr("-"));
 
 	printf("\n END Load software\n");
 }
@@ -6544,17 +6604,17 @@ int main(int argc, char *argv[])
 			{
 				usage(argv[0]);
 			}
-			else if (strcmp(name, "test") == 0)
+			if (strcmp(name, "test") == 0)
 			{
 				test = atoi(optarg);
 			}
-			else if (strcmp(name, "debug") == 0)
+			if (strcmp(name, "debug") == 0)
 			{
 				DEBUG = 1;
 			}
-			else if (strcmp(name, "load") == 0)
-			{
-				LoadSWSetun();
+			if (strcmp(name, "load") == 0)
+			{				
+				LoadSWSetun();				
 			}
 			if (strcmp(name, "step") == 0)
 			{
@@ -6611,6 +6671,8 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
+	//return 0; //dbg
+
 	//---------------------------------------------------
 	printf("\r\n --- START emulator Setun-1958 --- \r\n");
 
@@ -6635,6 +6697,8 @@ int main(int argc, char *argv[])
 	/**
 	 * Загрузить из файла тест-программу
 	 */
+	printf("\r\n --- Load 'test1_z01.txs' --- \r\n");
+
 	trs_t sum;
 	trs_t tmp;
 
@@ -6651,12 +6715,11 @@ int main(int argc, char *argv[])
 	MR.l = 18;
 	int i = 0;
 
-	inr = smtr("0---0"); /* cчетчик адреса коротких слов */
-	file = fopen("ur0/00-test.txs", "r");
-	printf("\r\n --- Load 'ur0/00-test.txs' --- \r\n");
+	inr = smtr("----0"); /* cчетчик адреса коротких слов */
+	file = fopen("ur0/test1_z01.txs", "r");
 	if (file == NULL)
 	{
-		printf("ERR fopen ur0/00-test.txs\n");
+		printf("ERR fopen ur0/test1_z01.txs\n");
 		return 0;
 	}
 
@@ -6693,7 +6756,7 @@ int main(int argc, char *argv[])
 	}
 	fclose(file);
 
-	if (DEBUG > 0)
+	//if (DEBUG > 0)
 	{
 		printf("\n i=%i\n", i);
 	}
@@ -6703,7 +6766,9 @@ int main(int argc, char *argv[])
 	//
 	if (DEBUG > 0)
 	{
+		dump_fram_zone(smtr("-"));
 		dump_fram_zone(smtr("0"));
+		dump_fram_zone(smtr("+"));
 	}
 
 	/**
@@ -6737,9 +6802,9 @@ int main(int argc, char *argv[])
 
 		ret_exec = execute_trs(addr, oper);
 
-		if ((ret_exec == STOP_DONE))
+		if ((ret_exec == STOP))
 		{
-			printf("\r\n<STOP_DONE>\r\n");
+			printf("\r\n<STOP>\r\n");
 			break;
 		}
 		else if (ret_exec == STOP_OVER)
@@ -6769,7 +6834,7 @@ int main(int argc, char *argv[])
 	if (DEBUG > 0)
 	{	
 		dump_fram_zone(smtr("0"));
-		view_drum_zone(MB);
+		//view_drum_zone(MB);
 	}
 	debug_print("\r\n--- END emulator Setun-1958 --- \r\n");
 
