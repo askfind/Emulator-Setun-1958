@@ -9,91 +9,39 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 Build and run
 
 ```shell
-make
-./emu
+$ make
+gcc -o emu -g emusetun.c
 ```
 
 As a result you will see dump of register and memory structure of VM after run some tests:
 
 ```shell
-...
+
 $ ./emu
+--- START emulator Setun-1958 ---
+--- Reset Setun-1958 ---
+--- Load 'test1_z01.txs' ---
+ i=162
 
- --- START emulator Setun-1958 ---
+KC:
+: [0000000-0], 0000X, (-3)
+: [+----00++], 1WW04, (3325)
 
- --- Reset Setun-1958 ---
-
-  K  : [000000000], 00000, (0)
-  F  : [00000], 000, (0)
-  C  : [00000], 000, (0)
-  W  : [0], 0, (0)
-  ph1: [0], 0, (0)
-  ph2: [0], 0, (0)
-  S  : [000000000000000000], 000000000, (0)
-  R  : [000000000000000000], 000000000, (0)
-  MB : [0000], 00, (0)
-
- --- Load 'ur0/03-input-checksum.txs' ---
-00002 -> [00002] addr: [0---0], 0WX, (-39)
-ZY24X -> [ZY24X] addr: [0---+], 0WY, (-38)
-
-...
+-KC = 0-KC:
+: [0000000+0], 00003, (3)
+: [-++++00--], Z440W, (-3325)
 
 [ Start Setun-1958 ]
-
- С: [0000+], 001, (1)           -> fram[0] : 02WX3
-A*: [0+---], 02W, (14)          -> fram[0] : 3020123X4
- k6..8[-0+]: (Фа*)=>(Мд*)
-
-  K  : [0+----0+0], 02WX3, (1110)
-  F  : [00000], 000, (0)
-  C  : [000+0], 003, (3)
-  W  : [0], 0, (0)
-  ph1: [0], 0, (0)
-  ph2: [0], 0, (0)
-  S  : [000000000000000000], 000000000, (0)
-  R  : [000000000000000000], 000000000, (0)
-  MB : [+---], 2W, (14)
-
-```
-
-## Load software Setun-1958 and Start Setun-1958
-```shell
-
-./emu --load
-
---- Load software anf DUMP FRAM  for VM SETUN-1958 ---
-
-fopen: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst
-
- Load software/ip5_in_out_3_10/01_ip5_in_out_3_10_fram_0_setun .txs
-
-00003
-02Z10
-0000Y
-00310
-
-...
-
-[ Start Setun-1958 ]
-
-<STOP_DONE>
-
-  K  : [00000+--0], 0002X, (15)
-  F  : [00000], 000, (0)
-  C  : [0000+], 001, (1)
-  W  : [0], 0, (0)
-  ph1: [0], 0, (0)
-  ph2: [0], 0, (0)
-  S  : [000000000000000000], 000000000, (0)
-  R  : [000000000000000000], 000000000, (0)
-  MB : [0000], 00, (0)
-
 ```
 
 ## Print  list commands 
 ```shell
-./emu --help 
+./emu --help
+
+usage: ./emu [options] FILE SCRIPT(s)...
+	--test : number test VM Setun-1958)
+	--debug : view step VM Setun-1958)
+	--load : load software VM Setun-1958)
 ```
 
 ## Run Test #1
@@ -139,93 +87,125 @@ fopen: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst
 
 ./emu --debug
 
- С: [0-0+0], 0X3, (-24)         -> zone[0] : 01233
-A*: [00++-], 012, (11)          -> zone[0] : 431302000
- k6..8[+0+]: (S)+(A*)=>(S)
+-- START emulator Setun-1958 ---
 
-  K  : [00++-+0+0], 01233, (921)
-  F  : [00-0+], 0Z1, (-8)
-  C  : [0-0++], 0X4, (-23)
+ --- Reset Setun-1958 ---
+
+  K  : [000000000], 00000, (0)
+  F  : [00000], 000, (0)
+  C  : [00000], 000, (0)
+  W  : [0], 0, (0)
+  ph1: [0], 0, (0)
+  ph2: [0], 0, (0)
+  S  : [000000000000000000], 000000000, (0)
+  R  : [000000000000000000], 000000000, (0)
+  MB : [0000], 00, (0)
+
+ --- Load 'test1_z01.txs' ---
+1xxz0 -> [1XXZ0] addr: [----0], ZWX, (-120)
+z4x0x -> [Z4X0X] addr: [----+], ZWY, (-119)
+1wwxy -> [1WWXY] addr: [---00], ZW0, (-117)
+z1xz0 -> [Z1XZ0] addr: [---0+], ZW1, (-116)
+z4z30 -> [Z4Z30] addr: [---+0], ZW3, (-114)
+...
+z10zx -> [Z10ZX] addr: [++++0], 143, (120)
+1411x -> [1411X] addr: [+++++], 144, (121)
+
+ i=162
+
+KC:
+: [0000000-0], 0000X, (-3)
+: [+----00++], 1WW04, (3325)
+
+-KC = 0-KC:
+: [0000000+0], 00003, (3)
+: [-++++00--], Z440W, (-3325)
+
+[ Dump FRAM Setun-1958: ]
+Zone =-1
+
+WW WX  1 XX Z0        02 03  0 WY 4W
+   WY  Z 4X 0X           04  0 YZ X4
+WZ W0  1 WW XY        1W 1X  1 00 00
+   W1  Z 1X Z0           1Y  0 Y2 00
+W2 W3  Z 4Z 30        1Z 10  0 01 00
+...
+0W 0X  1 3Y 13        42 43  0 03 00
+   0Y  1 Z0 X0           44  0 03 00
+0Z 00  1 W3 00        KC     0 00 0Y
+   01  0 Y0 X1               1 ZW 22
+
+...
+
+[ Start Setun-1958 ]
+
+ С: [0000+], 001, (1)           -> zone[0] : 0WX00
+A*: [0---0], 0WX, (-39)         -> zone[0] : 01YZ0
+ k6..8[000]: A*=>(C)
+
+  K  : [0---00000], 0WX00, (-3159)
+  F  : [00000], 000, (0)
+  C  : [0---0], 0WX, (-39)
+  W  : [0], 0, (0)
+  ph1: [0], 0, (0)
+  ph2: [0], 0, (0)
+  S  : [000000000000000000], 000000000, (0)
+  R  : [000000000000000000], 000000000, (0)
+  MB : [0000], 00, (0)
+
+  С: [0---0], 0WX, (-39)         -> zone[0] : 01YZ0
+A*: [00+-+], 01Y, (7)           -> zone[0] : 00300
+ k6..8[0-0]: (A*)=>(F)
+
+  K  : [00+-+0-00], 01YZ0, (558)
+  F  : [000+0], 003, (3)
+  C  : [0---+], 0WY, (-38)
   W  : [+], 1, (1)
   ph1: [0], 0, (0)
   ph2: [0], 0, (0)
-  S  : [+++00++00+-++00000], 43131Y300, (187249725)
-  R  : [+--+00000000000000], 2Y0000000, (76527504)
-  MB : [0+--], 1W, (5)
-
-
---- END emulator Setun-1958 --- 
-```
-
-## Execute STEP=10  program 'Setun-1958' with debugging information
-```shell
-
-./emu --step 10
-```
-
-## Run Test #5
-```shell
-
-./emu --test 5
-
- --- TEST #5  Load program FT1,FT2 for VM SETUN-1958 ---
-
-fopen: ur1/00_ip5.lst
-
+  S  : [000000000000000000], 000000000, (0)
+  R  : [000000000000000000], 000000000, (0)
+  MB : [0000], 00, (0)
 ...
+```
 
- --- Load ur1/07_ip5_drum_11_setun.txs ---
+## Execute STEP=3  program 'Setun-1958' with debugging information
 
- i=0
+```shell
+$ ./emu --step 3
+
+ --- START emulator Setun-1958 ---
+
+ --- Reset Setun-1958 ---
+
+ --- Load 'test1_z01.txs' ---
+
+ i=162
 
 KC:
-: [000000000], 00000, (0)
-: [000000000], 00000, (0)
-
--KC = 0-KC:
-: [000000000], 00000, (0)
-: [000000000], 00000, (0)
-
-
-Чтение файла закончено
-fclose: ur1/00_ip5.lst
-
- --- END TEST #5 ---
-```
-
-## Run Test #6
-```shell
-
-./emu --test 6
-
---- TEST #6  Load program FT1,FT2 for VM SETUN-1958 ---
-
-fopen: software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst
-
- --- Load software/ip5_in_out_10_3/01_ip5_in_out_10_3_fram_0_setun.txs
- ---
-00010
-ZW3W1
-00001
-
-...
-
-KC:
-: [0000000+0], 00003, (3)
-: [+++++0+0+], 14411, (9811)
-
--KC = 0-KC:
 : [0000000-0], 0000X, (-3)
-: [-----0-0-], ZWWZZ, (-9811)
+: [+----00++], 1WW04, (3325)
+
+-KC = 0-KC:
+: [0000000+0], 00003, (3)
+: [-++++00--], Z440W, (-3325)
 
 
-Чтение файла закончено
-fclose: software/ip5_in_out_10_3/00_ip5_in_out.lst
+[ Start Setun-1958 ]
 
- --- END TEST #6 ---
+STEP=3 <STOP>
+
+  K  : [00+0+00-0], 0110X, (807)
+  F  : [000+0], 003, (3)
+  C  : [0--00], 0W0, (-36)
+  W  : [+], 1, (1)
+  ph1: [0], 0, (0)
+  ph2: [0], 0, (0)
+  S  : [000000000000000000], 000000000, (0)
+  R  : [000000000000000000], 000000000, (0)
+  MB : [0000], 00, (0)
+
 ```
-
-
 
 ## Notes
 
