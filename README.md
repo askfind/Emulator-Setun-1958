@@ -209,8 +209,15 @@ STEP=3 <STOP>
 
 ## Notes
 
-* `lpt0`, `ptp0` ... `ur0`, `ur1` folders - virtual device files like tty and others
+* `ptr1`,`ptr2`,`ptp1`,`tty1` - virtual device files like tty and others
 * `Documentation` folder contains collection of documentation and program (`Programming` folder) examples
+
+Device 	Direction 	Description
+
+PTR1: 	source paper tape reader #1
+PTR2: 	source paper tape reader #2
+PTP1: 	destination paper tape punch #1
+TTY1: 	destination hard copy terminal #1
 
 # Links
 
@@ -228,6 +235,6 @@ Everybody is invited and welcome to contribute to Setun VM.
 
 
 - Create date: 01.11.2018
-- Edit date:   08.06.2022
+- Edit date:   10.06.2022
 
-- Current version: 1.70
+- Current version: 1.71

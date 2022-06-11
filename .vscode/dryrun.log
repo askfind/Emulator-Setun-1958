@@ -1,0 +1,5 @@
+make --dry-run --always-make --keep-going --print-directory
+make: Entering directory '/home/vladmir/WORKs/SETUN-1958/Emulator-Setun-1958'
+gcc -o emu -g emusetun.c
+make: Leaving directory '/home/vladmir/WORKs/SETUN-1958/Emulator-Setun-1958'
+ 
