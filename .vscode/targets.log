@@ -1,4 +1,6 @@
 make all --print-data-base --no-builtin-variables --no-builtin-rules --question
+make: *** No rule to make target 'all'.  Stop.
+
 # GNU Make 4.2.1
 # Built for x86_64-pc-linux-gnu
 # Copyright (C) 1988-2016 Free Software Foundation, Inc.
@@ -6,7 +8,7 @@ make all --print-data-base --no-builtin-variables --no-builtin-rules --question
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Sat Jun 11 22:26:56 2022
+# Make data base, printed on Tue Jun 14 17:26:07 2022
 
 # Variables
 
@@ -71,7 +73,7 @@ VSCODE_VERBOSE_LOGGING = true
 # environment
 MANAGERPID = 2005
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-a9cbf038-e02c-4c5d-9aed-5b7a2328f2ab.sock
+VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-8479c63c-8ef6-4519-9f44-87cadecaf4cd.sock
 # environment
 VSCODE_CWD = /home/vladmir/WORKs/SETUN-1958/Emulator-Setun-1958
 # default
@@ -99,7 +101,7 @@ XDG_SESSION_DESKTOP = ubuntu
 # environment
 SSH_AUTH_SOCK = /run/user/1000/keyring/ssh
 # environment
-GIO_LAUNCHED_DESKTOP_FILE_PID = 466080
+GIO_LAUNCHED_DESKTOP_FILE_PID = 553748
 # automatic
 %F = $(notdir $%)
 # environment
@@ -209,7 +211,7 @@ GJS_DEBUG_OUTPUT = stderr
 # environment
 LANG = C
 # environment
-VSCODE_PID = 469408
+VSCODE_PID = 556831
 # variable set hash-table stats:
 # Load=100/1024=10%, Rehash=0, Collisions=17/125=14%
 
@@ -219,9 +221,9 @@ VSCODE_PID = 469408
 
 # Directories
 
-# . (device 2050, inode 4809951): 22 files, no impossibilities.
+# . (device 2050, inode 4809951): 18 files, no impossibilities.
 
-# 22 files, no impossibilities in 1 directories.
+# 18 files, no impossibilities in 1 directories.
 
 # Implicit Rules
 
@@ -282,11 +284,9 @@ clean:
 #  recipe to execute (from 'Makefile', line 6):
 	rm -f emu
 	rm -f output.vcd
- 
-make: *** No rule to make target 'all'.  Stop.
-
 
 # files hash-table stats:
+ 
 # Load=9/1024=1%, Rehash=0, Collisions=0/23=0%
 # VPATH Search Paths
 
@@ -294,12 +294,12 @@ make: *** No rule to make target 'all'.  Stop.
 
 # No general ('VPATH' variable) search path.
 
-# strcache buffers: 1 (0) / strings = 31 / storage = 241 B / avg = 7 B
-# current buf: size = 8162 B / used = 241 B / count = 31 / avg = 7 B
+# strcache buffers: 1 (0) / strings = 27 / storage = 224 B / avg = 8 B
+# current buf: size = 8162 B / used = 224 B / count = 27 / avg = 8 B
 
-# strcache performance: lookups = 42 / hit rate = 26%
+# strcache performance: lookups = 38 / hit rate = 28%
 # hash-table stats:
-# Load=31/8192=0%, Rehash=0, Collisions=1/42=2%
-# Finished Make data base on Sat Jun 11 22:26:56 2022
+# Load=27/8192=0%, Rehash=0, Collisions=1/38=3%
+# Finished Make data base on Tue Jun 14 17:26:07 2022
 
  
