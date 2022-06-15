@@ -7089,7 +7089,9 @@ int main(int argc, char *argv[])
 	/* Prints REGS and FRAM */
 	if (DEBUG > 0)
 	{
+		dump_fram_zone(smtr("-"));		
 		dump_fram_zone(smtr("0"));		
+		dump_fram_zone(smtr("+"));		
 	}
 	
 	/* Печать завершения работы "Setun-1958" */
