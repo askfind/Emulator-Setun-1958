@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   14.06.2022
+ * Edit date:   26.06.2022
  *
- * Version: 1.73
+ * Version: 1.75
  */
 
 // TODO
@@ -123,24 +123,17 @@ typedef uintptr_t addr;
 
 typedef struct trs
 {
-	uint8_t l;	 /* длина троичного числа в тритах			*/
-	uint32_t t1; /* троичное число FALSE,TRUE */
-	uint32_t t0; /* троичное число NIL */
+	uint8_t l; /* длина троичного числа в тритах */
+	uint32_t t1;	 /* троичное число FALSE,TRUE */
+	uint32_t t0;	 /* троичное число NIL */
 } trs_t;
 
 typedef struct long_trs
 {
-	uint8_t l;	 /* длина троичного числа в тритах			*/
-	uint64_t t1; /* троичное число FALSE,TRUE */
-	uint64_t t0; /* троичное число NIL */
+	uint8_t l; /* длина троичного числа в тритах			*/
+	uint64_t t1;	 /* троичное число FALSE,TRUE */
+	uint64_t t0;	 /* троичное число NIL */
 } long_trs_t;
-
-typedef struct mem_elm
-{
-	uint16_t l;	 /* длина троичного числа в тритах */
-	uint16_t m1; /* троичное число FALSE,TRUE */
-	uint16_t m0; /* троичное число NIL */
-} mem_elm_t;
 
 /**
  * Статус выполнения операции  "Сетунь-1958"
@@ -160,6 +153,7 @@ enum
  */
 static uint8_t DEBUG = 1;
 static uint32_t STEP = 0;
+static int32_t BREAKPOINT = INT32_MAX;
 
 /* Фотосчитыватель ФТ1 */
 FILE *ptr1;
@@ -181,22 +175,24 @@ trs_t mem_drum[NUMBER_ZONE_DRUM + ZONE_DRUM_BEG][SIZE_ZONE_TRIT_DRUM]; /* зап
  *  -----------------------------------
  */
 /* Основные регистры в порядке пульта управления */
-trs_t K; /* K(1:9)  код команды (адрес ячейки оперативной памяти) */
-trs_t F; /* F(1:5)  индекс регистр  */
-trs_t C; /* C(1:5)  программный счетчик  */
-trs_t W; /* W(1:1)  знак троичного числа */
+trs_t K = {.l = 9, .t0 = 0, .t1 = 0 };		/* K(1:9)  код команды (адрес ячейки оперативной памяти) */
+trs_t F = {.l = 5, .t0 = 0, .t1 = 0 };		/* F(1:5)  индекс регистр  */
+trs_t C = {.l = 5, .t0 = 0, .t1 = 0 };		/* C(1:5)  программный счетчик  */
+trs_t W = {.l = 1, .t0 = 0, .t1 = 0 };		/* W(1:1)  знак троичного числа */
 //
-trs_t ph1; /* ph1(1:1) 1 разряд переполнения */
-trs_t ph2; /* ph2(1:1) 2 разряд переполнения */
-trs_t S;   /* S(1:18) аккумулятор */
-trs_t R;   /* R(1:18) регистр множителя */
-trs_t MB;  /* MB(1:4) троичное число зоны магнитного барабана */
-/* Дополнительные */
-trs_t MR; /* временный регистр для обмена троичным числом */
+trs_t ph1 = {.l = 1, .t0 = 0, .t1 = 0 };	/* ph1(1:1) 1 разряд переполнения */
+trs_t ph2 = {.l = 2, .t0 = 0, .t1 = 0 };	/* ph2(1:1) 2 разряд переполнения */
+trs_t S = {.l = 18, .t0 = 0, .t1 = 0 };		/* S(1:18) аккумулятор */
+trs_t R = {.l = 18, .t0 = 0, .t1 = 0 };		/* R(1:18) регистр множителя */
+trs_t MB = {.l = 4, .t0 = 0, .t1 = 0 };		/* MB(1:4) троичное число зоны магнитного барабана */
 
-/** --------------------------------------------------
- *  Прототипы функций виртуальной машины "Сетунь-1958"
- *  --------------------------------------------------
+/* Дополнительные */
+trs_t MR = {.l = 9, .t0 = 0, .t1 = 0 };		/* временный регистр для обмена с FRAM */
+long_trs_t TMP = {.l = 36, .t0 = 0, .t1 = 0 };	/* временная переменная для троичного числа */
+
+/** ------------------------------------------------------
+ *  Прототипы функций для виртуальной машины "Сетунь-1958"
+ *  ------------------------------------------------------
  */
 int32_t pow3(int8_t x);
 int8_t trit2int(trs_t t);
@@ -2473,11 +2469,10 @@ void view_step_short_reg(trs_t *t, uint8_t *ch)
 	}
 	printf("}");
 #endif
-	printf("\t\t-> zone[%i] : ", get_trit_setun(tv, 1)); //
+	printf("\t\t-> zone[% 2i] : ", get_trit_setun(tv, 1));
 
 	if (get_trit_setun(tv, 5) < 0)
 	{
-
 		tv = set_trit_setun(tv, 5, 0);
 		MR = ld_fram(tv);
 		trs2str(MR);
@@ -2485,15 +2480,21 @@ void view_step_short_reg(trs_t *t, uint8_t *ch)
 		tv = set_trit_setun(tv, 5, 1);
 		MR = ld_fram(tv);
 		trs2str(MR);
-		printf("\n");
+		//printf("\n");
 		tv = set_trit_setun(tv, 5, -1);
+		MR = ld_fram(tv);
 	}
 	else
 	{
 		MR = ld_fram(tv);
 		trs2str(MR);
-		printf("\n");
+		//printf("\n");
 	}
+	
+	printf(", ");
+	printf("(%li)", (long int)trs2digit(MR));
+	printf("\n");
+
 	//
 	// tv = next_address(tv);
 	// MR = ld_fram(tv);
@@ -2538,7 +2539,7 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 	printf(", "); //
 	printf("(%li)", (long int)trs2digit(*t));
 
-	printf("\t\t-> zone[%i] : ", get_trit_setun(tv, 1)); //
+	printf("\t\t-> zone[% 2i] : ", get_trit_setun(tv, 1));
 
 	if (get_trit_setun(tv, 5) < 0)
 	{
@@ -2550,15 +2551,19 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 		tv = set_trit_setun(tv, 5, 1);
 		MR = ld_fram(tv);
 		trs2str(MR);
-		printf("\n");
+		//printf("\n");
 		tv = set_trit_setun(tv, 5, -1);
+		MR = ld_fram(tv);
 	}
 	else
 	{
 		MR = ld_fram(tv);
 		trs2str(MR);
-		printf("\n");
+		//printf("\n");
 	}
+	printf(", ");
+	printf("(%li)", (long int)trs2digit(MR));
+	printf("\n");
 
 #if 0	
 	printf(", {");
@@ -2619,7 +2624,6 @@ void view_short_long_reg(long_trs_t *t, uint8_t *ch)
 
 /**
  * Печать контрольных сумм
- *
  */
 void view_checksum_setun(trs_t t)
 {
@@ -2632,7 +2636,7 @@ void view_checksum_setun(trs_t t)
 	view_short_reg(&check, "");
 	//
 	check = slice_trs_setun(t, 10, 18);
-	view_short_reg(&check, "");	
+	view_short_reg(&check, "");
 
 	printf("-KC = 0-KC:\n");
 	check = neg_trs(t);
@@ -3820,22 +3824,24 @@ void dump_drum(void)
 	}
 }
 
-uint8_t Begin_Read_Commands_from_FT1(FILE *file) {
+uint8_t Begin_Read_Commands_from_FT1(FILE *file)
+{
 	trs_t fa;
 	/* zone 0 FRAM */
 	fa = smtr("0---0");
-	return ( Read_Commands_from_FT1(file, fa) );
+	return (Read_Commands_from_FT1(file, fa));
 }
 
 /**
  * Чтение команд с фотосчитывателя №1
  */
 uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
-{	
+{
 	printf("[ Read commands from FT1 ]\n");
 	uint8_t cnt = 0;
-	if( file == NULL) 
-	 	return 1; /* Error #1 */
+	
+	if (file == NULL)
+		return 1; /* Error #1 */
 
 	trs_t dst;
 	trs_t addr;
@@ -3843,8 +3849,8 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 	uint8_t cmd[20];
 
 	/**
-	 * Загрузить 
-	 */	
+	 * Загрузить
+	 */
 
 	trs_t sum;
 	trs_t tmp;
@@ -3861,12 +3867,11 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 	dst.l = 9;
 	MR.l = 18;
 	int i = 0;
-	
 
 	while (fscanf(file, "%s", cmd) != EOF)
 	{
-		if( strlen(cmd) != 5 ) 
-				continue;
+		if (strlen(cmd) != 5)
+			continue;
 
 		cmd_str_2_trs(cmd, &dst);
 		sum = add_trs(sum, dst);
@@ -3895,19 +3900,19 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 
 		st_fram(fa, dst);
 		fa = next_address(fa);
-		mod_3_n(&fa,5);		
+		mod_3_n(&fa, 5);
 
-		if( i == SIZE_ZONE_TRIT_FRAM) 
-		 	break;
-	}	
+		if (i == SIZE_ZONE_TRIT_FRAM)
+			break;
+	}
 
 	printf("\ni=%i\n", i);
-	/* Печать контрольных сумм */	
-	view_checksum_setun(sum);	
+	/* Печать контрольных сумм */
+	view_checksum_setun(sum);
 
-	if( cnt != SIZE_ZONE_TRIT_FRAM)
+	if (cnt != SIZE_ZONE_TRIT_FRAM)
 		return 1; /* Error #2 */
-	
+
 	return 0; /* OK' */
 }
 
@@ -3917,13 +3922,13 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa)
 {
 	uint8_t cnt = 0;
-	
-	printf(" TODO Read_Symbols_from_FT1(...)\n");
-	
-	if( file == NULL) 
-	 	return 1; /* Error */
 
-	if( cnt != SIZE_ZONE_TRIT_FRAM)
+	printf(" TODO add code Read_Symbols_from_FT1(...)\n");
+
+	if (file == NULL)
+		return 1; /* Error */
+
+	if (cnt != SIZE_ZONE_TRIT_FRAM)
 		return 1; /* Error #2 */
 
 	return 0; /* OK' */
@@ -3934,14 +3939,80 @@ uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa)
  */
 uint8_t Read_Commands_from_FT2(FILE *file, trs_t fa)
 {
+	printf("[ Read commands from FT2 ]\n");
 	uint8_t cnt = 0;
+	
+	if (file == NULL)
+		return 1; /* Error #1 */
 
-	printf(" TODO Read_Commands_from_FT2(...)\n");
+	trs_t dst;
+	trs_t addr;
+	trs_t oper;
+	uint8_t cmd[20];
 
-	if( file == NULL) 
-	 	return 1; /* Error */
+	/**
+	 * Загрузить
+	 */
 
-	if( cnt != SIZE_ZONE_TRIT_FRAM)
+	trs_t sum;
+	trs_t tmp;
+
+	tmp.l = 18;
+	tmp.t1 = 0;
+	tmp.t0 = 0;
+
+	int64_t dsun = 0;
+	sum.l = 18;
+	sum.t1 = 0;
+	sum.t0 = 0;
+	//
+	dst.l = 9;
+	MR.l = 18;
+	int i = 0;
+
+	while (fscanf(file, "%s", cmd) != EOF)
+	{
+		if (strlen(cmd) != 5)
+			continue;
+
+		cmd_str_2_trs(cmd, &dst);
+		sum = add_trs(sum, dst);
+		i += 1;
+
+		dsun += trs2digit(dst);
+
+		debug_print("%s -> [", cmd);
+
+		if (DEBUG > 0)
+		{
+			trs2str(dst);
+		}
+		debug_print("]");
+		if (DEBUG > 0)
+		{
+			view_short_reg(&fa, " addr");
+		}
+		else
+		{
+			if (DEBUG > 0)
+			{
+				printf("\n");
+			}
+		}
+
+		st_fram(fa, dst);
+		fa = next_address(fa);
+		mod_3_n(&fa, 5);
+
+		if (i == SIZE_ZONE_TRIT_FRAM)
+			break;
+	}
+
+	printf("\ni=%i\n", i);
+	/* Печать контрольных сумм */
+	view_checksum_setun(sum);
+
+	if (cnt != SIZE_ZONE_TRIT_FRAM)
 		return 1; /* Error #2 */
 
 	return 0; /* OK' */
@@ -3954,15 +4025,15 @@ uint8_t Read_Symbols_from_FT2(FILE *file, trs_t fa)
 {
 	uint8_t cnt = 0;
 
-	printf(" TODO Read_Symbols_from_FT2(...)\n");
+	printf(" TODO  add code  Read_Symbols_from_FT2(...)\n");
 
-	if( file == NULL) 
-	 	return 1; /* Error */
-	
-	if( cnt != SIZE_ZONE_TRIT_FRAM)
+	if (file == NULL)
+		return 1; /* Error */
+
+	if (cnt != SIZE_ZONE_TRIT_FRAM)
 		return 1; /* Error #2 */
-		
-	return 0; /* OK' */	
+
+	return 0; /* OK' */
 }
 
 /** *******************************************
@@ -3977,40 +4048,15 @@ uint8_t Read_Symbols_from_FT2(FILE *file, trs_t fa)
  */
 void reset_setun_1958(void)
 {
-	//
 	clean_fram(); /* Очистить  FRAM */
 	clean_drum(); /* Очистить  DRUM */
-	//
-	clear(&K); /* K(1:9) */
-	K.l = 9;
-	clear(&F); /* F(1:5) */
-	F.l = 5;
-	clear(&C); /* K(1:5) */
-	C.l = 5;
-	clear(&W); /* W(1:1) */
-	W.l = 1;
-	//
-	clear(&ph1); /* ph1(1:1) */
-	ph1.l = 1;
-	clear(&ph2); /* ph2(1:1) */
-	ph2.l = 1;
-	clear(&S); /* S(1:18) */
-	S.l = 18;
-	clear(&R); /* R(1:18) */
-	R.l = 18;
-	clear(&MB); /* MB(1:4) */
-	MB.l = 4;
-	//
-	clear(&MR); /* Временный регистр данных MR(1:9) */
-	MR.l = 9;
 }
 
 /**
  * Вернуть модифицированное K(1:9) для выполнения операции "Сетунь-1958"
  */
 trs_t control_trs(trs_t a)
-{
-	// TODO debug
+{	
 	int8_t k9;
 	trs_t k1_5;
 	trs_t cn;
@@ -4025,24 +4071,25 @@ trs_t control_trs(trs_t a)
 
 	/* Модицикация адресной части K(1:5) */
 	if (k9 > 0)
-	{ /* A(1:5) = A(1:5) + F(1:5) */
-		// TODO debug
+	{ /* A(1:5) = A(1:5) + F(1:5) */		
 		k1_5 = add_trs(k1_5, F);
 		mod_3_n(&k1_5, 5);
 	}
 	else if (k9 < 0)
-	{ /* A(1:5) = A(1:5) - F(1:5) */
-		// TODO debug
+	{ /* A(1:5) = A(1:5) - F(1:5) */		
 		k1_5 = sub_trs(k1_5, F);
 		mod_3_n(&k1_5, 5);
 	}
 	else
-	{	/* r = K(1:9) */
-		//
+	{	/*  A(1:5) = A(1:5) */
+		/* Без изменений    */ 
 	}
+
 	cn = shift_trs(k1_5, 4);
 	cn.l = 9;
+
 	a = slice_trs_setun(a, 6, 9);
+	
 	cn = add_trs(a, cn);
 	cn.l = 9;
 
@@ -4236,7 +4283,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
 		}
 		trs_t temp = mul_trs(MR, R);
-		mod_3_n(&temp,18);		
+		mod_3_n(&temp, 18);
 		copy_trs_setun(&temp, &S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		if (over_check() > 0)
@@ -4475,8 +4522,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
 		S = shift_trs(S, trs2digit(slice_trs_setun(MR, 1, 5)));
-		S.t1 &= ~((uint32_t)0xFFFC0000);
-		S.t0 &= ~((uint32_t)0xFFFC0000);
+		mod_3_n(&S, 18); /* очистить неиспользованные триты */
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
 	}
@@ -4556,7 +4602,9 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	case (-1 * 9 + 0 * 3 + 0):
 	{ // -00 : Ввод в Фа* - Вывод из Фа*
 		debug_print(" k6..8[-00]: Ввод в Фа* - Вывод из Фа*\n");
+		
 		// TODO добавить реализацию чтения из файла виртуального устройства ввода
+		
 		trs_t fa;
 		if (DEBUG > 0)
 		{
@@ -4581,28 +4629,29 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 						get_trit_setun(k1_5, 3) * 9 +
 						get_trit_setun(k1_5, 4) * 3 +
 						get_trit_setun(k1_5, 5);
+		
 		/* Тип устройства ввода/вывода */
 		switch (codeio)
 		{
 		case (+0 * 27 + 0 * 9 + 0 * 3 + 1): /* Ввод с ФТ-1 в виде команд */
 			debug_print("   k2..5[000+]: Ввод с ФТ-1 в виде команд\n");
-			// TODO  добавить реализацию запись из файла виртуального устройства ввода						
-			Read_Commands_from_FT1(ptr1,fa);
+			// TODO  добавить реализацию запись из файла виртуального устройства ввода
+			Read_Commands_from_FT1(ptr1, fa);
 			break;
 		case (+0 * 27 + 0 * 9 + 1 * 3 + 0): /* Ввод с ФТ-2 в виде команд */
 			debug_print("   k2..5[00+0]: Ввод с ФТ-2 в виде команд\n");
 			// TODO  добавить реализацию запись из файла виртуального устройства ввода
-			Read_Commands_from_FT2(ptr2,fa);
+			Read_Commands_from_FT2(ptr2, fa);
 			break;
 		case (+0 * 27 + 0 * 9 + 0 * 3 - 1): /* Ввод с ФТ-1 в виде символов */
 			debug_print("   k2..5[000-]: Ввод с ФТ-1 в виде символов\n");
 			// TODO  добавить реализацию запись из файла виртуального устройства ввода
-			Read_Symbols_from_FT1(ptr1,fa);
+			Read_Symbols_from_FT1(ptr1, fa);
 			break;
 		case (+0 * 27 + 0 * 9 - 1 * 3 + 0): /* Ввод с ФТ-2 в виде символов */
 			debug_print("   k2..5[00-0]: Ввод с ФТ-2 в виде символов\n");
 			// TODO  добавить реализацию запись из файла виртуального устройства ввода
-			Read_Symbols_from_FT2(ptr2,fa);
+			Read_Symbols_from_FT2(ptr2, fa);
 			break;
 		case (+1 * 27 + 0 * 9 + 0 * 3 + 0): /* Перфоратор ПЛ (Телетайп ТП)перфорация в виде команд */
 			debug_print("   k2..5[+000]: Перфоратор ПЛ (Телетайп ТП)перфорация в виде команд\n");
@@ -6240,11 +6289,10 @@ void Test7_Setun_Load(void)
 				printf("ERR fopen %s\n", path_str);
 				return;
 			}
+
 			cmd_str_2_trs(cmd, &dst);
 			sum = add_trs(sum, dst);
 			i += 1;
-
-			dsun += trs2digit(dst);
 
 			debug_print("%s -> [", cmd);
 			trs2str(dst);
@@ -6261,12 +6309,12 @@ void Test7_Setun_Load(void)
 			st_fram(inr, dst);
 			inr = next_address(inr);
 			fclose(file);
-		
-		/* Печать контрольных сумм */
-		printf("\n");
-		view_checksum_setun(sum);			
+
+			/* Печать контрольных сумм */
+			printf("\n");
+			view_checksum_setun(sum);
 		}
-		//printf("\n i=%i\n", i);
+		// printf("\n i=%i\n", i);
 		//
 	}
 
@@ -6274,7 +6322,7 @@ void Test7_Setun_Load(void)
 	printf("fclose: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\n");
 	printf("\n --- END TEST #7 --- \n");
 }
- 
+
 void LoadSWSetun(void)
 {
 	printf("\n --- Load software anf DUMP FRAM  for VM SETUN-1958 --- \n\n");
@@ -6860,9 +6908,9 @@ int usage(const char *argv0)
 	printf("usage: %s [options] FILE SCRIPT(s)...\n", argv0);
 	printf("\t--test : number test VM Setun-1958)\n");
 	printf("\t--debug : view step VM Setun-1958)\n");
+	printf("\t--breakpoint : view stop VM Setun-1958)\n");
 	printf("\t--load : load software VM Setun-1958)\n");
 	exit(0);
-
 }
 
 /** -------------------------------
@@ -6886,6 +6934,7 @@ int main(int argc, char *argv[])
 			{"load", 0, 0, 0},
 			{"test", 1, 0, 0},
 			{"debug", 0, 0, 0},
+			{"breakpoint", 1, 0, 0},
 			{"step", 1, 0, 0},
 			{0},
 		};
@@ -6908,6 +6957,10 @@ int main(int argc, char *argv[])
 			if (strcmp(name, "debug") == 0)
 			{
 				DEBUG = 1;
+			}
+			if (strcmp(name, "breakpoint") == 0)
+			{
+				BREAKPOINT = atoi(optarg);
 			}
 			if (strcmp(name, "load") == 0)
 			{
@@ -6968,14 +7021,15 @@ int main(int argc, char *argv[])
 	}
 
 	/* ------------------------
-	* START emulator Setun-1958
-	*/
+	 * START emulator Setun-1958
+	 */
 
-	uint8_t cmd[20] ={0};
+	uint8_t cmd[20] = {0};
 	uint8_t ret_exec = 0;
 	uint32_t counter_step = 0;
-	
+
 	trs_t addr;
+	trs_t C_cur;
 	trs_t oper;
 
 	/* Сброс виртуальной машины "Сетунь-1958" */
@@ -6987,9 +7041,9 @@ int main(int argc, char *argv[])
 		view_short_regs();
 	}
 
-	/* --------------------------------------- 
-	*  Открыть файлы для виртуальных устройств
-	*/
+	/* ---------------------------------------
+	 *  Открыть файлы для виртуальных устройств
+	 */
 	ptr1 = fopen("ptr1/paper.txt", "r");
 	if (ptr1 == NULL)
 	{
@@ -7018,16 +7072,14 @@ int main(int argc, char *argv[])
 		return 0;
 	}
 
-
-
 	/* ----------------------------------
-	*  Выполнить первый код "Сетунь-1958"
-	*/
+	 *  Выполнить первый код "Сетунь-1958"
+	 */
 	printf("\r\n[ Start Setun-1958 ]\r\n");
 
 	/**
-	* Выполение программы в ферритовой памяти "Сетунь-1958"
-	*/
+	 * Выполение программы в ферритовой памяти "Сетунь-1958"
+	 */
 	Begin_Read_Commands_from_FT1(ptr1);
 
 	/* Begin address fram */
@@ -7035,9 +7087,10 @@ int main(int argc, char *argv[])
 
 	/**
 	 * work VM Setun-1958
-	 */	
-	while (1)	
+	 */
+	while (1)
 	{
+		C_cur = C;
 		K = ld_fram(C);
 		K = slice_trs_setun(K, 1, 9);
 
@@ -7045,6 +7098,7 @@ int main(int argc, char *argv[])
 		{
 			view_step_short_reg(&C, "\n С");
 		}
+
 		addr = control_trs(K);
 		oper = slice_trs_setun(K, 6, 8);
 
@@ -7071,35 +7125,44 @@ int main(int argc, char *argv[])
 			break;
 		}
 
-		/* 
-		*
-		*/
+
+		/*
+		 *
+		 */
 		counter_step++;
 
 		if (STEP == counter_step)
-		{			
+		{
 			break; // STEP break
 		}
+
+		if (BREAKPOINT == trs2digit(C_cur) && (BREAKPOINT != INT32_MAX)) {	
+
+			break; // BREAKPOINT break
+		}
+
 	}
 
 	/* Prints REGS */
 	view_short_regs();
 	printf("\n");
-	
+
 	/* Prints REGS and FRAM */
 	if (DEBUG > 0)
 	{
-		dump_fram_zone(smtr("-"));		
-		dump_fram_zone(smtr("0"));		
-		dump_fram_zone(smtr("+"));		
+		//dump_fram_zone(smtr("-"));
+		//dump_fram_zone(smtr("0"));
+		//dump_fram_zone(smtr("+"));
 	}
-	
+
 	/* Печать завершения работы "Setun-1958" */
-	if( STEP == 0 ) {
+	if (STEP == 0)
+	{
 		printf("\r\n[ Stop Setun-1958 ]\r\n");
 	}
-	else {
-		printf("\r\n[ Step = %d : Break work Setun-1958 ]\r\n",STEP);
+	else
+	{
+		printf("\r\n[ Step = %d : Break work Setun-1958 ]\r\n", STEP);
 	}
 
 	/* Закрыть файлы виртуальных устройств */

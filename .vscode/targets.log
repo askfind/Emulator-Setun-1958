@@ -8,7 +8,7 @@ make: *** No rule to make target 'all'.  Stop.
 # This is free software: you are free to change and redistribute it.
 # There is NO WARRANTY, to the extent permitted by law.
 
-# Make data base, printed on Tue Jun 14 17:26:07 2022
+# Make data base, printed on Sun Jun 19 16:56:43 2022
 
 # Variables
 
@@ -47,7 +47,7 @@ CURDIR := /home/vladmir/WORKs/SETUN-1958/Emulator-Setun-1958
 # makefile
 SHELL = /bin/sh
 # environment
-VSCODE_NLS_CONFIG = {"locale":"ru","availableLanguages":{"*":"ru"},"_languagePackId":"6c87e287770fa80b3245e0a037b935fb.ru","_translationsConfigFile":"/home/vladmir/.config/Code/clp/6c87e287770fa80b3245e0a037b935fb.ru/tcf.json","_cacheRoot":"/home/vladmir/.config/Code/clp/6c87e287770fa80b3245e0a037b935fb.ru","_resolvedLanguagePackCoreLocation":"/home/vladmir/.config/Code/clp/6c87e287770fa80b3245e0a037b935fb.ru/c3511e6c69bb39013c4a4b7b9566ec1ca73fc4d5","_corruptedFile":"/home/vladmir/.config/Code/clp/6c87e287770fa80b3245e0a037b935fb.ru/corrupted.info","_languagePackSupport":true}
+VSCODE_NLS_CONFIG = {"locale":"ru","availableLanguages":{"*":"ru"},"_languagePackId":"6c87e287770fa80b3245e0a037b935fb.ru","_translationsConfigFile":"/home/vladmir/.config/Code/clp/6c87e287770fa80b3245e0a037b935fb.ru/tcf.json","_cacheRoot":"/home/vladmir/.config/Code/clp/6c87e287770fa80b3245e0a037b935fb.ru","_resolvedLanguagePackCoreLocation":"/home/vladmir/.config/Code/clp/6c87e287770fa80b3245e0a037b935fb.ru/30d9c6cd9483b2cc586687151bcbcd635f373630","_corruptedFile":"/home/vladmir/.config/Code/clp/6c87e287770fa80b3245e0a037b935fb.ru/corrupted.info","_languagePackSupport":true}
 # environment
 _ = /usr/bin/dbus-update-activation-environment
 # environment
@@ -73,7 +73,7 @@ VSCODE_VERBOSE_LOGGING = true
 # environment
 MANAGERPID = 2005
 # environment
-VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-8479c63c-8ef6-4519-9f44-87cadecaf4cd.sock
+VSCODE_IPC_HOOK_EXTHOST = /run/user/1000/vscode-ipc-06d1a31a-1a17-49d6-b7d3-e5c84e82e856.sock
 # environment
 VSCODE_CWD = /home/vladmir/WORKs/SETUN-1958/Emulator-Setun-1958
 # default
@@ -101,7 +101,7 @@ XDG_SESSION_DESKTOP = ubuntu
 # environment
 SSH_AUTH_SOCK = /run/user/1000/keyring/ssh
 # environment
-GIO_LAUNCHED_DESKTOP_FILE_PID = 553748
+GIO_LAUNCHED_DESKTOP_FILE_PID = 733339
 # automatic
 %F = $(notdir $%)
 # environment
@@ -125,7 +125,7 @@ HOME = /home/vladmir
 # environment
 VSCODE_CLI = 1
 # environment
-VSCODE_CODE_CACHE_PATH = /home/vladmir/.config/Code/CachedData/c3511e6c69bb39013c4a4b7b9566ec1ca73fc4d5
+VSCODE_CODE_CACHE_PATH = /home/vladmir/.config/Code/CachedData/30d9c6cd9483b2cc586687151bcbcd635f373630
 # environment
 LOGNAME = vladmir
 # environment
@@ -169,7 +169,7 @@ MAKE_COMMAND := make
 # automatic
 *F = $(notdir $*)
 # environment
-VSCODE_IPC_HOOK = /run/user/1000/vscode-113e2121-1.67.2-main.sock
+VSCODE_IPC_HOOK = /run/user/1000/vscode-113e2121-1.68.1-main.sock
 # makefile
 MAKEFLAGS = pqrR
 # environment
@@ -211,7 +211,7 @@ GJS_DEBUG_OUTPUT = stderr
 # environment
 LANG = C
 # environment
-VSCODE_PID = 556831
+VSCODE_PID = 734972
 # variable set hash-table stats:
 # Load=100/1024=10%, Rehash=0, Collisions=17/125=14%
 
@@ -286,7 +286,6 @@ clean:
 	rm -f output.vcd
 
 # files hash-table stats:
- 
 # Load=9/1024=1%, Rehash=0, Collisions=0/23=0%
 # VPATH Search Paths
 
@@ -294,12 +293,13 @@ clean:
 
 # No general ('VPATH' variable) search path.
 
+ 
 # strcache buffers: 1 (0) / strings = 27 / storage = 224 B / avg = 8 B
 # current buf: size = 8162 B / used = 224 B / count = 27 / avg = 8 B
 
 # strcache performance: lookups = 38 / hit rate = 28%
 # hash-table stats:
 # Load=27/8192=0%, Rehash=0, Collisions=1/38=3%
-# Finished Make data base on Tue Jun 14 17:26:07 2022
+# Finished Make data base on Sun Jun 19 16:56:43 2022
 
  
