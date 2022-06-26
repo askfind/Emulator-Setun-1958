@@ -493,15 +493,15 @@ void xor_t(int8_t *a, int8_t *b, int8_t *s)
 {
 	if (*a == -1 && *b == -1)
 	{
-		*s = 1;
+		*s = -1;
 	}
 	else if (*a == 1 && *b == -1)
 	{
-		*s = 0;
+		*s = 1;
 	}
 	else if (*a == -1 && *b == 1)
 	{
-		*s = 0;
+		*s = 1;
 	}
 	else if (*a == 1 && *b == 1)
 	{
@@ -509,19 +509,19 @@ void xor_t(int8_t *a, int8_t *b, int8_t *s)
 	}
 	else if (*a == 0 && *b == 1)
 	{
-		*s = -1;
+		*s = 0;
 	}
 	else if (*a == 0 && *b == -1)
 	{
-		*s = -1;
+		*s = 0;
 	}
 	else if (*a == 1 && *b == 0)
 	{
-		*s = 1;
+		*s = 0;
 	}
 	else if (*a == -1 && *b == 0)
 	{
-		*s = -1;
+		*s = 0;
 	}
 	else
 	{
@@ -1354,11 +1354,11 @@ trs_t mul_trs(trs_t a, trs_t b)
 		s = get_long_trit(bb, i);
 		if (s > 0)
 		{
-			rr = add_long_trs(rr, shift_long_trs(aa, i));
+			rr = add_long_trs(rr, shift_long_trs(aa, -i));
 		}
 		else if (s < 0)
 		{
-			rr = sub_long_trs(rr, shift_long_trs(aa, i));
+			rr = sub_long_trs(rr, shift_long_trs(aa, -i));
 		}
 		else
 		{	/* s == 0 */
@@ -1366,7 +1366,7 @@ trs_t mul_trs(trs_t a, trs_t b)
 		}
 	}
 
-	rr = shift_long_trs(rr, -18);
+	rr = shift_long_trs(rr, 18);
 	rr.t1 &= ~((~(uint64_t)(0)) << SIZE_WORD_LONG);
 	rr.t0 &= ~((~(uint64_t)(0)) << SIZE_WORD_LONG);
 
