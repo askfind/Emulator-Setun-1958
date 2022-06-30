@@ -4611,7 +4611,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			view_short_reg(&k1_5, "k1_5");
 		}
 
-		uint8_t s = get_trit_setun(k1_5, 1);
+		int8_t s = get_trit_setun(k1_5, 1);
 		if (s == -1)
 		{
 			fa = smtr("----0");
