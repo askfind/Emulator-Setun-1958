@@ -3825,13 +3825,13 @@ void dump_drum(void)
 }
 
 /* Декодирование комбинации пробивок в троичное число */
-void Decoder_String_from_Paper_Line(void) {
+trs_t Decoder_String_from_Paper_Line(void) {
 
 	trs_t tr;	
 	
 	tr = smtr("+-+");
 	view_short_reg(&tr,"return");
-
+	
 	return tr;
 }
 
