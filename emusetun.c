@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   30.06.2022
+ * Edit date:   01.07.2022
  *
- * Version: 1.76
+ * Version: 1.77
  */
 
 // TODO
@@ -3824,6 +3824,26 @@ void dump_drum(void)
 	}
 }
 
+/* Декодирование комбинации пробивок в троичное число */
+void Decoder_String_from_Paper_Line(void) {
+
+	trs_t tr;	
+	
+	tr = smtr("+-+");
+	view_short_reg(&tr,"return");
+
+	return tr;
+}
+
+ 
+void Test10_Read_Paper_Line(void)
+{
+	trs_t fa;	
+	fa = smtr("0---0");
+	Decoder_String_from_Paper_Line();
+}
+
+
 uint8_t Begin_Read_Commands_from_FT1(FILE *file)
 {
 	trs_t fa;
@@ -4801,6 +4821,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 error_over:
 	return STOP_ERROR;
 }
+
+
 
 /* ****************************************
  * Тестирование функций операций с тритами
@@ -6458,7 +6480,7 @@ void LoadSWSetun(void)
 	printf("\n END Load software\n");
 }
 
-void Test9_Setun_Load(void)
+void Test9_Setun_Electrified_Typewriter(void)
 {
 	printf("\n --- TEST #9 electrified_typewriter() and dump --- \n");
 
@@ -7011,8 +7033,11 @@ int main(int argc, char *argv[])
 			// no used
 			break;
 		case 9:
-			Test9_Setun_Load();
+			Test9_Setun_Electrified_Typewriter();
 			break;
+		case 10:
+			Test10_Read_Paper_Line();
+			break;			
 		default:
 			break;
 		}
