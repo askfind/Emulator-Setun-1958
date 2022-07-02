@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   01.07.2022
+ * Edit date:   02.07.2022
  *
- * Version: 1.77
+ * Version: 1.78
  */
 
 // TODO
@@ -799,6 +799,43 @@ trs_t or_trs(trs_t x, trs_t y)
 		r = set_trit(x, i, s);
 	}
 
+	return r;
+}
+/* Операции AND trs */
+trs_t and_trs(trs_t x, trs_t y)
+{
+	trs_t r;
+
+	int8_t i, j, ll;
+	int8_t a, b, s;
+
+	x.l = min(x.l, SIZE_TRITS_MAX);
+	x.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX - x.l);
+	x.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX - x.l);
+
+	y.l = min(y.l, SIZE_TRITS_MAX);
+	y.t1 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX - y.l);
+	y.t0 &= 0xFFFFFFFF >> (SIZE_TRITS_MAX - y.l);
+
+	if (x.l >= y.l)
+	{
+		j = y.l;
+		ll = x.l;
+	}
+	else
+	{
+		j = x.l;
+		ll = y.l;
+	}
+
+	for (i = 0; i < j; i++)
+	{
+		a = get_trit(x, i);
+		b = get_trit(y, i);
+		and_t(&a, &b, &s);
+		r = set_trit(x, i, s);
+	}
+	r.l = ll;
 	return r;
 }
 
@@ -4366,7 +4403,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			MR.l = 18;
 			mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
 		}
-		S = xor_trs(MR, S);
+		S = and_trs(MR, S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		C = next_address(C);
 	}
