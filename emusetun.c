@@ -4,15 +4,12 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   28.12.2022
+ * Edit date:   10.03.2023
  *
- * Version: 1.80
+ * Version: 1.82
  */
 
 // TODO
-//  - ERROR При чтении тест1 из файла test1_z01.txs не релизована команда Ввод из фотосчитывателя 1.
-//          Контрольная сумма считается из Ф1.
-//   - ERROR Проверить реализацию запичи и чтения в магнитный барабан и модификация адреса с использованием F/
 
 //  - [ ] ревизия проекта: проверка TODO и лишние функции
 //  - [ ] digit2trs edit
@@ -24,6 +21,7 @@
 //  - [ ] реализовать uint8_t linetape2trit(uint8_t *lp, trs_t *v)
 //  - [ ] реализовать trs_t div_trs(trs_t a, trs_t b)
 //  - [ ] реализовать чтение программ из виртуального фотосчитывания
+//
 
 /**
  *  Заголовочные файла
@@ -35,6 +33,7 @@
 #include <string.h>
 #include <math.h>
 #include <getopt.h>
+#include <dirent.h>
 #include <errno.h>
 
 #include "emusetun.h"
@@ -123,16 +122,16 @@ typedef uintptr_t addr;
 
 typedef struct trs
 {
-	uint8_t l; /* длина троичного числа в тритах */
-	uint32_t t1;	 /* троичное число FALSE,TRUE */
-	uint32_t t0;	 /* троичное число NIL */
+	uint8_t l;	 /* длина троичного числа в тритах */
+	uint32_t t1; /* троичное число FALSE,TRUE */
+	uint32_t t0; /* троичное число NIL */
 } trs_t;
 
 typedef struct long_trs
 {
-	uint8_t l; /* длина троичного числа в тритах			*/
-	uint64_t t1;	 /* троичное число FALSE,TRUE */
-	uint64_t t0;	 /* троичное число NIL */
+	uint8_t l;	 /* длина троичного числа в тритах			*/
+	uint64_t t1; /* троичное число FALSE,TRUE */
+	uint64_t t0; /* троичное число NIL */
 } long_trs_t;
 
 /**
@@ -175,20 +174,20 @@ trs_t mem_drum[NUMBER_ZONE_DRUM + ZONE_DRUM_BEG][SIZE_ZONE_TRIT_DRUM]; /* зап
  *  -----------------------------------
  */
 /* Основные регистры в порядке пульта управления */
-trs_t K = {.l = 9, .t0 = 0, .t1 = 0 };		/* K(1:9)  код команды (адрес ячейки оперативной памяти) */
-trs_t F = {.l = 5, .t0 = 0, .t1 = 0 };		/* F(1:5)  индекс регистр  */
-trs_t C = {.l = 5, .t0 = 0, .t1 = 0 };		/* C(1:5)  программный счетчик  */
-trs_t W = {.l = 1, .t0 = 0, .t1 = 0 };		/* W(1:1)  знак троичного числа */
+trs_t K = {.l = 9, .t0 = 0, .t1 = 0}; /* K(1:9)  код команды (адрес ячейки оперативной памяти) */
+trs_t F = {.l = 5, .t0 = 0, .t1 = 0}; /* F(1:5)  индекс регистр  */
+trs_t C = {.l = 5, .t0 = 0, .t1 = 0}; /* C(1:5)  программный счетчик  */
+trs_t W = {.l = 1, .t0 = 0, .t1 = 0}; /* W(1:1)  знак троичного числа */
 //
-trs_t ph1 = {.l = 1, .t0 = 0, .t1 = 0 };	/* ph1(1:1) 1 разряд переполнения */
-trs_t ph2 = {.l = 2, .t0 = 0, .t1 = 0 };	/* ph2(1:1) 2 разряд переполнения */
-trs_t S = {.l = 18, .t0 = 0, .t1 = 0 };		/* S(1:18) аккумулятор */
-trs_t R = {.l = 18, .t0 = 0, .t1 = 0 };		/* R(1:18) регистр множителя */
-trs_t MB = {.l = 4, .t0 = 0, .t1 = 0 };		/* MB(1:4) троичное число зоны магнитного барабана */
+trs_t ph1 = {.l = 1, .t0 = 0, .t1 = 0}; /* ph1(1:1) 1 разряд переполнения */
+trs_t ph2 = {.l = 2, .t0 = 0, .t1 = 0}; /* ph2(1:1) 2 разряд переполнения */
+trs_t S = {.l = 18, .t0 = 0, .t1 = 0};	/* S(1:18) аккумулятор */
+trs_t R = {.l = 18, .t0 = 0, .t1 = 0};	/* R(1:18) регистр множителя */
+trs_t MB = {.l = 4, .t0 = 0, .t1 = 0};	/* MB(1:4) троичное число зоны магнитного барабана */
 
 /* Дополнительные */
-trs_t MR = {.l = 9, .t0 = 0, .t1 = 0 };		/* временный регистр для обмена с FRAM */
-long_trs_t TMP = {.l = 36, .t0 = 0, .t1 = 0 };	/* временная переменная для троичного числа */
+trs_t MR = {.l = 9, .t0 = 0, .t1 = 0};		  /* временный регистр для обмена с FRAM */
+long_trs_t TMP = {.l = 36, .t0 = 0, .t1 = 0}; /* временная переменная для троичного числа */
 
 /** ------------------------------------------------------
  *  Прототипы функций для виртуальной машины "Сетунь-1958"
@@ -282,14 +281,28 @@ void clean_fram_zone(trs_t z);
 void clean_fram(void);
 trs_t ld_fram(trs_t ea);
 void st_fram(trs_t ea, trs_t v);
+
+/* Операции ввода и вывода "Сетунь-1958" */
+
+/* Регист переключения Русский/Латинский */
+static uint8_t russian_latin_sw = 1;
+/* Регист переключения Буквенный/Цифровой */
+static uint8_t letter_number_sw = 0;
+/* Регист переключения цвета печатающей ленты */
+static uint8_t color_sw = 0;
+
+uint8_t pl_to_ind(uint8_t *perline);
+int ConvertSWtoPaper(char *path_lst, char *path_txt);
+trs_t Decoder_Command_Paper_Line(char *paperline, uint8_t *err);
 uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa);
 uint8_t Read_Commands_from_FT2(FILE *file, trs_t fa);
 uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa);
 uint8_t Read_Symbols_from_FT2(FILE *file, trs_t fa);
-uint8_t Write_Commands_to_PTP1(FILE *file, trs_t fa);
-uint8_t Write_Symbols_to_PTP1(FILE *file, trs_t fa);
+uint8_t Write_Commands_to_TTY1(FILE *file, trs_t fa);
+uint8_t Write_Symbols_to_TTY1(FILE *file, trs_t fa);
 uint8_t Perforation_Commands_to_PTP1(FILE *file, trs_t fa);
 uint8_t Perforation_Symbols_to_PTP1(FILE *file, trs_t fa);
+void init_tab4(void);
 
 /* Очистить память магнитного барабана DRUM */
 void clean_drum(void);
@@ -2521,7 +2534,7 @@ void view_step_short_reg(trs_t *t, uint8_t *ch)
 		tv = set_trit_setun(tv, 5, 1);
 		MR = ld_fram(tv);
 		trs2str(MR);
-		//printf("\n");
+		// printf("\n");
 		tv = set_trit_setun(tv, 5, -1);
 		MR = ld_fram(tv);
 	}
@@ -2529,9 +2542,9 @@ void view_step_short_reg(trs_t *t, uint8_t *ch)
 	{
 		MR = ld_fram(tv);
 		trs2str(MR);
-		//printf("\n");
+		// printf("\n");
 	}
-	
+
 	printf(", ");
 	printf("(%li)", (long int)trs2digit(MR));
 	printf("\n");
@@ -2592,7 +2605,7 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 		tv = set_trit_setun(tv, 5, 1);
 		MR = ld_fram(tv);
 		trs2str(MR);
-		//printf("\n");
+		// printf("\n");
 		tv = set_trit_setun(tv, 5, -1);
 		MR = ld_fram(tv);
 	}
@@ -2600,7 +2613,7 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 	{
 		MR = ld_fram(tv);
 		trs2str(MR);
-		//printf("\n");
+		// printf("\n");
 	}
 	printf(", ");
 	printf("(%li)", (long int)trs2digit(MR));
@@ -2693,6 +2706,894 @@ void view_checksum_setun(trs_t t)
 }
 
 /**
+ * Печать регистров машины Сетунь-1958
+ */
+void view_short_regs(void)
+{
+	int8_t i;
+
+	// printf("[Registers Setun-1958]\n");
+	printf("\n");
+	view_short_reg(&K, "  K  ");
+	view_short_reg(&F, "  F  ");
+	view_short_reg(&C, "  C  ");
+	view_short_reg(&W, "  W  ");
+	view_short_reg(&ph1, "  ph1");
+	view_short_reg(&ph2, "  ph2");
+	view_short_reg(&S, "  S  ");
+	view_short_reg(&R, "  R  ");
+	view_short_reg(&MB, "  MB ");
+}
+
+/**
+ * Печать памяти FRAM машины Сетунь-1958
+ */
+void view_elem_fram(trs_t ea)
+{
+	int8_t j;
+	trs_t tv;
+
+	uint8_t zind;
+	uint8_t rind;
+	int8_t eap5;
+	trs_t zr;
+	trs_t rr;
+	trs_t r;
+
+	/* Зона памяти FRAM */
+	zr = slice_trs_setun(ea, 5, 5);
+	zind = addr2grfram(zr);
+
+	/* Индекс строки в зоне памяти FRAM */
+	rr = slice_trs_setun(ea, 1, 4);
+	rind = addr2row_fram(rr);
+
+	r = mem_fram[rind][zind];
+
+	printf("fram[");
+	for (j = 1; j < 6; j++)
+	{
+		printf("%c", numb2symtrs(get_trit_setun(ea, j)));
+	}
+	printf("] (%3d:%2d) = ", rind - SIZE_GR_TRIT_FRAM / 2, zind);
+
+	printf("[");
+	for (j = 1; j < 10; j++)
+	{
+		printf("%c", numb2symtrs(get_trit_setun(r, j)));
+	}
+	printf("], ");
+	trs2str(r);
+	printf("\n");
+}
+
+void view_fram(trs_t addr1, trs_t addr2)
+{
+	trs_t ad1 = addr1;
+	trs_t ad2 = addr2;
+	int16_t a1 = trs2digit(ad1);
+	int16_t a2 = trs2digit(ad2);
+
+	if ((a2 >= a1) && (a2 >= ZONE_M_FRAM_BEG && a2 <= ZONE_P_FRAM_END) && (a2 >= ZONE_M_FRAM_BEG && a2 <= ZONE_P_FRAM_END))
+	{
+		for (uint16_t i = 0; i < (abs(a2 - a1) + 1); i++)
+		{
+			// inc_trs(&ad1);
+			if (trit2int(ad1) < 0)
+			{
+				inc_trs(&ad1);
+				i += 1;
+			}
+			view_elem_fram(ad1);
+			inc_trs(&ad1);
+		}
+	}
+}
+
+/**
+ * Печать памяти FRAM машины Сетунь-1958
+ */
+void dump_fram(void)
+{
+	int8_t grfram;
+	int8_t row;
+	int8_t j;
+	trs_t tv;
+	trs_t r;
+
+	printf("\r\n[ Dump FRAM Setun-1958: ]\r\n");
+
+	for (row = 0; row < SIZE_GR_TRIT_FRAM; row++)
+	{
+		for (grfram = 0; grfram < SIZE_GRFRAM; grfram++)
+		{
+			r = mem_fram[row][grfram];
+			r.l = 9;
+			// viv+ dbg view_short_reg(&r,"r");
+
+			printf("fram[.] (%3d:%2d) : ", row - SIZE_GR_TRIT_FRAM / 2, grfram);
+			// printf("%s",trs2str());
+			printf(" [");
+			for (j = 1; j < 10; j++)
+			{
+				printf("%c", numb2symtrs(get_trit_setun(r, j)));
+			}
+			printf("], ");
+
+			trs2str(r);
+			printf("\n");
+		}
+	}
+}
+
+/**
+ * Печать дампа зоны FRAM машины Сетунь-1958
+ * по шаблону из книг математического обеспечения
+ */
+void dump_fram_zone(trs_t z)
+{
+	int8_t grfram;
+	int8_t row;
+	int8_t j;
+	int8_t sng = 0;
+
+	trs_t fram_row1;
+	trs_t fram_row2;
+
+	trs_t tv;
+	trs_t r;
+
+	trs_t ksum;
+
+	printf("\n[ Dump FRAM Setun-1958: ]\n");
+
+	sng = get_trit_setun(z, 1);
+
+	/* Какая страница FRAM */
+	if (sng < 0)
+	{
+		fram_row1 = smtr("-----");
+		fram_row2 = smtr("-00+-");
+	}
+	else if (sng == 0)
+	{
+		fram_row1 = smtr("0----");
+		fram_row2 = smtr("000+-");
+	}
+	else
+	{
+		fram_row1 = smtr("+----");
+		fram_row2 = smtr("+00+-");
+	}
+
+	/* print FRAM */
+	clear(&ksum);
+	ksum.l = 18;
+
+	trs_t inr = fram_row1;
+	inr = set_trit_setun(inr, 5, 0);
+	for (uint8_t i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
+	{
+		tv = ld_fram(inr);
+		ksum = add_trs(ksum, tv);
+		inr = next_address(inr);
+	}
+
+	printf("Zone =% 2i\n", sng);
+	printf("\n");
+
+	for (uint8_t i = 0; i < 14; i++)
+	{
+		/* Print ROW1 */
+		// addr -1
+		r = slice_trs_setun(fram_row1, 2, 3);
+		trs2str(r);
+		r = slice_trs_setun(fram_row1, 4, 5);
+		trs2str(r);
+		printf(" ");
+		// addr 0
+		fram_row1 = set_trit_setun(fram_row1, 5, 0);
+		r = slice_trs_setun(fram_row1, 2, 3);
+		trs2str(r);
+		r = slice_trs_setun(fram_row1, 4, 5);
+		trs2str(r);
+		printf("  ");
+		// addr 1
+		tv = ld_fram(fram_row1);
+		r = slice_trs_setun(tv, 1, 1);
+		trs2str(r);
+		printf(" ");
+		r = slice_trs_setun(tv, 2, 3);
+		trs2str(r);
+		r = slice_trs_setun(tv, 4, 5);
+		trs2str(r);
+		printf(" ");
+		r = slice_trs_setun(tv, 6, 7);
+		trs2str(r);
+		r = slice_trs_setun(tv, 8, 9);
+		trs2str(r);
+
+		printf("        ");
+		if (i <= 12)
+		{
+			/* print ROW2 */
+			r = slice_trs_setun(fram_row2, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(fram_row2, 4, 5);
+			trs2str(r);
+			printf(" ");
+
+			fram_row2 = set_trit_setun(fram_row2, 5, 0);
+			r = slice_trs_setun(fram_row2, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(fram_row2, 4, 5);
+			trs2str(r);
+			printf("  ");
+
+			tv = ld_fram(fram_row2);
+			r = slice_trs_setun(tv, 1, 1);
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(tv, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(tv, 4, 5);
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(tv, 6, 7);
+			trs2str(r);
+			r = slice_trs_setun(tv, 8, 9);
+			trs2str(r);
+			printf(" ");
+			printf("\n");
+		}
+		else
+		{
+			printf("KC     ");
+			r = slice_trs_setun(ksum, 1, 1);
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(ksum, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(ksum, 4, 5);
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(ksum, 6, 7);
+			trs2str(r);
+			r = slice_trs_setun(ksum, 8, 9);
+			trs2str(r);
+			printf("\n");
+		}
+		/* print ROW1 */
+		printf("   ");
+		fram_row1 = set_trit_setun(fram_row1, 5, 1);
+		r = slice_trs_setun(fram_row1, 2, 3);
+		trs2str(r);
+		r = slice_trs_setun(fram_row1, 4, 5);
+		trs2str(r);
+		printf("  ");
+		//
+		//
+		tv = ld_fram(fram_row1);
+		r = slice_trs_setun(tv, 1, 1);
+		trs2str(r);
+		printf(" ");
+		r = slice_trs_setun(tv, 2, 3);
+		trs2str(r);
+		r = slice_trs_setun(tv, 4, 5);
+		trs2str(r);
+		printf(" ");
+		r = slice_trs_setun(tv, 6, 7);
+		trs2str(r);
+		r = slice_trs_setun(tv, 8, 9);
+		trs2str(r);
+		fram_row1 = set_trit_setun(fram_row1, 5, -1);
+
+		printf("        ");
+
+		if (i <= 12)
+		{
+			/* print ROW2 */
+			printf("   ");
+			fram_row2 = set_trit_setun(fram_row2, 5, 1);
+			r = slice_trs_setun(fram_row2, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(fram_row2, 4, 5);
+			trs2str(r);
+			printf("  ");
+			//
+			tv = ld_fram(fram_row2);
+			r = slice_trs_setun(tv, 1, 1);
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(tv, 2, 3);
+			trs2str(r);
+			r = slice_trs_setun(tv, 4, 5);
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(tv, 6, 7);
+			trs2str(r);
+			r = slice_trs_setun(tv, 8, 9);
+			trs2str(r);
+			fram_row2 = set_trit_setun(fram_row2, 5, -1);
+			printf("\n");
+		}
+		else
+		{
+			printf("       ");
+			r = slice_trs_setun(ksum, 10, 10);
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(ksum, 11, 12);
+			trs2str(r);
+			r = slice_trs_setun(ksum, 13, 14);
+			trs2str(r);
+			printf(" ");
+			r = slice_trs_setun(ksum, 15, 16);
+			trs2str(r);
+			r = slice_trs_setun(ksum, 17, 18);
+			trs2str(r);
+			printf("\n");
+		}
+
+		/* Next address*/
+		inc_trs(&fram_row1);
+		inc_trs(&fram_row1);
+		inc_trs(&fram_row1);
+		inc_trs(&fram_row2);
+		inc_trs(&fram_row2);
+		inc_trs(&fram_row2);
+	}
+}
+
+/**
+ * Печать короткого слова BRUM машины Сетунь-1958
+ */
+void view_drum_zone(trs_t zone)
+{
+	int8_t j;
+	trs_t zr;
+	uint8_t zind;
+	uint8_t rind;
+	trs_t tv;
+
+	/* Зона памяти DRUM */
+	zr = slice_trs_setun(zone, 1, 4);
+	zind = zone_drum_to_index(zr);
+
+	printf("\n[ Dump DRUM Setun-1958: ]\n");
+	printf("[ Zone = %2i ]\n", zind);
+	printf("\n");
+
+	for (uint8_t i = 0; i < SIZE_ZONE_TRIT_DRUM; i++)
+	{
+		// Читать короткое слово
+		trs_t mr = ld_drum(zr, i);
+		mr.l = 9;
+		uint32_t r = ld_drum(zr, i).t1 & (uint32_t)(0x3FFFF);
+		printf("drum[% 3i:% 3i ] ", zind, i);
+		/* Вывод короткого троичного слова */
+		printf(" [");
+		for (j = 1; j < 10; j++)
+		{
+			printf("%c", numb2symtrs(get_trit_setun(mr, j)));
+		};
+
+		printf("], ");
+
+		trs2str(mr);
+		printf("\n");
+
+	} /* for() */
+}
+
+/**
+ * Печать памяти DRUM машины Сетунь-1958
+ */
+void dump_drum(void)
+{
+	int8_t zone;
+	int8_t row;
+	int8_t j;
+	trs_t tv;
+	trs_t r;
+
+	printf("\n[ BRUM Setun-1958 ]\n");
+
+	for (zone = ZONE_DRUM_BEG; zone < ZONE_DRUM_END; zone++)
+	{
+		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
+		{
+			copy_trs_setun(&mem_drum[zone][row], &r);
+
+			printf("drum[%3i:%3i] = [", zone, row - SIZE_ZONE_TRIT_DRUM / 2);
+
+			j = 0;
+			do
+			{
+				// viv- old code  printf("%i",tb2int(r >> (9-1-j)*2));
+				j++;
+			} while (j < 9);
+
+			printf("], ");
+			// TODO error printf("(%li), ", (long int)trs2digit(t));
+
+			trs2str(r);
+
+			printf("\n");
+		}
+	}
+}
+
+/** ********************************************
+ *  Реалиазция ввода и вывода  для "Сетунь-1958"
+ *  --------------------------------------------
+ */
+#define TAB_SIZE (32)
+#define TAB_MIN_SIZE (9)
+#define SYMBOL_SIZE (1)
+#define STRING_PAPER_SIZE (6)
+uint8_t *tab4_0[TAB_SIZE][STRING_PAPER_SIZE];
+trs_t tab4_1[TAB_SIZE];
+trs_t tab4_2[TAB_SIZE];
+uint8_t *tab4_3[TAB_SIZE][SYMBOL_SIZE];
+uint8_t *tab4_4[TAB_SIZE][SYMBOL_SIZE];
+uint8_t *tab4_5[TAB_SIZE][SYMBOL_SIZE];
+uint8_t *tab4_6[TAB_SIZE][SYMBOL_SIZE];
+uint8_t *tab4_7[TAB_MIN_SIZE][STRING_PAPER_SIZE];
+trs_t tab4_8[TAB_MIN_SIZE];
+
+/*
+ * Инициализация таблицы кодирования
+ * информации ввод и вывода
+ */
+void init_tab4(void)
+{
+
+	/* Init tab4_0 */
+	uint8_t offset = 13;
+	memmove(tab4_0[trs2digit(smtr("---")) + offset], "_OO.O_", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("--0")) + offset], "_O_.OO", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("--+")) + offset], "OO_.OO", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("-0-")) + offset], "_OO.__", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("-00")) + offset], "___.OO", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("-0+")) + offset], "O__.OO", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("-+-")) + offset], "_OO._O", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("-+0")) + offset], "__O.OO", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("-++")) + offset], "O_O.OO", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("0--")) + offset], "_O_.O_", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("0-0")) + offset], "_O_.__", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("0-+")) + offset], "_O_._O", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("00-")) + offset], "___.O_", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("000")) + offset], "_OO.OO", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("00+")) + offset], "___._O", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("0+-")) + offset], "__O.O_", STRING_PAPER_SIZE);
+	//
+	memmove(tab4_0[trs2digit(smtr("0+0")) + offset], "__O.__", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("0++")) + offset], "__O._O", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("+--")) + offset], "OO_.O_", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("+-0")) + offset], "OO_.__", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("+-+")) + offset], "OO_._O", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("+0-")) + offset], "O__.O_", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("+00")) + offset], "O__.__", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("+0+")) + offset], "O__._O", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("++-")) + offset], "O_O.O_", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("++0")) + offset], "O_O._O", STRING_PAPER_SIZE);
+	memmove(tab4_0[trs2digit(smtr("+++")) + offset], "O_O.__", STRING_PAPER_SIZE);
+
+	/* Init tab4_1 */
+	tab4_1[pl_to_ind("_OO.O_")] = smtr("---");
+	tab4_1[pl_to_ind("_O_.OO")] = smtr("--0");
+	tab4_1[pl_to_ind("OO_.OO")] = smtr("--+");
+	tab4_1[pl_to_ind("_OO.__")] = smtr("-0-");
+	tab4_1[pl_to_ind("___.OO")] = smtr("-00");
+	tab4_1[pl_to_ind("O__.OO")] = smtr("-0+");
+	tab4_1[pl_to_ind("_OO._O")] = smtr("-+-");
+	tab4_1[pl_to_ind("__O.OO")] = smtr("-+0");
+	tab4_1[pl_to_ind("O_O.OO")] = smtr("-++");
+	tab4_1[pl_to_ind("_O_.O_")] = smtr("0--");
+	tab4_1[pl_to_ind("_O_.__")] = smtr("0-0");
+	tab4_1[pl_to_ind("_O_._O")] = smtr("0-+");
+	tab4_1[pl_to_ind("___.O_")] = smtr("00-");
+	tab4_1[pl_to_ind("_OO.OO")] = smtr("000");
+	tab4_1[pl_to_ind("___._O")] = smtr("00+");
+	tab4_1[pl_to_ind("__O.O_")] = smtr("0+-");
+	//
+	tab4_1[pl_to_ind("__O.__")] = smtr("0+0");
+	tab4_1[pl_to_ind("__O._O")] = smtr("0++");
+	tab4_1[pl_to_ind("OO_.O_")] = smtr("+--");
+	tab4_1[pl_to_ind("OO_.__")] = smtr("+-0");
+	tab4_1[pl_to_ind("OO_._O")] = smtr("+-+");
+	tab4_1[pl_to_ind("O__.O_")] = smtr("+0-");
+	tab4_1[pl_to_ind("O__.__")] = smtr("+00");
+	tab4_1[pl_to_ind("O__._O")] = smtr("+0+");
+	tab4_1[pl_to_ind("O_O.O_")] = smtr("++-");
+	tab4_1[pl_to_ind("O_O._O")] = smtr("++0");
+	tab4_1[pl_to_ind("O_O.__")] = smtr("+++");
+	tab4_1[pl_to_ind("___.__")] = smtr("000");
+	tab4_1[pl_to_ind("OOO.__")] = smtr("000");
+	tab4_1[pl_to_ind("OOO._O")] = smtr("000");
+	tab4_1[pl_to_ind("OOO.O_")] = smtr("000");
+	tab4_1[pl_to_ind("OOO.OO")] = smtr("000");
+
+	/* Init tab4_2 */
+	tab4_2[pl_to_ind("_OO.O_")] = smtr("+++");
+	tab4_2[pl_to_ind("_O_.OO")] = smtr("+++");
+	tab4_2[pl_to_ind("OO_.OO")] = smtr("+++");
+	tab4_2[pl_to_ind("_OO.__")] = smtr("+++");
+	tab4_2[pl_to_ind("___.OO")] = smtr("+++");
+	tab4_2[pl_to_ind("O__.OO")] = smtr("+++");
+	tab4_2[pl_to_ind("_OO._O")] = smtr("+++");
+	tab4_2[pl_to_ind("__O.OO")] = smtr("+++");
+	tab4_2[pl_to_ind("O_O.OO")] = smtr("+++");
+	tab4_2[pl_to_ind("_O_.O_")] = smtr("--");
+	tab4_2[pl_to_ind("_O_.__")] = smtr("-0");
+	tab4_2[pl_to_ind("_O_._O")] = smtr("-+");
+	tab4_2[pl_to_ind("___.O_")] = smtr("0-");
+	tab4_2[pl_to_ind("_OO.OO")] = smtr("00");
+	tab4_2[pl_to_ind("___._O")] = smtr("0+");
+	tab4_2[pl_to_ind("__O.O_")] = smtr("+-");
+	//
+	tab4_2[pl_to_ind("__O.__")] = smtr("+0");
+	tab4_2[pl_to_ind("__O._O")] = smtr("++");
+	tab4_2[pl_to_ind("OO_.O_")] = smtr("+++");
+	tab4_2[pl_to_ind("OO_.__")] = smtr("+++");
+	tab4_2[pl_to_ind("OO_._O")] = smtr("+++");
+	tab4_2[pl_to_ind("O__.O_")] = smtr("+++");
+	tab4_2[pl_to_ind("O__.__")] = smtr("+++");
+	tab4_2[pl_to_ind("O__._O")] = smtr("+++");
+	tab4_2[pl_to_ind("O_O.O_")] = smtr("+++");
+	tab4_2[pl_to_ind("O_O._O")] = smtr("+++");
+	tab4_2[pl_to_ind("O_O.__")] = smtr("+++");
+	tab4_2[pl_to_ind("___.__")] = smtr("+++");
+	tab4_2[pl_to_ind("OOO.__")] = smtr("+++");
+	tab4_2[pl_to_ind("OOO._O")] = smtr("+++");
+	tab4_2[pl_to_ind("OOO.O_")] = smtr("+++");
+	tab4_2[pl_to_ind("OOO.OO")] = smtr("+++");
+
+	/* Init tab4_3 */
+	memmove(tab4_3[pl_to_ind("_OO.O_")], "\0", SYMBOL_SIZE); // стоп
+	memmove(tab4_3[pl_to_ind("_O_.OO")], "-", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("OO_.OO")], "_", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("_OO.__")], "\n", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("___.OO")], "/", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("O__.OO")], ".", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("_OO._O")], "x", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("__O.OO")], "+", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("O_O.OO")], "V", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("_O_.O_")], "W", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("_O_.__")], "X", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("_O_._O")], "Y", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("___.O_")], "Z", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("_OO.OO")], "O", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("___._O")], "1", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("__O.O_")], "2", SYMBOL_SIZE);
+	//
+	memmove(tab4_3[pl_to_ind("__O.__")], "3", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("__O._O")], "4", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("OO_.O_")], "5", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("OO_.__")], "6", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("OO_._O")], "7", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("O__.O_")], "8", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("O__.__")], "9", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("O__._O")], " ", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); // цифровой регистр
+	memmove(tab4_3[pl_to_ind("O_O._O")], ")", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); // буквенный регистр
+	memmove(tab4_3[pl_to_ind("___.__")], " ", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("OOO.__")], " ", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("OOO._O")], " ", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("OOO.O_")], " ", SYMBOL_SIZE);
+	memmove(tab4_3[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); // вычеркивание
+
+	/* Init tab4_4 */
+	memmove(tab4_4[pl_to_ind("_OO.O_")], "\0", SYMBOL_SIZE); // стоп
+	memmove(tab4_4[pl_to_ind("_O_.OO")], "-", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("OO_.OO")], "_", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("_OO.__")], "\n", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("___.OO")], "Ю", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("O__.OO")], ".", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("_OO._O")], "x", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("__O.OO")], "+", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("O_O.OO")], "Э", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("_O_.O_")], "Ж", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("_O_.__")], "Х", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("_O_._O")], "У", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("___.O_")], "Ц", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("_OO.OO")], "O", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("___._O")], "1", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("__O.O_")], "2", SYMBOL_SIZE);
+	//
+	memmove(tab4_4[pl_to_ind("__O.__")], "3", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("__O._O")], "4", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("OO_.O_")], "5", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("OO_.__")], "6", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("OO_._O")], "7", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("O__.O_")], "8", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("O__.__")], "9", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("O__._O")], " ", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); // цифровой регистр
+	memmove(tab4_4[pl_to_ind("O_O._O")], "Ф", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); // буквенный регистр
+	memmove(tab4_4[pl_to_ind("___.__")], " ", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("OOO.__")], " ", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("OOO._O")], " ", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("OOO.O_")], " ", SYMBOL_SIZE);
+	memmove(tab4_4[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); // вычеркивание
+
+	/* Init tab4_5 */
+	memmove(tab4_5[pl_to_ind("_OO.O_")], " ", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("_O_.OO")], "F", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("OO_.OO")], "_", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("_OO.__")], "\n", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("___.OO")], "G", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("O__.OO")], "H", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("_OO._O")], "=", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("__O.OO")], "I", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("O_O.OO")], "J", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("_O_.O_")], "K", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("_O_.__")], "L", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("_O_._O")], "M", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("___.O_")], "N", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("_OO.OO")], "P", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("___._O")], "Q", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("__O.O_")], "R", SYMBOL_SIZE);
+	//
+	memmove(tab4_5[pl_to_ind("__O.__")], "S", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("__O._O")], "T", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("OO_.O_")], "U", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("OO_.__")], "A", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("OO_._O")], "B", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("O__.O_")], "C", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("O__.__")], "D", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("O__._O")], "E", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); // цифровой регистр
+	memmove(tab4_5[pl_to_ind("O_O._O")], "(", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); // буквенный регистр
+	memmove(tab4_5[pl_to_ind("___.__")], " ", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("OOO.__")], " ", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("OOO._O")], " ", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("OOO.O_")], " ", SYMBOL_SIZE);
+	memmove(tab4_5[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); // вычеркивание
+
+	/* Init tab4_6 */
+	memmove(tab4_6[pl_to_ind("_OO.O_")], " ", SYMBOL_SIZE); // стоп
+	memmove(tab4_6[pl_to_ind("_O_.OO")], "Б", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("OO_.OO")], "_", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("_OO.__")], "\n", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("___.OO")], "Щ", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("O__.OO")], "Н", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("_OO._O")], "=", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("__O.OO")], "П", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("O_O.OO")], "Ы", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("_O_.O_")], "К", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("_O_.__")], "Г", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("_O_._O")], "М", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("___.O_")], "И", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("_OO.OO")], "Р", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("___._O")], "Й", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("__O.O_")], "Я", SYMBOL_SIZE);
+	//
+	memmove(tab4_6[pl_to_ind("__O.__")], "Ь", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("__O._O")], "Т", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("OO_.O_")], "П", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("OO_.__")], "А", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("OO_._O")], "В", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("O__.O_")], "С", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("O__.__")], "Д", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("O__._O")], "Е", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); // цифровой регистр
+	memmove(tab4_6[pl_to_ind("O_O._O")], "Ш", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); // буквенный регистр
+	memmove(tab4_6[pl_to_ind("___.__")], " ", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("OOO.__")], " ", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("OOO._O")], " ", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("OOO.O_")], " ", SYMBOL_SIZE);
+	memmove(tab4_6[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); // вычеркивание
+
+	/* Init tab4_7 */
+	uint8_t offset4_7 = 4;
+	memmove(tab4_7[trs2digit(smtr("--")) + offset4_7], "_O_.O_", STRING_PAPER_SIZE);
+	memmove(tab4_7[trs2digit(smtr("-0")) + offset4_7], "_O_.__", STRING_PAPER_SIZE);
+	memmove(tab4_7[trs2digit(smtr("-+")) + offset4_7], "_O_._O", STRING_PAPER_SIZE);
+	memmove(tab4_7[trs2digit(smtr("0-")) + offset4_7], "___.O_", STRING_PAPER_SIZE);
+	memmove(tab4_7[trs2digit(smtr("00")) + offset4_7], "_OO.OO", STRING_PAPER_SIZE);
+	memmove(tab4_7[trs2digit(smtr("0+")) + offset4_7], "___._O", STRING_PAPER_SIZE);
+	memmove(tab4_7[trs2digit(smtr("+-")) + offset4_7], "__O.O_", STRING_PAPER_SIZE);
+	memmove(tab4_7[trs2digit(smtr("+0")) + offset4_7], "__O.__", STRING_PAPER_SIZE);
+	memmove(tab4_7[trs2digit(smtr("++")) + offset4_7], "__O._O", STRING_PAPER_SIZE);
+
+	/* Init tab4_8 */
+	tab4_8[pl_to_ind("_O_.O_")] = smtr("--");
+	tab4_8[pl_to_ind("_O_.__")] = smtr("-0");
+	tab4_8[pl_to_ind("_O_._O")] = smtr("-+");
+	tab4_8[pl_to_ind("___.O_")] = smtr("0-");
+	tab4_8[pl_to_ind("_OO.OO")] = smtr("00");
+	tab4_8[pl_to_ind("___._O")] = smtr("0+");
+	tab4_8[pl_to_ind("__O.O_")] = smtr("+-");
+	tab4_8[pl_to_ind("__O.__")] = smtr("+0");
+	tab4_8[pl_to_ind("__O._O")] = smtr("++");
+}
+
+/* Декодирование строки в индекс таблицы */
+uint8_t pl_to_ind(uint8_t *perline)
+{
+
+	uint8_t byte;
+
+	byte = 0;
+	for (int i = 0; i < strlen(perline); i++)
+	{
+
+		if (i == 3)
+		{
+			if (perline[i] != '.')
+				return 0; /* error string paper */
+		}
+		else
+		{
+			if ((perline[i] == 'O') || (perline[i] == 'o'))
+			{
+
+				switch (i)
+				{
+				case 0:
+					byte |= (1 << 4);
+					break;
+				case 1:
+					byte |= (1 << 3);
+					break;
+				case 2:
+					byte |= (1 << 2);
+					break;
+				case 4:
+					byte |= (1 << 1);
+					break;
+				case 5:
+					byte |= (1 << 0);
+					break;
+				}
+			}
+		}
+	}
+	return byte;
+}
+
+/* Декодирование комбинации пробивок в троичное число */
+int16_t Decoder_String_from_Paper_Line(void)
+{
+
+	uint8_t byte;
+	int len;
+	int16_t count = 0;
+	uint8_t cmd[20];
+
+	FILE *filepl;
+	filepl = fopen("software/paper.txt", "r");
+	if (filepl == NULL)
+	{
+		printf("ERR fopen %s\n", "software/paper.txt");
+		return 0;
+	}
+	printf("open %s\n", "software/paper.txt");
+
+	while (fscanf(filepl, "%s", cmd) != EOF)
+	{
+		printf("%s : ", cmd);
+
+		byte = 0;
+		for (int i = 0; i < strlen(cmd); i++)
+		{
+
+			if (i == 3)
+			{
+				if (cmd[i] != '.')
+					return 0; /* error string paper */
+			}
+			else
+			{
+				if ((cmd[i] == 'O') || (cmd[i] == 'o'))
+				{
+
+					switch (i)
+					{
+					case 0:
+						byte |= (1 << 4);
+						break;
+					case 1:
+						byte |= (1 << 3);
+						break;
+					case 2:
+						byte |= (1 << 2);
+						break;
+					case 4:
+						byte |= (1 << 1);
+						break;
+					case 5:
+						byte |= (1 << 0);
+						break;
+					}
+				}
+			}
+		}
+		printf("byte=%i\n", byte);
+		count += 1;
+	}
+	fclose(filepl);
+
+	printf("\nr=%i\n", count);
+
+	return 1;
+}
+
+/* Декодирование комбинации пробивок в троичное число */
+trs_t Decoder_Command_Paper_Line(char *paperline, uint8_t *err)
+{
+
+	uint8_t byte;
+	int len;
+	int16_t count = 0;
+	trs_t res;
+
+	byte = 0;
+	for (int i = 0; i < strlen(paperline); i++)
+	{
+
+		if (i == 3)
+		{
+			if (paperline[i] != '.')
+			{
+				*err = 1;	/* Error#1 */
+				return res; /* error string paper */
+			}
+		}
+		else
+		{
+			if ((paperline[i] == 'O') || (paperline[i] == 'o'))
+			{
+
+				switch (i)
+				{
+				case 0:
+					byte |= (1 << 4);
+					break;
+				case 1:
+					byte |= (1 << 3);
+					break;
+				case 2:
+					byte |= (1 << 2);
+					break;
+				case 4:
+					byte |= (1 << 1);
+					break;
+				case 5:
+					byte |= (1 << 0);
+					break;
+				}
+			}
+		}
+	}
+	// printf(" byte=%i\n", byte);	//viv+ dbg
+
+	/* Проверить допустимые комбинации пробивок */
+	int r;
+	res = tab4_2[byte];
+	r = trs2digit(res);
+
+	if (r > 4)
+	{
+		/* Error */
+		*err = 1; /* Error */
+	}
+	else
+	{
+		/* Valid */
+		*err = 0; /* Ok' */
+	}
+
+	return res;
+}
+
+/**
  * Печать на электрифицированную пишущую машинку
  * 'An electrified typewriter'
  */
@@ -2700,13 +3601,6 @@ void electrified_typewriter(trs_t t, uint8_t local)
 {
 
 	int32_t code;
-
-	/* Регист переключения Русский/Латинский */
-	static uint8_t russian_latin_sw = 0;
-	/* Регист переключения Буквенный/Цифровой */
-	static uint8_t letter_number_sw = 0;
-	/* Регист переключения цвета печатающей ленты */
-	static uint8_t color_sw = 0;
 
 	color_sw += 0;
 
@@ -3445,494 +4339,6 @@ void electrified_typewriter(trs_t t, uint8_t local)
 	}
 }
 
-/**
- * Печать регистров машины Сетунь-1958
- */
-void view_short_regs(void)
-{
-	int8_t i;
-
-	// printf("[Registers Setun-1958]\n");
-	printf("\n");
-	view_short_reg(&K, "  K  ");
-	view_short_reg(&F, "  F  ");
-	view_short_reg(&C, "  C  ");
-	view_short_reg(&W, "  W  ");
-	view_short_reg(&ph1, "  ph1");
-	view_short_reg(&ph2, "  ph2");
-	view_short_reg(&S, "  S  ");
-	view_short_reg(&R, "  R  ");
-	view_short_reg(&MB, "  MB ");
-}
-
-/**
- * Печать памяти FRAM машины Сетунь-1958
- */
-void view_elem_fram(trs_t ea)
-{
-	int8_t j;
-	trs_t tv;
-
-	uint8_t zind;
-	uint8_t rind;
-	int8_t eap5;
-	trs_t zr;
-	trs_t rr;
-	trs_t r;
-
-	/* Зона памяти FRAM */
-	zr = slice_trs_setun(ea, 5, 5);
-	zind = addr2grfram(zr);
-
-	/* Индекс строки в зоне памяти FRAM */
-	rr = slice_trs_setun(ea, 1, 4);
-	rind = addr2row_fram(rr);
-
-	r = mem_fram[rind][zind];
-
-	printf("fram[");
-	for (j = 1; j < 6; j++)
-	{
-		printf("%c", numb2symtrs(get_trit_setun(ea, j)));
-	}
-	printf("] (%3d:%2d) = ", rind - SIZE_GR_TRIT_FRAM / 2, zind);
-
-	printf("[");
-	for (j = 1; j < 10; j++)
-	{
-		printf("%c", numb2symtrs(get_trit_setun(r, j)));
-	}
-	printf("], ");
-	trs2str(r);
-	printf("\n");
-}
-
-void view_fram(trs_t addr1, trs_t addr2)
-{
-	trs_t ad1 = addr1;
-	trs_t ad2 = addr2;
-	int16_t a1 = trs2digit(ad1);
-	int16_t a2 = trs2digit(ad2);
-
-	if ((a2 >= a1) && (a2 >= ZONE_M_FRAM_BEG && a2 <= ZONE_P_FRAM_END) && (a2 >= ZONE_M_FRAM_BEG && a2 <= ZONE_P_FRAM_END))
-	{
-		for (uint16_t i = 0; i < (abs(a2 - a1) + 1); i++)
-		{
-			// inc_trs(&ad1);
-			if (trit2int(ad1) < 0)
-			{
-				inc_trs(&ad1);
-				i += 1;
-			}
-			view_elem_fram(ad1);
-			inc_trs(&ad1);
-		}
-	}
-}
-
-/**
- * Печать памяти FRAM машины Сетунь-1958
- */
-void dump_fram(void)
-{
-	int8_t grfram;
-	int8_t row;
-	int8_t j;
-	trs_t tv;
-	trs_t r;
-
-	printf("\r\n[ Dump FRAM Setun-1958: ]\r\n");
-
-	for (row = 0; row < SIZE_GR_TRIT_FRAM; row++)
-	{
-		for (grfram = 0; grfram < SIZE_GRFRAM; grfram++)
-		{
-			r = mem_fram[row][grfram];
-			r.l = 9;
-			// viv+ dbg view_short_reg(&r,"r");
-
-			printf("fram[.] (%3d:%2d) : ", row - SIZE_GR_TRIT_FRAM / 2, grfram);
-			// printf("%s",trs2str());
-			printf(" [");
-			for (j = 1; j < 10; j++)
-			{
-				printf("%c", numb2symtrs(get_trit_setun(r, j)));
-			}
-			printf("], ");
-
-			trs2str(r);
-			printf("\n");
-		}
-	}
-}
-
-/**
- * Печать дампа зоны FRAM машины Сетунь-1958
- * по шаблону из книг математического обеспечения
- */
-void dump_fram_zone(trs_t z)
-{
-	int8_t grfram;
-	int8_t row;
-	int8_t j;
-	int8_t sng = 0;
-
-	trs_t fram_row1;
-	trs_t fram_row2;
-
-	trs_t tv;
-	trs_t r;
-
-	trs_t ksum;
-
-	printf("\n[ Dump FRAM Setun-1958: ]\n");
-
-	sng = get_trit_setun(z, 1);
-
-	/* Какая страница FRAM */
-	if (sng < 0)
-	{
-		fram_row1 = smtr("-----");
-		fram_row2 = smtr("-00+-");
-	}
-	else if (sng == 0)
-	{
-		fram_row1 = smtr("0----");
-		fram_row2 = smtr("000+-");
-	}
-	else
-	{
-		fram_row1 = smtr("+----");
-		fram_row2 = smtr("+00+-");
-	}
-
-	/* print FRAM */
-	clear(&ksum);
-	ksum.l = 18;
-
-	trs_t inr = fram_row1;
-	inr = set_trit_setun(inr, 5, 0);
-	for (uint8_t i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
-	{
-		tv = ld_fram(inr);
-		ksum = add_trs(ksum, tv);
-		inr = next_address(inr);
-	}
-
-	printf("Zone =% 2i\n", sng);
-	printf("\n");
-
-	for (uint8_t i = 0; i < 14; i++)
-	{
-		/* Print ROW1 */
-		// addr -1
-		r = slice_trs_setun(fram_row1, 2, 3);
-		trs2str(r);
-		r = slice_trs_setun(fram_row1, 4, 5);
-		trs2str(r);
-		printf(" ");
-		// addr 0
-		fram_row1 = set_trit_setun(fram_row1, 5, 0);
-		r = slice_trs_setun(fram_row1, 2, 3);
-		trs2str(r);
-		r = slice_trs_setun(fram_row1, 4, 5);
-		trs2str(r);
-		printf("  ");
-		// addr 1
-		tv = ld_fram(fram_row1);
-		r = slice_trs_setun(tv, 1, 1);
-		trs2str(r);
-		printf(" ");
-		r = slice_trs_setun(tv, 2, 3);
-		trs2str(r);
-		r = slice_trs_setun(tv, 4, 5);
-		trs2str(r);
-		printf(" ");
-		r = slice_trs_setun(tv, 6, 7);
-		trs2str(r);
-		r = slice_trs_setun(tv, 8, 9);
-		trs2str(r);
-
-		printf("        ");
-		if (i <= 12)
-		{
-			/* print ROW2 */
-			r = slice_trs_setun(fram_row2, 2, 3);
-			trs2str(r);
-			r = slice_trs_setun(fram_row2, 4, 5);
-			trs2str(r);
-			printf(" ");
-
-			fram_row2 = set_trit_setun(fram_row2, 5, 0);
-			r = slice_trs_setun(fram_row2, 2, 3);
-			trs2str(r);
-			r = slice_trs_setun(fram_row2, 4, 5);
-			trs2str(r);
-			printf("  ");
-
-			tv = ld_fram(fram_row2);
-			r = slice_trs_setun(tv, 1, 1);
-			trs2str(r);
-			printf(" ");
-			r = slice_trs_setun(tv, 2, 3);
-			trs2str(r);
-			r = slice_trs_setun(tv, 4, 5);
-			trs2str(r);
-			printf(" ");
-			r = slice_trs_setun(tv, 6, 7);
-			trs2str(r);
-			r = slice_trs_setun(tv, 8, 9);
-			trs2str(r);
-			printf(" ");
-			printf("\n");
-		}
-		else
-		{
-			printf("KC     ");
-			r = slice_trs_setun(ksum, 1, 1);
-			trs2str(r);
-			printf(" ");
-			r = slice_trs_setun(ksum, 2, 3);
-			trs2str(r);
-			r = slice_trs_setun(ksum, 4, 5);
-			trs2str(r);
-			printf(" ");
-			r = slice_trs_setun(ksum, 6, 7);
-			trs2str(r);
-			r = slice_trs_setun(ksum, 8, 9);
-			trs2str(r);
-			printf("\n");
-		}
-		/* print ROW1 */
-		printf("   ");
-		fram_row1 = set_trit_setun(fram_row1, 5, 1);
-		r = slice_trs_setun(fram_row1, 2, 3);
-		trs2str(r);
-		r = slice_trs_setun(fram_row1, 4, 5);
-		trs2str(r);
-		printf("  ");
-		//
-		//
-		tv = ld_fram(fram_row1);
-		r = slice_trs_setun(tv, 1, 1);
-		trs2str(r);
-		printf(" ");
-		r = slice_trs_setun(tv, 2, 3);
-		trs2str(r);
-		r = slice_trs_setun(tv, 4, 5);
-		trs2str(r);
-		printf(" ");
-		r = slice_trs_setun(tv, 6, 7);
-		trs2str(r);
-		r = slice_trs_setun(tv, 8, 9);
-		trs2str(r);
-		fram_row1 = set_trit_setun(fram_row1, 5, -1);
-
-		printf("        ");
-
-		if (i <= 12)
-		{
-			/* print ROW2 */
-			printf("   ");
-			fram_row2 = set_trit_setun(fram_row2, 5, 1);
-			r = slice_trs_setun(fram_row2, 2, 3);
-			trs2str(r);
-			r = slice_trs_setun(fram_row2, 4, 5);
-			trs2str(r);
-			printf("  ");
-			//
-			tv = ld_fram(fram_row2);
-			r = slice_trs_setun(tv, 1, 1);
-			trs2str(r);
-			printf(" ");
-			r = slice_trs_setun(tv, 2, 3);
-			trs2str(r);
-			r = slice_trs_setun(tv, 4, 5);
-			trs2str(r);
-			printf(" ");
-			r = slice_trs_setun(tv, 6, 7);
-			trs2str(r);
-			r = slice_trs_setun(tv, 8, 9);
-			trs2str(r);
-			fram_row2 = set_trit_setun(fram_row2, 5, -1);
-			printf("\n");
-		}
-		else
-		{
-			printf("       ");
-			r = slice_trs_setun(ksum, 10, 10);
-			trs2str(r);
-			printf(" ");
-			r = slice_trs_setun(ksum, 11, 12);
-			trs2str(r);
-			r = slice_trs_setun(ksum, 13, 14);
-			trs2str(r);
-			printf(" ");
-			r = slice_trs_setun(ksum, 15, 16);
-			trs2str(r);
-			r = slice_trs_setun(ksum, 17, 18);
-			trs2str(r);
-			printf("\n");
-		}
-
-		/* Next address*/
-		inc_trs(&fram_row1);
-		inc_trs(&fram_row1);
-		inc_trs(&fram_row1);
-		inc_trs(&fram_row2);
-		inc_trs(&fram_row2);
-		inc_trs(&fram_row2);
-	}
-}
-
-/**
- * Печать короткого слова BRUM машины Сетунь-1958
- */
-void view_drum_zone(trs_t zone)
-{
-	int8_t j;
-	trs_t zr;
-	uint8_t zind;
-	uint8_t rind;
-	trs_t tv;
-
-	/* Зона памяти DRUM */
-	zr = slice_trs_setun(zone, 1, 4);
-	zind = zone_drum_to_index(zr);
-
-	printf("\n[ Dump DRUM Setun-1958: ]\n");
-	printf("[ Zone = %2i ]\n", zind);
-	printf("\n");
-
-	for (uint8_t i = 0; i < SIZE_ZONE_TRIT_DRUM; i++)
-	{
-		// Читать короткое слово
-		trs_t mr = ld_drum(zr, i);
-		mr.l = 9;
-		uint32_t r = ld_drum(zr, i).t1 & (uint32_t)(0x3FFFF);
-		printf("drum[% 3i:% 3i ] ", zind, i);
-		/* Вывод короткого троичного слова */
-		printf(" [");
-		for (j = 1; j < 10; j++)
-		{
-			printf("%c", numb2symtrs(get_trit_setun(mr, j)));
-		};
-
-		printf("], ");
-
-		trs2str(mr);
-		printf("\n");
-
-	} /* for() */
-}
-
-/**
- * Печать памяти DRUM машины Сетунь-1958
- */
-void dump_drum(void)
-{	
-	int8_t zone;
-	int8_t row;
-	int8_t j;
-	trs_t tv;
-	trs_t r;
-
-	printf("\n[ BRUM Setun-1958 ]\n");
-
-	for (zone = ZONE_DRUM_BEG; zone < ZONE_DRUM_END; zone++)
-	{
-		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
-		{
-			copy_trs_setun(&mem_drum[zone][row], &r);
-
-			printf("drum[%3i:%3i] = [", zone, row - SIZE_ZONE_TRIT_DRUM / 2);
-
-			j = 0;
-			do
-			{
-				// viv- old code  printf("%i",tb2int(r >> (9-1-j)*2));
-				j++;
-			} while (j < 9);
-
-			printf("], ");
-			// TODO error printf("(%li), ", (long int)trs2digit(t));
-
-			trs2str(r);
-
-			printf("\n");
-		}
-	}
-}
-
-/* Декодирование комбинации пробивок в троичное число */
-int16_t Decoder_String_from_Paper_Line(void) {
-
-	uint8_t byte;
-	int len;
-	int16_t count = 0;		
-	uint8_t cmd[20];	
-	
-	FILE *filepl;
-	filepl = fopen("software/paper.txt", "r");
-	if (filepl == NULL)
-	{
-		printf("ERR fopen %s\n", "software/paper.txt");
-		return 0;
-	}
-	printf("open %s\n", "software/paper.txt");
-	
-	while (fscanf(filepl, "%s", cmd) != EOF)
-	{
-		printf("%s : ", cmd);
-		
-		byte = 0;
-		for(int i=0;i<strlen(cmd);i++) {		
-			
-			if(i==3) {
-				if(cmd[i] != '.') return 0; /* error string paper */
-			}
-			else {
-				if( (cmd[i] == 'O') || (cmd[i] == 'o')) {
-					
-					switch(i) {
-					case 0:
-						byte |= (1<<4); 
-						break;	
-					case 1:
-						byte |= (1<<3); 
-						break;	
-					case 2:
-						byte |= (1<<2); 
-						break;
-					case 4:
-						byte |= (1<<1); 
-						break;					
-					case 5:
-						byte |= (1<<0); 
-						break;					
-					}
-				}
-			}
-		}
-		printf("byte=%i\n", byte);		
-		count += 1;
-	}
-	fclose(filepl);
-
-	printf("\nr=%i\n",count);
-	
-	return 1;
-}
-
-//TODO Ввод "бумажной ленты"  
-void Test10_Read_Paper_Line(void)
-{
-	trs_t fa;	
-	fa = smtr("0---0");
-	Decoder_String_from_Paper_Line();
-}
-
-
 uint8_t Begin_Read_Commands_from_FT1(FILE *file)
 {
 	trs_t fa;
@@ -3946,9 +4352,12 @@ uint8_t Begin_Read_Commands_from_FT1(FILE *file)
  */
 uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 {
-	printf("[ Read commands from FT1 ]\n");
-	uint8_t cnt = 0;
+	if (DEBUG > 0) {	
+		printf("[ Read commands from FT1 ]\n");
+	}
 	
+	uint8_t cnt = 0;
+
 	if (file == NULL)
 		return 1; /* Error #1 */
 
@@ -3977,8 +4386,78 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 	MR.l = 18;
 	int i = 0;
 
-	while (fscanf(file, "%s", cmd) != EOF)
+	trs_t tcmd;
+	tcmd.l = 9;
+	tcmd.t0 = 0;
+	tcmd.t1 = 0;
+	//
+	uint8_t cnt_cmd = 54;
+	uint8_t cnt_line = 5;
+	//
+	while ((fscanf(file, "%s", cmd) != EOF) && (cnt_cmd != 0))
 	{
+		uint8_t err = 0;
+		trs_t res;
+
+		res = Decoder_Command_Paper_Line(cmd, &err);
+		if (err == 0)
+		{
+
+			if (cnt_line > 0)
+			{
+				int8_t p1 = get_trit_setun(res, 1);
+				int8_t p2 = get_trit_setun(res, 2);
+				tcmd = set_trit_setun(tcmd, 8, p1);
+				tcmd = set_trit_setun(tcmd, 9, p2);
+				cnt_line -= 1;
+			}
+			if (cnt_line == 0)
+			{
+				cnt_line = 5;
+				cnt_cmd -= 1;
+				//view_short_reg(&tcmd, "tcmd");
+				//
+				sum = add_trs(sum, tcmd);
+
+				dsun += trs2digit(tcmd);
+
+				//debug_print("%s -> [", tcmd);
+				debug_print(" -> [");
+
+				if (DEBUG > 0)
+				{
+					trs2str(tcmd);
+				}
+				debug_print("]");
+				if (DEBUG > 0)
+				{
+					view_short_reg(&fa, " addr");
+				}
+				else
+				{
+					if (DEBUG > 0)
+					{
+						printf("\n");
+					}
+				}
+
+				st_fram(fa, tcmd);
+				fa = next_address(fa);
+				mod_3_n(&fa, 5);
+				tcmd.t0 = 0;
+				tcmd.t1 = 0;
+				//
+				i += 1;
+			}
+			else
+			{
+				tcmd = shift_trs(tcmd, 2);
+			}
+		}
+
+#if 1 // viv+ new edit
+
+#else  // viv- old
 		if (strlen(cmd) != 5)
 			continue;
 
@@ -4013,12 +4492,15 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 
 		if (i == SIZE_ZONE_TRIT_FRAM)
 			break;
+#endif // viv+ new code
 	}
 
-	printf("\ni=%i\n", i);
-	/* Печать контрольных сумм */
-	view_checksum_setun(sum);
-
+	if (DEBUG > 0) {
+		printf("\ni=%i\n", i);
+		/* Печать контрольных сумм */
+		view_checksum_setun(sum);
+	}
+	
 	if (cnt != SIZE_ZONE_TRIT_FRAM)
 		return 1; /* Error #2 */
 
@@ -4050,7 +4532,7 @@ uint8_t Read_Commands_from_FT2(FILE *file, trs_t fa)
 {
 	printf("[ Read commands from FT2 ]\n");
 	uint8_t cnt = 0;
-	
+
 	if (file == NULL)
 		return 1; /* Error #1 */
 
@@ -4146,20 +4628,32 @@ uint8_t Read_Symbols_from_FT2(FILE *file, trs_t fa)
 }
 
 /**
- * Вывод на PTP1
+ * Вывод на TTY1
  */
-uint8_t Write_Commands_to_PTP1(FILE *file, trs_t fa)
+uint8_t Write_Commands_to_TTY1(FILE *file, trs_t fa)
 {
-	printf("[ Write_Commands_from_PTP1 ]\n");
+	uint8_t offset = 13;
+
+	if (file == NULL)
+		return 1; /* Error */
+
+	electrified_typewriter(fa, russian_latin_sw);
 
 	return 0; /* OK' */
 }
 
 /**
- * Вывод на PTP1
+ * Вывод на TTY1
  */
-uint8_t Write_Symbols_to_PTP1(FILE *file, trs_t fa) {
-	printf("[ Write_Symbols_to_PTP1 ]\n");
+uint8_t Write_Symbols_to_TTY1(FILE *file, trs_t fa)
+{
+
+	uint8_t offset = 13;
+
+	if (file == NULL)
+		return 1; /* Error */
+
+	electrified_typewriter(fa, russian_latin_sw);
 
 	return 0; /* OK' */
 }
@@ -4169,7 +4663,13 @@ uint8_t Write_Symbols_to_PTP1(FILE *file, trs_t fa) {
  */
 uint8_t Perforation_Commands_to_PTP1(FILE *file, trs_t fa)
 {
-	printf("[ Perforation_Commands_from_PTP1 ]\n");
+	uint8_t offset = 13;
+	uint8_t cnt = 0;
+
+	if (file == NULL)
+		return 1; /* Error #1 */
+
+	fprintf(file, "%s\n", (char *)tab4_0[trs2digit(fa) + offset]);
 
 	return 0; /* OK' */
 }
@@ -4177,13 +4677,18 @@ uint8_t Perforation_Commands_to_PTP1(FILE *file, trs_t fa)
 /**
  * Перфорация на PTP1
  */
-uint8_t Perforation_Symbols_to_PTP1(FILE *file, trs_t fa) {
-	printf("[ Perforation_Symbols_to_PTP1 ]\n");
+uint8_t Perforation_Symbols_to_PTP1(FILE *file, trs_t fa)
+{
+	uint8_t offset = 13;
+	uint8_t cnt = 0;
+
+	if (file == NULL)
+		return 1; /* Error #1 */
+
+	fprintf(file, "%s\n", (char *)tab4_0[trs2digit(fa) + offset]);
 
 	return 0; /* OK' */
 }
-
-
 
 /** *******************************************
  *  Реалиазция виртуальной машины "Сетунь-1958"
@@ -4205,7 +4710,7 @@ void reset_setun_1958(void)
  * Вернуть модифицированное K(1:9) для выполнения операции "Сетунь-1958"
  */
 trs_t control_trs(trs_t a)
-{	
+{
 	int8_t k9;
 	trs_t k1_5;
 	trs_t cn;
@@ -4220,25 +4725,25 @@ trs_t control_trs(trs_t a)
 
 	/* Модицикация адресной части K(1:5) */
 	if (k9 > 0)
-	{ /* A(1:5) = A(1:5) + F(1:5) */		
+	{ /* A(1:5) = A(1:5) + F(1:5) */
 		k1_5 = add_trs(k1_5, F);
 		mod_3_n(&k1_5, 5);
 	}
 	else if (k9 < 0)
-	{ /* A(1:5) = A(1:5) - F(1:5) */		
+	{ /* A(1:5) = A(1:5) - F(1:5) */
 		k1_5 = sub_trs(k1_5, F);
 		mod_3_n(&k1_5, 5);
 	}
 	else
 	{	/*  A(1:5) = A(1:5) */
-		/* Без изменений    */ 
+		/* Без изменений    */
 	}
 
 	cn = shift_trs(k1_5, 4);
 	cn.l = 9;
 
 	a = slice_trs_setun(a, 6, 9);
-	
+
 	cn = add_trs(a, cn);
 	cn.l = 9;
 
@@ -4752,9 +5257,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	case (-1 * 9 + 0 * 3 + 0):
 	{ // -00 : Ввод в Фа* - Вывод из Фа*
 		debug_print(" k6..8[-00]: Ввод в Фа* - Вывод из Фа*\n");
-		
-		// TODO добавить реализацию чтения из файла виртуального устройства ввода
-		
+
 		trs_t fa;
 		if (DEBUG > 0)
 		{
@@ -4779,7 +5282,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 						get_trit_setun(k1_5, 3) * 9 +
 						get_trit_setun(k1_5, 4) * 3 +
 						get_trit_setun(k1_5, 5);
-		
+
 		/* Тип устройства ввода/вывода */
 		switch (codeio)
 		{
@@ -4803,49 +5306,38 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			// TODO  добавить реализацию запись из файла виртуального устройства ввода
 			Read_Symbols_from_FT2(ptr2, fa);
 			break;
-		case (+1 * 27 + 0 * 9 + 0 * 3 + 0): /* Перфорация в виде команд на Перфоратор ПЛ (Телетайп ТП) */
-			debug_print("   k2..5[+000]: Перфорация в виде команд на Перфоратор ПЛ (Телетайп ТП)\n");			
-			// TODO  добавить реализацию вывода			
-			Perforation_Commands_to_PTP1(ptr2, fa);
-			break;
-		case (-1 * 27 + 0 * 9 + 0 * 3 + 0): /* Перфорация в виде троичных символов на Перфоратор ПЛ (Телетайп ТП) */
-			debug_print("   k2..5[-000]: Вывод и перфорация в виде троичных символов на Перфоратор ПЛ (Телетайп ТП)\n");
-			// TODO  добавить реализацию вывода			
-			Perforation_Symbols_to_PTP1(ptr2, fa);
-			break;
-		case (+0 * 27 + 1 * 9 + 0 * 3 + 0): /* Печать в виде команд на Пишущей машинке ПМ (Телетайпе ТП) */
-			debug_print("   k2..5[0+00]: Печать в виде команд на Пишущей машинке ПМ (Телетайпе ТП\n");
-			// TODO  добавить реализацию печати
-			Write_Commands_to_PTP1(ptp1, fa);
-			break;
-		case (+0 * 27 - 1 * 9 + 0 * 3 + 0): /* Печать одним цветом в виде символов нп пишущей машинке ПМ (Телетайпе ТП) */
-			debug_print("   k2..5[0-00]: Печать одним цветом в виде символов нп пишущей машинке ПМ (Телетайпе ТП)\n");			
-			Write_Symbols_to_PTP1(ptp1, fa);
-			// Print to tty1 concole
+		case (+1 * 27 + 0 * 9 + 0 * 3 + 0): /* Перфорация троичных кодов на Перфоратор ПЛ (Телетайп ТП) */
+			debug_print("   k2..5[+000]: Перфорация троичных кодов на Перфоратор ПЛ (Телетайп ТП)\n");
+
 			for (uint8_t i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
 			{
 				int32_t symbcode;
 				trs_t symb;
-				symb.l = 3;
+				symb.l = 2;
 				//
 				MR = ld_fram(fa);
-				symb = slice_trs_setun(MR, 1, 3);
-				if (trs2digit(symb) == -13)
-					break;
-				electrified_typewriter(symb, 1);
-				symb = slice_trs_setun(MR, 4, 6);
-				if (trs2digit(symb) == -13)
-					break;
-				electrified_typewriter(symb, 1);
-				symb = slice_trs_setun(MR, 7, 9);
-				if (trs2digit(symb) == -13)
-					break;
-				electrified_typewriter(symb, 1);
+
+				symb = slice_trs_setun(MR, 1, 1);
+				Perforation_Commands_to_PTP1(ptp1, symb);
+
+				symb = slice_trs_setun(MR, 2, 3);
+				Perforation_Commands_to_PTP1(ptp1, symb);
+
+				symb = slice_trs_setun(MR, 4, 5);
+				Perforation_Commands_to_PTP1(ptp1, symb);
+
+				symb = slice_trs_setun(MR, 6, 7);
+				Perforation_Commands_to_PTP1(ptp1, symb);
+
+				symb = slice_trs_setun(MR, 8, 9);
+				Perforation_Commands_to_PTP1(ptp1, symb);
+
 				fa = next_address(fa);
 			}
 			break;
-		case (+1 * 27 - 1 * 9 + 0 * 3 + 0): /* Печать в виде цветных символов  на пишущей машинке ПМ (Телетайпе ТП) */
-			debug_print("   k2..5[0-00]: Печать в виде цветных символов  на пишущей машинке ПМ (Телетайпе ТП)\n");			
+		case (-1 * 27 + 0 * 9 + 0 * 3 + 0): /* Перфорация в виде троичных символов на Перфоратор ПЛ (Телетайп ТП) */
+			debug_print("   k2..5[-000]: Перфорация троичных символов на Перфоратор ПЛ (Телетайп ТП)\n");
+
 			for (uint8_t i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
 			{
 				int32_t symbcode;
@@ -4854,17 +5346,100 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				//
 				MR = ld_fram(fa);
 				symb = slice_trs_setun(MR, 1, 3);
-				if (trs2digit(symb) == -13)
-					break;
-				electrified_typewriter(symb, 1);
+				Perforation_Symbols_to_PTP1(ptp1, symb);
+
 				symb = slice_trs_setun(MR, 4, 6);
-				if (trs2digit(symb) == -13)
-					break;
-				electrified_typewriter(symb, 1);
+				Perforation_Symbols_to_PTP1(ptp1, symb);
+
 				symb = slice_trs_setun(MR, 7, 9);
 				if (trs2digit(symb) == -13)
 					break;
-				electrified_typewriter(symb, 1);
+				Perforation_Symbols_to_PTP1(ptp1, symb);
+
+				fa = next_address(fa);
+			}
+			break;
+		case (+0 * 27 + 1 * 9 + 0 * 3 + 0): /* Печать в виде команд на Пишущей машинке ПМ (ЭУМ-46) */
+			debug_print("   k2..5[0+00]: Печать в виде команд на Пишущей машинке ПМ (ЭУМ-46)\n");
+
+			uint8_t current = letter_number_sw;
+			letter_number_sw = 1; /* цифровой регистр */
+
+			for (uint8_t i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
+			{
+				int32_t symbcode;
+				trs_t symb;
+				symb.l = 3;
+				//
+				MR = ld_fram(fa);
+
+				symb = slice_trs_setun(MR, 1, 1);
+				Write_Commands_to_TTY1(tty1, symb);
+
+				symb = slice_trs_setun(MR, 2, 3);
+				Write_Commands_to_TTY1(tty1, symb);
+
+				symb = slice_trs_setun(MR, 4, 5);
+				Write_Commands_to_TTY1(tty1, symb);
+
+				symb = slice_trs_setun(MR, 6, 7);
+				Write_Commands_to_TTY1(tty1, symb);
+
+				symb = slice_trs_setun(MR, 8, 9);
+				Write_Commands_to_TTY1(tty1, symb);
+
+				symb = smtr("-0-");
+				Write_Commands_to_TTY1(tty1, symb);
+
+				fa = next_address(fa);
+			}
+			letter_number_sw = current; /* вернуть регистр */
+			break;
+		case (+0 * 27 - 1 * 9 + 0 * 3 + 0): /* Печать одним цветом в виде символов на пишущей машинке ПМ (ЭУМ-46) */
+			debug_print("   k2..5[0-00]: Печать одним цветом в виде символов на пишущей машинке ПМ (ЭУМ-46)\n");
+
+			for (uint8_t i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
+			{
+				int32_t symbcode;
+				trs_t symb;
+				symb.l = 3;
+				//
+				MR = ld_fram(fa);
+
+				symb = slice_trs_setun(MR, 1, 3);
+				Write_Symbols_to_TTY1(tty1, symb);
+
+				symb = slice_trs_setun(MR, 4, 6);
+				Write_Symbols_to_TTY1(tty1, symb);
+
+				symb = slice_trs_setun(MR, 7, 9);
+				if (trs2digit(symb) == -13)
+					break;
+				Write_Symbols_to_TTY1(tty1, symb);
+
+				fa = next_address(fa);
+			}
+			break;
+		case (+1 * 27 - 1 * 9 + 0 * 3 + 0): /* Печать в виде символов на Пишущей машинке ПМ (ЭУМ-46) */
+			debug_print("   k2..5[+-00]: Печать в виде символов на пишущей машинке ПМ (ЭУМ-46)\n");
+			for (uint8_t i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
+			{
+				int32_t symbcode;
+				trs_t symb;
+				symb.l = 3;
+				//
+				MR = ld_fram(fa);
+
+				symb = slice_trs_setun(MR, 1, 3);
+				Write_Symbols_to_TTY1(tty1, symb);
+
+				symb = slice_trs_setun(MR, 4, 6);
+				Write_Symbols_to_TTY1(tty1, symb);
+
+				symb = slice_trs_setun(MR, 7, 9);
+				if (trs2digit(symb) == -13)
+					break;
+				Write_Symbols_to_TTY1(tty1, symb);
 				fa = next_address(fa);
 			}
 			break;
@@ -4954,8 +5529,6 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 error_over:
 	return STOP_ERROR;
 }
-
-
 
 /* ****************************************
  * Тестирование функций операций с тритами
@@ -6478,6 +7051,14 @@ void Test7_Setun_Load(void)
 	printf("\n --- END TEST #7 --- \n");
 }
 
+const char *get_file_ext(const char *filename)
+{
+	const char *dot = strrchr(filename, '.');
+	if (!dot || dot == filename)
+		return "";
+	return dot + 1;
+}
+
 void LoadSWSetun(void)
 {
 	printf("\n --- Load software anf DUMP FRAM  for VM SETUN-1958 --- \n\n");
@@ -6611,6 +7192,248 @@ void LoadSWSetun(void)
 	// dump_fram_zone(smtr("-"));
 
 	printf("\n END Load software\n");
+}
+
+void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathfiletxt)
+{
+	FILE *file_lst;
+	FILE *file_txt;
+
+	/* Переменная, в которую поочередно будут помещаться считываемые строки */
+	char str[80] = {0};
+
+	/* Указатель, в который будет помещен адрес массива, в который считана */
+	/* строка, или NULL если достигнут коней файла или произошла ошибка */
+	char *estr;
+
+	file_txt = fopen(pathfiletxt, "w");
+	if (file_lst == NULL)
+	{
+		printf("ERR fopen %s\r\n", pathfiletxt);
+		return;
+	}
+
+	file_lst = fopen(pathfilelst, "r");
+	if (file_lst == NULL)
+	{
+		printf("ERR fopen %s\n", pathfilelst);
+		return;
+	}
+	else
+	{
+		printf("Read file list: %s\n", pathfilelst);
+
+		/* Чтение (построчно) данных из файла в бесконечном цикле */
+		while (1)
+		{
+			/* Чтение одной строки  из файла */
+			estr = fgets(str, sizeof(str), file_lst);
+
+			/* Проверка на конец файла или ошибку чтения */
+			if (estr == NULL)
+			{
+				/* Проверяем, что именно произошло: кончился файл */
+				/* или это ошибка чтения */
+				if (feof(file_lst) != 0)
+				{
+					/* Если файл закончился, выводим сообщение о завершении */
+					/* чтения и выходим из бесконечного цикла */
+					// printf("\nЧтение файла закончено\n");
+					break;
+				}
+				else
+				{
+					/* Если при чтении произошла ошибка, выводим сообщение */
+					/* об ошибке и выходим из бесконечного цикла */
+					// printf("\nОшибка чтения из файла\n");
+					break;
+				}
+			}
+
+			/* ---------------------------------
+			 * Загрузить из файла тест-программу
+			 * ---------------------------------
+			 */
+			printf("Read file: %s", str);
+
+			FILE *file;
+			char path_str[160] = {0};
+			uint8_t cmd[20];
+			trs_t inr;
+			trs_t dst;
+
+			inr = smtr("0---0"); /* cчетчик адреса коротких слов */
+			trs_t sum;
+			trs_t tmp;
+
+			tmp.l = 18;
+			tmp.t1 = 0;
+			tmp.t0 = 0;
+
+			int64_t dsun = 0;
+			sum.l = 18;
+			sum.t1 = 0;
+			sum.t0 = 0;
+			//
+			dst.l = 9;
+			MR.l = 18;
+			int i = 0;
+
+			strcat(path_str, pathcataloglst);
+			strcat(path_str, "/");
+			if (str[strlen(str) - 1] == 0x0A)
+			{
+				str[strlen(str) - 1] = 0;
+			}
+			str[strlen(str)] = 0;
+			strcat(path_str, str);
+
+			file = fopen(path_str, "r");
+			if (file == NULL)
+			{
+				printf("ERR fopen %s\n", path_str);
+				return;
+			}
+
+			while (fscanf(file, "%s", cmd) != EOF)
+			{
+				// TODO команду в перфорацию
+				uint8_t offset4_7 = 4;
+				uint8_t prlile[7];
+				trs_t dst;
+				trs_t trit2;
+				//
+				cmd_str_2_trs(cmd, &dst);
+				trit2.l = 2;
+				//
+				trit2 = set_trit_setun(trit2, 1, 0);
+				trit2 = set_trit_setun(trit2, 2, get_trit_setun(dst, 1));
+				memset(prlile, 0, sizeof(prlile));
+				memmove(prlile, tab4_7[trs2digit(trit2) + offset4_7], sizeof(prlile));
+				fwrite(prlile, 1, strlen(prlile), file_txt);
+				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
+				//
+				trit2 = set_trit_setun(trit2, 1, get_trit_setun(dst, 2));
+				trit2 = set_trit_setun(trit2, 2, get_trit_setun(dst, 3));
+				memset(prlile, 0, sizeof(prlile));
+				memmove(prlile, tab4_7[trs2digit(trit2) + offset4_7], sizeof(prlile));
+				fwrite(prlile, 1, strlen(prlile), file_txt);
+				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
+				//
+				trit2 = set_trit_setun(trit2, 1, get_trit_setun(dst, 4));
+				trit2 = set_trit_setun(trit2, 2, get_trit_setun(dst, 5));
+				memset(prlile, 0, sizeof(prlile));
+				memmove(prlile, tab4_7[trs2digit(trit2) + offset4_7], sizeof(prlile));
+				fwrite(prlile, 1, strlen(prlile), file_txt);
+				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
+				//
+				trit2 = set_trit_setun(trit2, 1, get_trit_setun(dst, 6));
+				trit2 = set_trit_setun(trit2, 2, get_trit_setun(dst, 7));
+				memset(prlile, 0, sizeof(prlile));
+				memmove(prlile, tab4_7[trs2digit(trit2) + offset4_7], sizeof(prlile));
+				fwrite(prlile, 1, strlen(prlile), file_txt);
+				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
+				//
+				trit2 = set_trit_setun(trit2, 1, get_trit_setun(dst, 8));
+				trit2 = set_trit_setun(trit2, 2, get_trit_setun(dst, 9));
+				memset(prlile, 0, sizeof(prlile));
+				memmove(prlile, tab4_7[trs2digit(trit2) + offset4_7], sizeof(prlile));
+				fwrite(prlile, 1, strlen(prlile), file_txt);
+				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
+				//
+				memset(prlile, 0, sizeof(prlile));
+				memmove(prlile, "0__._0", sizeof(prlile));
+				fwrite(prlile, 1, strlen(prlile), file_txt);
+				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
+			}
+			fclose(file);
+
+			/* Промежуток между зонами на перфоленте */
+			for (int j = 0; j < 5; j++)
+			{
+				fwrite("___.__\r\n", 1, strlen("___.__\r\n"), file_txt);
+			}
+		}
+	}
+
+	/* Закрыть файлы */
+	fclose(file_lst);
+	fclose(file_txt);
+
+	printf("\nWrite file: %s\n", pathfiletxt);
+}
+
+int ConvertSWtoPaper(char *path_lst, char *path_txt)
+{
+
+	int res = 0;
+
+	char a_fileName[80];
+
+	printf(" --- ConvertSWtoPaper ---\n");
+
+	DIR *dir;
+	struct dirent *ent;
+	if ((dir = opendir(path_lst)) != NULL)
+	{
+		/* print all the files and directories within directory */
+		while ((ent = readdir(dir)) != NULL)
+		{
+			char file_ext[10];
+			strcpy(file_ext, get_file_ext(ent->d_name));
+			/* Найти список файлов */
+			if (strcmp(file_ext, "lst") == 0)
+			{
+				strcpy(a_fileName, ent->d_name);
+				res = 0; /* Ok' */
+				break;
+			}
+		}
+		closedir(dir);
+	}
+	else
+	{
+		/* could not open directory */
+		perror("Could not open directory");
+		res = 1; /* Error#1 */
+		return EXIT_FAILURE;
+	}
+
+	/* Прочитать файлы из каталога и преобразовать в папер */
+	if (res == 0)
+	{
+		/* Проверить каталог */
+		if ((dir = opendir(path_txt)) != NULL)
+		{
+			res = 0; /* Ok' */
+		}
+		else
+		{
+			res = 2; /* Error#2 */
+		}
+	}
+
+	/* Прочитать файлы программы из каталога и преобразовать в paper.txt */
+	if (res == 0)
+	{
+		char pathfile1[255];
+		char pathfile2[255];
+		// clear
+		memset(pathfile1, 0, sizeof(pathfile1));
+		memset(pathfile2, 0, sizeof(pathfile2));
+		// path file1
+		strcat(pathfile1, path_lst);
+		strcat(pathfile1, "/");
+		strcat(pathfile1, a_fileName);
+		// path file2
+		strcat(pathfile2, path_txt);
+		strcat(pathfile2, "/");
+		strcat(pathfile2, "paper.txt");
+
+		LoadFileListToPaperTxt(path_lst, pathfile1, pathfile2);
+	}
+
+	return res; /* Ok' */
 }
 
 void Test9_Setun_Electrified_Typewriter(void)
@@ -7058,6 +7881,129 @@ void Test9_Setun_Electrified_Typewriter(void)
 	printf("\n --- END TEST #9 --- \n");
 }
 
+// TODO Вывод "бумажной ленты"
+void Test10_Perforatin_Paper_Line(void)
+{
+	int8_t trit;
+	trs_t aa;
+	trs_t ad1;
+	trs_t ad2;
+	trs_t addr;
+	trs_t oper;
+	trs_t exK;
+	trs_t m0;
+	trs_t m1;
+	int8_t ret_exec;
+
+	printf("\n --- TEST #10 Perforatin paper line --- \n");
+
+	// t11.1 test Oper=k6..8[+00]: (A*)=>(S)
+	printf("\nt10.1:  Oper=k6..8[+00]: (A*)=>(S)\n");
+	//
+	reset_setun_1958();
+
+	/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
+	init_tab4();
+
+	/* ---------------------------------------
+	 *  Открыть файлы для виртуальных устройств
+	 */
+	ptr1 = fopen("ptr1/paper.txt", "r");
+	if (ptr1 == NULL)
+	{
+		printf("Error fopen 'ptr1/paper.txt'\n");
+		return;
+	}
+
+	ptr2 = fopen("ptr2/paper.txt", "r");
+	if (ptr2 == NULL)
+	{
+		printf("Error fopen 'ptr1/paper.txt'\n");
+		return;
+	}
+
+	ptp1 = fopen("ptp1/paper.txt", "w");
+	if (ptp1 == NULL)
+	{
+		printf("Error fopen 'ptp1/paper.txt'\n");
+		return;
+	}
+
+	tty1 = fopen("tty1/printout.txt", "w");
+	if (tty1 == NULL)
+	{
+		printf("Error fopen 'tty1/printout.txt'\n");
+		return;
+	}
+
+	/* ----------------------------------
+	 *  Выполнить первый код "Сетунь-1958"
+	 */
+	printf("\r\n[ Start Setun-1958 ]\r\n");
+
+	/**
+	 * Выполение программы в ферритовой памяти "Сетунь-1958"
+	 */
+	Begin_Read_Commands_from_FT1(ptr1);
+
+	//
+	addr = smtr("0000+");
+	m0 = smtr("00+00-000");
+	st_fram(addr, m0);
+	view_elem_fram(addr);
+	//
+
+	/* Begin address fram */
+	C = smtr("0000+");
+	printf("\nreg C = 00001\n");
+
+	// work VM Setun-1958
+	K = ld_fram(C);
+
+	exK = control_trs(K);
+	oper = slice_trs_setun(K, 6, 8);
+	ret_exec = execute_trs(exK, oper);
+	//
+	if (ret_exec == 0)
+		printf("[status: OK']\n");
+	if (ret_exec != 0)
+		printf("[status: ERR#%d]\n", ret_exec);
+	printf("\n");
+	//
+	view_short_regs();
+
+	trs_t fa;
+	fa = smtr("0---0");
+
+	dump_fram_zone(smtr("0"));
+
+	printf("\n --- END TEST #11 --- \n");
+}
+
+// TODO Ввод "бумажной ленты"
+void Test11_Read_Paper_Line(void)
+{
+	printf("\n --- TEST #11 Read_Paper_Line --- \n");
+
+	trs_t fa;
+	fa = smtr("0---0");
+	Decoder_String_from_Paper_Line();
+
+	printf("\n --- END TEST #11 --- \n");
+}
+
+// TODO Ввод "бумажной ленты"
+void Test12_Read_Paper_Line(void)
+{
+	printf("\n --- TEST #12 Read_Paper_Line --- \n");
+
+	trs_t fa;
+	fa = smtr("0---0");
+	Decoder_String_from_Paper_Line();
+
+	printf("\n --- END TEST #12 --- \n");
+}
+
 int usage(const char *argv0)
 {
 	printf("usage: %s [options] FILE SCRIPT(s)...\n", argv0);
@@ -7065,6 +8011,7 @@ int usage(const char *argv0)
 	printf("\t--debug : view step VM Setun-1958)\n");
 	printf("\t--breakpoint : view stop VM Setun-1958)\n");
 	printf("\t--load : load software VM Setun-1958)\n");
+	printf("\t--convert : convert software file.lst to paper.txt VM Setun-1958)\n");
 	exit(0);
 }
 
@@ -7077,9 +8024,13 @@ int main(int argc, char *argv[])
 	// TODO ERROR execute
 
 	int test = 0;
+	int convert = 0;
 	char *output = "-";
 	int ret = 0;
 	DEBUG = 0;
+
+	/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
+	init_tab4();
 
 	while (1)
 	{
@@ -7087,6 +8038,7 @@ int main(int argc, char *argv[])
 		struct option long_options[] = {
 			{"help", 0, 0, 0},
 			{"load", 0, 0, 0},
+			{"convert", 2, 0, 0},
 			{"test", 1, 0, 0},
 			{"debug", 0, 0, 0},
 			{"breakpoint", 1, 0, 0},
@@ -7121,6 +8073,27 @@ int main(int argc, char *argv[])
 			{
 				LoadSWSetun();
 			}
+			if (strcmp(name, "convert") == 0)
+			{
+				/* Проверить парметры в команде */
+				if (argv[2] == NULL ||
+					argv[3] == NULL)
+				{
+					convert = 1; /* Error! */
+				}
+				else
+				{
+					/* Проверить путь к каталогам,  файл списка lst */
+					if (ConvertSWtoPaper(argv[2], argv[3]) == 0)
+					{
+						convert = 2; /* Done */
+					}
+					else
+					{
+						convert = 1; /* Error! */
+					}
+				}
+			}
 			if (strcmp(name, "step") == 0)
 			{
 				STEP = atoi(optarg);
@@ -7132,6 +8105,18 @@ int main(int argc, char *argv[])
 			break;
 		default:
 			break;
+		}
+	}
+	if (convert > 0)
+	{
+		if (convert == 2)
+		{
+			/* Exit 0. Ok' */
+			return 0;
+		}
+		else
+		{
+			usage(argv[0]);
 		}
 	}
 	if (test > 0)
@@ -7169,9 +8154,16 @@ int main(int argc, char *argv[])
 			Test9_Setun_Electrified_Typewriter();
 			break;
 		case 10:
-			Test10_Read_Paper_Line();
-			break;			
+			Test10_Perforatin_Paper_Line();
+			break;
+		case 11:
+			Test11_Read_Paper_Line();
+			break;
+		case 12:
+			Test12_Read_Paper_Line();
+			break;
 		default:
+			printf("Error: Not Test=%d\n", test);
 			break;
 		}
 		/* Exit 0. Ok' */
@@ -7283,7 +8275,6 @@ int main(int argc, char *argv[])
 			break;
 		}
 
-
 		/*
 		 *
 		 */
@@ -7294,11 +8285,11 @@ int main(int argc, char *argv[])
 			break; // STEP break
 		}
 
-		if (BREAKPOINT == trs2digit(C_cur) && (BREAKPOINT != INT32_MAX)) {	
+		if (BREAKPOINT == trs2digit(C_cur) && (BREAKPOINT != INT32_MAX))
+		{
 
 			break; // BREAKPOINT break
 		}
-
 	}
 
 	/* Prints REGS */
@@ -7308,9 +8299,9 @@ int main(int argc, char *argv[])
 	/* Prints REGS and FRAM */
 	if (DEBUG > 0)
 	{
-		//dump_fram_zone(smtr("-"));
-		//dump_fram_zone(smtr("0"));
-		//dump_fram_zone(smtr("+"));
+		// dump_fram_zone(smtr("-"));
+		// dump_fram_zone(smtr("0"));
+		// dump_fram_zone(smtr("+"));
 	}
 
 	/* Печать завершения работы "Setun-1958" */
