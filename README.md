@@ -10,7 +10,7 @@ Build and run
 
 ```shell
 $ make
-gcc -o emu -g emusetun.c
+gcc -o setun1958emu -g emusetun.c
 ```
 
 As a result you will see dump of register and memory structure of VM after run some tests:
