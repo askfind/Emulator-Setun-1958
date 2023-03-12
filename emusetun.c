@@ -4,24 +4,10 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   10.03.2023
+ * Edit date:   12.03.2023
  *
- * Version: 1.82
+ * Version: 1.83
  */
-
-// TODO
-
-//  - [ ] ревизия проекта: проверка TODO и лишние функции
-//  - [ ] digit2trs edit
-//  - [ ] trs_t div_trs(trs_t a, trs_t b)
-//  - [ ] проверить ошибку void copy_trs_setun(trs_t *src, trs_t *dst)
-//  - [ ] проверить int8_t trit2grfram(trs_t t)
-//  - [ ] реализовать trs_t digit2trs(int8_t n)
-//  - [ ] реализовать void trit2linetape(trs_t v, uint8_t *lp)
-//  - [ ] реализовать uint8_t linetape2trit(uint8_t *lp, trs_t *v)
-//  - [ ] реализовать trs_t div_trs(trs_t a, trs_t b)
-//  - [ ] реализовать чтение программ из виртуального фотосчитывания
-//
 
 /**
  *  Заголовочные файла
@@ -273,8 +259,6 @@ uint8_t trit2lt(int8_t v);
 int8_t symtrs2numb(uint8_t c);
 int8_t str_symtrs2numb(uint8_t *s);
 trs_t smtr(uint8_t *s);
-void trit2linetape(trs_t v, uint8_t *lp);
-uint8_t linetape2trit(uint8_t *lp, trs_t *v);
 
 /* Операции с ферритовой памятью машины FRAM */
 void clean_fram_zone(trs_t z);
@@ -293,8 +277,11 @@ static uint8_t color_sw = 0;
 
 uint8_t pl_to_ind(uint8_t *perline);
 int ConvertSWtoPaper(char *path_lst, char *path_txt);
+int DumpFileTxs(char *pathfile);
 trs_t Decoder_Command_Paper_Line(char *paperline, uint8_t *err);
+trs_t Decoder_Symbol_Paper_Line(char *paperline, uint8_t *err);
 uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa);
+uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa);
 uint8_t Read_Commands_from_FT2(FILE *file, trs_t fa);
 uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa);
 uint8_t Read_Symbols_from_FT2(FILE *file, trs_t fa);
@@ -1434,7 +1421,6 @@ trs_t mul_trs(trs_t a, trs_t b)
 /* Троичное деление тритов */
 trs_t div_trs(trs_t a, trs_t b)
 {
-	// TODO реализовать
 	trs_t r;
 	r.l = 0;
 	r.t1 = 0;
@@ -1573,7 +1559,6 @@ trs_t slice_trs_setun(trs_t t, int8_t p1, int8_t p2)
 	return r;
 }
 
-// TODO fix
 /* Операция присваивания троичных чисел в регистры */
 void copy_trs_setun(trs_t *src, trs_t *dst)
 {
@@ -1630,7 +1615,6 @@ int8_t over_word_long(trs_t x)
 /* Преобразование трита в номер зоны */
 int8_t trit2grfram(trs_t t)
 {
-	// TODO ~
 	if ((t.t0 & (1 << 0)) > 0)
 	{
 		if ((t.t1 & (1 << 0)) > 0)
@@ -1648,7 +1632,6 @@ int8_t trit2grfram(trs_t t)
 /* Дешифратор тритов в индекс строки зоны памяти */
 int16_t addr_trit2addr_index(trs_t t)
 {
-	// TODO ~
 	int8_t i;
 	int8_t n;
 	t.t1 &= (uint32_t)0x3FFFF;
@@ -1658,7 +1641,6 @@ int16_t addr_trit2addr_index(trs_t t)
 /* Дешифратор тритов в индекс адреса памяти */
 uint8_t zone_drum_to_index(trs_t z)
 {
-	// TODO
 	int8_t r;
 
 	r = trs2digit(z);
@@ -1823,7 +1805,6 @@ void clean_drum(void)
 /* Функция "Читать троичное число из ферритовой памяти" */
 trs_t ld_fram(trs_t ea)
 {
-	// TODO
 	uint8_t zind;
 	uint8_t rind;
 	int8_t eap5;
@@ -1913,7 +1894,6 @@ void st_fram(trs_t ea, trs_t v)
 /* Копировать страницу из память fram на магнитного барабана brum */
 void fram_to_drum(trs_t ea)
 {
-	// TODO test
 	int8_t sng;
 	trs_t fram_inc;
 	trs_t k1;
@@ -1997,8 +1977,6 @@ void st_drum(trs_t ea, uint8_t ind, trs_t v)
 /* Копировать страницу с магнитного барабана в память fram */
 void drum_to_fram(trs_t ea)
 {
-	// TODO test
-
 	int8_t sng;
 	trs_t zram;
 	trs_t fram_inc;
@@ -2258,7 +2236,6 @@ uint8_t trit_to_lt(int8_t v)
 
 trs_t digit2trs(int8_t n)
 {
-	// TODO  ~
 	trs_t r;
 	if (n < 3)
 	{
@@ -2404,34 +2381,6 @@ void trit2symtrs(trs_t t)
 		printf("%c", numb2symtrs(t0));
 	}
 	return;
-}
-
-/**
- * Преобразовать триты с строку строки бумажной ленты
- *
- *  Пар:  v - триты
- *  Рез:  lp - строка линии ленты
- */
-void trit2linetape(trs_t v, uint8_t *lp)
-{
-	// TODO +add
-}
-
-/**fst
- * Преобразовать строку строки бумажной ленты в триты
- *
- * Пар:  lp - строка линии ленты
- * Рез:  return=0 - OK', return|=0 - Error
- * 		 v - триты
- */
-uint8_t linetape2trit(uint8_t *lp, trs_t *v)
-{
-	// TODO +
-	trs_t r;
-	r.l = 0;
-	r.t1 = 0;
-	*v = r;
-	return 0; /* OK' */
 }
 
 /**
@@ -3110,12 +3059,10 @@ void dump_drum(void)
 			j = 0;
 			do
 			{
-				// viv- old code  printf("%i",tb2int(r >> (9-1-j)*2));
 				j++;
 			} while (j < 9);
 
 			printf("], ");
-			// TODO error printf("(%li), ", (long int)trs2digit(t));
 
 			trs2str(r);
 
@@ -3593,6 +3540,64 @@ trs_t Decoder_Command_Paper_Line(char *paperline, uint8_t *err)
 	return res;
 }
 
+/* Декодирование комбинации пробивок в троичное число */
+trs_t Decoder_Symbol_Paper_Line(char *paperline, uint8_t *err)
+{
+
+	uint8_t byte;
+	int len;
+	int16_t count = 0;
+	trs_t res;
+
+	byte = 0;
+	for (int i = 0; i < strlen(paperline); i++)
+	{
+
+		if (i == 3)
+		{
+			if (paperline[i] != '.')
+			{
+				*err = 1;	/* Error#1 */
+				return res; /* error string paper */
+			}
+		}
+		else
+		{
+			if ((paperline[i] == 'O') || (paperline[i] == 'o'))
+			{
+
+				switch (i)
+				{
+				case 0:
+					byte |= (1 << 4);
+					break;
+				case 1:
+					byte |= (1 << 3);
+					break;
+				case 2:
+					byte |= (1 << 2);
+					break;
+				case 4:
+					byte |= (1 << 1);
+					break;
+				case 5:
+					byte |= (1 << 0);
+					break;
+				}
+			}
+		}
+	}
+
+	/* Проверить допустимые комбинации пробивок */
+	int r;
+	res = tab4_1[byte];
+
+	/* Valid */
+	*err = 0; /* Ok' */
+
+	return res;
+}
+
 /**
  * Печать на электрифицированную пишущую машинку
  * 'An electrified typewriter'
@@ -3617,9 +3622,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "А");
+				fwrite("А", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "6");
+				fwrite("6", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3628,9 +3635,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "A");
+				fwrite("А", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "6");
+				fwrite("6", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3645,9 +3654,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "В");
+				fwrite("В", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "7");
+				fwrite("7", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3656,9 +3667,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "B");
+				fwrite("В", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "7");
+				fwrite("7", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3673,9 +3686,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "С");
+				fwrite("С", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "8");
+				fwrite("8", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3684,9 +3699,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "C");
+				fwrite("С", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "8");
+				fwrite("8", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3701,9 +3718,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Д");
+				fwrite("Д", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "9");
+				fwrite("9", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3712,9 +3731,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "D");
+				fwrite("D", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "9");
+				fwrite("9", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3729,9 +3750,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Е");
+				fwrite("Е", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", " ");
+				fwrite(" ", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3740,9 +3763,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "E");
+				fwrite("E", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", " ");
+				fwrite(" ", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3757,9 +3782,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Б");
+				fwrite("Б", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "-");
+				fwrite("-", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3768,9 +3795,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "F");
+				fwrite("F", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "-");
+				fwrite("-", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3785,9 +3814,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Щ");
+				fwrite("Щ", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "Ю");
+				fwrite("Ю", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3796,9 +3827,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "G");
+				fwrite("G", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "/");
+				fwrite("/", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3813,9 +3846,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Н");
+				fwrite("Н", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", ",");
+				fwrite(",", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3824,9 +3859,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "H");
+				fwrite("H", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", ".");
+				fwrite(".", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3841,9 +3878,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "I");
+				fwrite("I", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "+");
+				fwrite("+", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3852,9 +3891,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Л");
+				fwrite("Л", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "+");
+				fwrite("+", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3869,9 +3910,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Ы");
+				fwrite("Ы", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "Э");
+				fwrite("Э", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3880,9 +3923,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "J");
+				fwrite("J", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "V");
+				fwrite("V", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3897,9 +3942,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "К");
+				fwrite("К", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "Ж");
+				fwrite("Ж", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3908,9 +3955,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "K");
+				fwrite("K", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "W");
+				fwrite("W", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3925,9 +3974,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Г");
+				fwrite("Г", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "Х");
+				fwrite("Х", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3936,9 +3987,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "L");
+				fwrite("L", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "X");
+				fwrite("X", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3953,9 +4006,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "М");
+				fwrite("М", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "У");
+				fwrite("У", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3964,9 +4019,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "M");
+				fwrite("M", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "Y");
+				fwrite("Y", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3981,9 +4038,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "И");
+				fwrite("И", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "Ц");
+				fwrite("Ц", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -3992,9 +4051,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "N");
+				fwrite("N", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "Z");
+				fwrite("Z", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4009,9 +4070,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Р");
+				fwrite("P", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "О");
+				fwrite("О", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4020,9 +4083,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "P");
+				fwrite("P", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "O");
+				fwrite("O", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4037,9 +4102,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Й");
+				fwrite("Й", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "1");
+				fwrite("1", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4048,9 +4115,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Q");
+				fwrite("Q", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "1");
+				fwrite("1", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4065,9 +4134,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Я");
+				fwrite("Я", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "2");
+				fwrite("2", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4076,9 +4147,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "R");
+				fwrite("R", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "2");
+				fwrite("2", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4093,9 +4166,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Ь");
+				fwrite("Ь", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "3");
+				fwrite("3", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4104,9 +4179,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "S");
+				fwrite("S", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "3");
+				fwrite("3", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4121,9 +4198,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Т");
+				fwrite("Т", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "4");
+				fwrite("4", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4132,9 +4211,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "T");
+				fwrite("T", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "4");
+				fwrite("4", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4149,9 +4230,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "П");
+				fwrite("П", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "5");
+				fwrite("5", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4160,9 +4243,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "U");
+				fwrite("U", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "5");
+				fwrite("5", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4177,9 +4262,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "Ш");
+				fwrite("Ш", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "Ф");
+				fwrite("Ф", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4188,9 +4275,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "(");
+				fwrite("(", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", ")");
+				fwrite(")", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4205,9 +4294,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "=");
+				fwrite("=", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "х");
+				fwrite("х", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4216,9 +4307,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "=");
+				fwrite("=", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "x");
+				fwrite("x", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4244,9 +4337,11 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "?");
+				fwrite("?", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "?");
+				fwrite("?", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4316,10 +4411,12 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			switch (letter_number_sw)
 			{
 			case 0: /* letter */
-				printf("%s", "\r\n");
+				printf("%s", "\n");
+				fwrite("\n", 1, 1, tty1);
 				break;
 			default: /* number */
-				printf("%s", "\r\n");
+				printf("%s", "\n");
+				fwrite("\n", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4327,10 +4424,12 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			switch (letter_number_sw)
 			{
 			case 0: /* letter */
-				printf("%s", "\r\n");
+				printf("%s", "\n");
+				fwrite("\n", 1, 1, tty1);
 				break;
 			default: /* number */
-				printf("%s", "\r\n");
+				printf("%s", "\n");
+				fwrite("\n", 1, 1, tty1);
 				break;
 			}
 			break;
@@ -4352,10 +4451,11 @@ uint8_t Begin_Read_Commands_from_FT1(FILE *file)
  */
 uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 {
-	if (DEBUG > 0) {	
+	if (DEBUG > 0)
+	{
 		printf("[ Read commands from FT1 ]\n");
 	}
-	
+
 	uint8_t cnt = 0;
 
 	if (file == NULL)
@@ -4415,13 +4515,13 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 			{
 				cnt_line = 5;
 				cnt_cmd -= 1;
-				//view_short_reg(&tcmd, "tcmd");
+				// view_short_reg(&tcmd, "tcmd");
 				//
 				sum = add_trs(sum, tcmd);
 
 				dsun += trs2digit(tcmd);
 
-				//debug_print("%s -> [", tcmd);
+				// debug_print("%s -> [", tcmd);
 				debug_print(" -> [");
 
 				if (DEBUG > 0)
@@ -4454,53 +4554,15 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 				tcmd = shift_trs(tcmd, 2);
 			}
 		}
-
-#if 1 // viv+ new edit
-
-#else  // viv- old
-		if (strlen(cmd) != 5)
-			continue;
-
-		cmd_str_2_trs(cmd, &dst);
-		sum = add_trs(sum, dst);
-		i += 1;
-
-		dsun += trs2digit(dst);
-
-		debug_print("%s -> [", cmd);
-
-		if (DEBUG > 0)
-		{
-			trs2str(dst);
-		}
-		debug_print("]");
-		if (DEBUG > 0)
-		{
-			view_short_reg(&fa, " addr");
-		}
-		else
-		{
-			if (DEBUG > 0)
-			{
-				printf("\n");
-			}
-		}
-
-		st_fram(fa, dst);
-		fa = next_address(fa);
-		mod_3_n(&fa, 5);
-
-		if (i == SIZE_ZONE_TRIT_FRAM)
-			break;
-#endif // viv+ new code
 	}
 
-	if (DEBUG > 0) {
+	if (DEBUG > 0)
+	{
 		printf("\ni=%i\n", i);
 		/* Печать контрольных сумм */
 		view_checksum_setun(sum);
 	}
-	
+
 	if (cnt != SIZE_ZONE_TRIT_FRAM)
 		return 1; /* Error #2 */
 
@@ -4512,12 +4574,122 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
  */
 uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa)
 {
+	if (DEBUG > 0)
+	{
+		printf("[ Read symbols from FT1 ]\n");
+	}
+
 	uint8_t cnt = 0;
 
-	printf(" TODO add code Read_Symbols_from_FT1(...)\n");
-
 	if (file == NULL)
-		return 1; /* Error */
+		return 1; /* Error #1 */
+
+	trs_t dst;
+	trs_t addr;
+	trs_t oper;
+	uint8_t cmd[20];
+
+	/**
+	 * Загрузить
+	 */
+
+	trs_t sum;
+	trs_t tmp;
+
+	tmp.l = 18;
+	tmp.t1 = 0;
+	tmp.t0 = 0;
+
+	int64_t dsun = 0;
+	sum.l = 18;
+	sum.t1 = 0;
+	sum.t0 = 0;
+	//
+	dst.l = 9;
+	MR.l = 18;
+	int i = 0;
+
+	trs_t tcmd;
+	tcmd.l = 9;
+	tcmd.t0 = 0;
+	tcmd.t1 = 0;
+	//
+	uint8_t cnt_cmd = 54;
+	uint8_t cnt_line = 3;
+	//
+	while ((fscanf(file, "%s", cmd) != EOF) && (cnt_cmd != 0))
+	{
+		uint8_t err = 0;
+		trs_t res;
+
+		res = Decoder_Symbol_Paper_Line(cmd, &err);
+		if (err == 0)
+		{
+			if (cnt_line > 0)
+			{
+				int8_t p1 = get_trit_setun(res, 1);
+				int8_t p2 = get_trit_setun(res, 2);
+				int8_t p3 = get_trit_setun(res, 3);
+				tcmd = set_trit_setun(tcmd, 7, p1);
+				tcmd = set_trit_setun(tcmd, 8, p1);
+				tcmd = set_trit_setun(tcmd, 9, p2);
+
+				cnt_line -= 1;
+			}
+			if (cnt_line == 0)
+			{
+				cnt_line = 3;
+				cnt_cmd -= 1;
+
+				sum = add_trs(sum, tcmd);
+				int32_t dtcmd = trs2digit(tcmd);
+				dsun += trs2digit(tcmd);
+				if (dtcmd == 14)
+				{
+					/* Символ 'ст' '_OO.0_' */
+					break; /* exit while(...) */
+				}
+
+				debug_print(" -> [");
+
+				if (DEBUG > 0)
+				{
+					trs2str(tcmd);
+				}
+				debug_print("]");
+				if (DEBUG > 0)
+				{
+					view_short_reg(&fa, " addr");
+				}
+				else
+				{
+					if (DEBUG > 0)
+					{
+						printf("\n");
+					}
+				}
+
+				st_fram(fa, tcmd);
+				fa = next_address(fa);
+				mod_3_n(&fa, 5);
+				tcmd.t0 = 0;
+				tcmd.t1 = 0;
+				//
+				i += 1;
+			}
+			else
+			{
+				tcmd = shift_trs(tcmd, 3);
+			}
+		}
+	}
+
+	if (DEBUG > 0)
+	{
+		printf("\ni=%i\n", i);
+		/* Печать контрольных сумм */
+		view_checksum_setun(sum);
+	}
 
 	if (cnt != SIZE_ZONE_TRIT_FRAM)
 		return 1; /* Error #2 */
@@ -4610,16 +4782,126 @@ uint8_t Read_Commands_from_FT2(FILE *file, trs_t fa)
 }
 
 /**
- * Чтение символов с фотосчитывателя №2
+ * Чтение символов с фотосчитывателя №1
  */
 uint8_t Read_Symbols_from_FT2(FILE *file, trs_t fa)
 {
+	if (DEBUG > 0)
+	{
+		printf("[ Read symbols from FT2 ]\n");
+	}
+
 	uint8_t cnt = 0;
 
-	printf(" TODO  add code  Read_Symbols_from_FT2(...)\n");
-
 	if (file == NULL)
-		return 1; /* Error */
+		return 1; /* Error #1 */
+
+	trs_t dst;
+	trs_t addr;
+	trs_t oper;
+	uint8_t cmd[20];
+
+	/**
+	 * Загрузить
+	 */
+
+	trs_t sum;
+	trs_t tmp;
+
+	tmp.l = 18;
+	tmp.t1 = 0;
+	tmp.t0 = 0;
+
+	int64_t dsun = 0;
+	sum.l = 18;
+	sum.t1 = 0;
+	sum.t0 = 0;
+	//
+	dst.l = 9;
+	MR.l = 18;
+	int i = 0;
+
+	trs_t tcmd;
+	tcmd.l = 9;
+	tcmd.t0 = 0;
+	tcmd.t1 = 0;
+	//
+	uint8_t cnt_cmd = 54;
+	uint8_t cnt_line = 3;
+	//
+	while ((fscanf(file, "%s", cmd) != EOF) && (cnt_cmd != 0))
+	{
+		uint8_t err = 0;
+		trs_t res;
+
+		res = Decoder_Symbol_Paper_Line(cmd, &err);
+		if (err == 0)
+		{
+			if (cnt_line > 0)
+			{
+				int8_t p1 = get_trit_setun(res, 1);
+				int8_t p2 = get_trit_setun(res, 2);
+				int8_t p3 = get_trit_setun(res, 3);
+				tcmd = set_trit_setun(tcmd, 7, p1);
+				tcmd = set_trit_setun(tcmd, 8, p1);
+				tcmd = set_trit_setun(tcmd, 9, p2);
+
+				cnt_line -= 1;
+			}
+			if (cnt_line == 0)
+			{
+				cnt_line = 3;
+				cnt_cmd -= 1;
+
+				sum = add_trs(sum, tcmd);
+				int32_t dtcmd = trs2digit(tcmd);
+				dsun += trs2digit(tcmd);
+				if (dtcmd == 14)
+				{
+					/* Символ 'ст' '_OO.0_' */
+					break; /* exit while(...) */
+				}
+
+				debug_print(" -> [");
+
+				if (DEBUG > 0)
+				{
+					trs2str(tcmd);
+				}
+				debug_print("]");
+				if (DEBUG > 0)
+				{
+					view_short_reg(&fa, " addr");
+				}
+				else
+				{
+					if (DEBUG > 0)
+					{
+						printf("\n");
+					}
+				}
+
+				st_fram(fa, tcmd);
+				fa = next_address(fa);
+				mod_3_n(&fa, 5);
+				tcmd.t0 = 0;
+				tcmd.t1 = 0;
+				//
+				i += 1;
+			}
+			else
+			{
+				tcmd = shift_trs(tcmd, 3);
+			}
+		}
+	}
+
+	if (DEBUG > 0)
+	{
+		printf("\ni=%i\n", i);
+		/* Печать контрольных сумм */
+		view_checksum_setun(sum);
+	}
 
 	if (cnt != SIZE_ZONE_TRIT_FRAM)
 		return 1; /* Error #2 */
@@ -4789,7 +5071,8 @@ trs_t control_trs(trs_t a)
  */
 int8_t execute_trs(trs_t addr, trs_t oper)
 {
-	// TODO для С(5) = -1 выполнить 2-раза старшей половине A(9:18) и сделать inc C
+	// TODO проверить выполнение команды
+	// для С(5) = -1 выполнить 2-раза старшей половине A(9:18) и сделать inc C
 
 	trs_t k1_5;		 /* K(1:5)	*/
 	trs_t k6_8;		 /* K(6:8)	*/
@@ -5024,7 +5307,6 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	break;
 	case (+1 * 9 - 1 * 3 - 1):
 	{ // +-- : Останов	Стоп; (A*)=>(R)
-		// TODO test
 		debug_print(" k6..8[+--]: STOP (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5288,22 +5570,18 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		{
 		case (+0 * 27 + 0 * 9 + 0 * 3 + 1): /* Ввод с ФТ-1 в виде команд */
 			debug_print("   k2..5[000+]: Ввод с ФТ-1 в виде команд\n");
-			// TODO  добавить реализацию запись из файла виртуального устройства ввода
 			Read_Commands_from_FT1(ptr1, fa);
 			break;
 		case (+0 * 27 + 0 * 9 + 1 * 3 + 0): /* Ввод с ФТ-2 в виде команд */
 			debug_print("   k2..5[00+0]: Ввод с ФТ-2 в виде команд\n");
-			// TODO  добавить реализацию запись из файла виртуального устройства ввода
 			Read_Commands_from_FT2(ptr2, fa);
 			break;
 		case (+0 * 27 + 0 * 9 + 0 * 3 - 1): /* Ввод с ФТ-1 в виде символов */
 			debug_print("   k2..5[000-]: Ввод с ФТ-1 в виде символов\n");
-			// TODO  добавить реализацию запись из файла виртуального устройства ввода
 			Read_Symbols_from_FT1(ptr1, fa);
 			break;
 		case (+0 * 27 + 0 * 9 - 1 * 3 + 0): /* Ввод с ФТ-2 в виде символов */
 			debug_print("   k2..5[00-0]: Ввод с ФТ-2 в виде символов\n");
-			// TODO  добавить реализацию запись из файла виртуального устройства ввода
 			Read_Symbols_from_FT2(ptr2, fa);
 			break;
 		case (+1 * 27 + 0 * 9 + 0 * 3 + 0): /* Перфорация троичных кодов на Перфоратор ПЛ (Телетайп ТП) */
@@ -7297,7 +7575,6 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 
 			while (fscanf(file, "%s", cmd) != EOF)
 			{
-				// TODO команду в перфорацию
 				uint8_t offset4_7 = 4;
 				uint8_t prlile[7];
 				trs_t dst;
@@ -7434,6 +7711,65 @@ int ConvertSWtoPaper(char *path_lst, char *path_txt)
 	}
 
 	return res; /* Ok' */
+}
+
+int DumpFileTxs(char *pathfiletxs)
+{
+	FILE *file_txs;
+
+	file_txs = fopen(pathfiletxs, "r");
+	if (file_txs == NULL)
+	{
+		printf("ERR fopen %s\r\n", pathfiletxs);
+		return 1;
+	}
+
+	printf("Read commands from file.txs: %s\n", pathfiletxs);
+
+	uint8_t cmd[20];
+	trs_t inr;
+	trs_t dst;
+
+	inr = smtr("0---0"); /* cчетчик адреса коротких слов */
+	trs_t sum;
+	trs_t tmp;
+
+	tmp.l = 18;
+	tmp.t1 = 0;
+	tmp.t0 = 0;
+
+	int64_t dsun = 0;
+	sum.l = 18;
+	sum.t1 = 0;
+	sum.t0 = 0;
+	//
+	dst.l = 9;
+	MR.l = 18;
+	int i = 0;
+
+	while (fscanf(file_txs, "%s", cmd) != EOF)
+	{
+		cmd_str_2_trs(cmd, &dst);
+		sum = add_trs(sum, dst);
+		i += 1;
+
+		dsun += trs2digit(dst);
+
+		st_fram(inr, dst);
+		inr = next_address(inr);
+	}
+	/* Закрыть файл */
+	fclose(file_txs);
+
+	dump_fram_zone(smtr("0"));
+
+	printf("\n i=%i\n", i);
+
+	/* Печать контрольных сумм */
+	printf("\n");
+	view_checksum_setun(sum);
+
+	return 0; /* Ok' */
 }
 
 void Test9_Setun_Electrified_Typewriter(void)
@@ -7881,7 +8217,7 @@ void Test9_Setun_Electrified_Typewriter(void)
 	printf("\n --- END TEST #9 --- \n");
 }
 
-// TODO Вывод "бумажной ленты"
+// Test10: Вывод "бумажной ленты.
 void Test10_Perforatin_Paper_Line(void)
 {
 	int8_t trit;
@@ -7980,38 +8316,15 @@ void Test10_Perforatin_Paper_Line(void)
 	printf("\n --- END TEST #11 --- \n");
 }
 
-// TODO Ввод "бумажной ленты"
-void Test11_Read_Paper_Line(void)
-{
-	printf("\n --- TEST #11 Read_Paper_Line --- \n");
-
-	trs_t fa;
-	fa = smtr("0---0");
-	Decoder_String_from_Paper_Line();
-
-	printf("\n --- END TEST #11 --- \n");
-}
-
-// TODO Ввод "бумажной ленты"
-void Test12_Read_Paper_Line(void)
-{
-	printf("\n --- TEST #12 Read_Paper_Line --- \n");
-
-	trs_t fa;
-	fa = smtr("0---0");
-	Decoder_String_from_Paper_Line();
-
-	printf("\n --- END TEST #12 --- \n");
-}
-
 int usage(const char *argv0)
 {
 	printf("usage: %s [options] FILE SCRIPT(s)...\n", argv0);
-	printf("\t--test : number test VM Setun-1958)\n");
-	printf("\t--debug : view step VM Setun-1958)\n");
-	printf("\t--breakpoint : view stop VM Setun-1958)\n");
-	printf("\t--load : load software VM Setun-1958)\n");
-	printf("\t--convert : convert software file.lst to paper.txt VM Setun-1958)\n");
+	printf("\t--test : number test setun1958emu\n");
+	printf("\t--debug : view step  setun1958emu\n");
+	printf("\t--breakpoint : view stop setun1958emu\n");
+	printf("\t--load : load software setun1958emu\n");
+	printf("\t--convert : convert software file.lst to paper.txt setun1958emu\n");
+	printf("\t--dump : dump zone from file.txs setun1958emu\n");
 	exit(0);
 }
 
@@ -8021,10 +8334,9 @@ int usage(const char *argv0)
  */
 int main(int argc, char *argv[])
 {
-	// TODO ERROR execute
-
 	int test = 0;
 	int convert = 0;
+	int dump = 0;
 	char *output = "-";
 	int ret = 0;
 	DEBUG = 0;
@@ -8039,6 +8351,7 @@ int main(int argc, char *argv[])
 			{"help", 0, 0, 0},
 			{"load", 0, 0, 0},
 			{"convert", 2, 0, 0},
+			{"dump", 1, 0, 0},
 			{"test", 1, 0, 0},
 			{"debug", 0, 0, 0},
 			{"breakpoint", 1, 0, 0},
@@ -8094,6 +8407,22 @@ int main(int argc, char *argv[])
 					}
 				}
 			}
+			if (strcmp(name, "dump") == 0)
+			{
+				/* Проверить парметры в команде */
+				if (argv[2] == NULL)
+				{
+					dump = 1; /* Error! */
+				}
+				else
+				{
+					/* Проверить путь к каталогам,  файл списка lst */
+					if (DumpFileTxs(argv[2]) == 0)
+					{
+						dump = 2; /* Done */
+					}
+				}
+			}
 			if (strcmp(name, "step") == 0)
 			{
 				STEP = atoi(optarg);
@@ -8110,6 +8439,18 @@ int main(int argc, char *argv[])
 	if (convert > 0)
 	{
 		if (convert == 2)
+		{
+			/* Exit 0. Ok' */
+			return 0;
+		}
+		else
+		{
+			usage(argv[0]);
+		}
+	}
+	if (dump > 0)
+	{
+		if (dump == 2)
 		{
 			/* Exit 0. Ok' */
 			return 0;
@@ -8155,12 +8496,6 @@ int main(int argc, char *argv[])
 			break;
 		case 10:
 			Test10_Perforatin_Paper_Line();
-			break;
-		case 11:
-			Test11_Read_Paper_Line();
-			break;
-		case 12:
-			Test12_Read_Paper_Line();
 			break;
 		default:
 			printf("Error: Not Test=%d\n", test);
@@ -8290,36 +8625,36 @@ int main(int argc, char *argv[])
 
 			break; // BREAKPOINT break
 		}
+
 	}
+		/* Prints REGS */
+		view_short_regs();
+		printf("\n");
 
-	/* Prints REGS */
-	view_short_regs();
-	printf("\n");
+		/* Prints REGS and FRAM */
+		if (DEBUG > 0)
+		{
+			// dump_fram_zone(smtr("-"));
+			// dump_fram_zone(smtr("0"));
+			// dump_fram_zone(smtr("+"));
+		}
 
-	/* Prints REGS and FRAM */
-	if (DEBUG > 0)
-	{
-		// dump_fram_zone(smtr("-"));
-		// dump_fram_zone(smtr("0"));
-		// dump_fram_zone(smtr("+"));
-	}
+		/* Печать завершения работы "Setun-1958" */
+		if (STEP == 0)
+		{
+			printf("\r\n[ Stop Setun-1958 ]\r\n");
+		}
+		else
+		{
+			printf("\r\n[ Step = %d : Break work Setun-1958 ]\r\n", STEP);
+		}
 
-	/* Печать завершения работы "Setun-1958" */
-	if (STEP == 0)
-	{
-		printf("\r\n[ Stop Setun-1958 ]\r\n");
-	}
-	else
-	{
-		printf("\r\n[ Step = %d : Break work Setun-1958 ]\r\n", STEP);
-	}
+		/* Закрыть файлы виртуальных устройств */
+		fclose(ptr1);
+		fclose(ptr2);
+		fclose(ptp1);
+		fclose(tty1);
 
-	/* Закрыть файлы виртуальных устройств */
-	fclose(ptr1);
-	fclose(ptr2);
-	fclose(ptp1);
-	fclose(tty1);
+	} /* 'main.c' */
 
-} /* 'main.c' */
-
-/* EOF 'setun_core.c' */
+	/* EOF 'setun_core.c' */

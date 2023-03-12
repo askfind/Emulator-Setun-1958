@@ -10,7 +10,7 @@ Build and run
 
 ```shell
 $ make
-gcc -o setun1958emu -g emusetun.c
+gcc -o emu -g emusetun.c
 ```
 
 As a result you will see dump of register and memory structure of VM after run some tests:
@@ -42,6 +42,57 @@ usage: ./setun1958emu [options] FILE SCRIPT(s)...
         --breakpoint : view stop VM Setun-1958)
         --load : load software VM Setun-1958)
         --convert : convert software file.lst to paper.txt VM Setun-1958)
+```
+
+## Dump commands filename.txs
+
+```shell
+./setun1958emu --dump ./software/test1/test1-fram-zone-0.txs
+
+
+Read commands from file.txs: ./software/test1/test1-fram-zone-0.txs
+
+[ Dump FRAM Setun-1958: ]
+Zone = 0
+
+WW WX  0 1Y Z0        02 03  Z 00 00
+   WY  0 11 0X           04  Z 01 00
+WZ W0  1 01 X0        1W 1X  0 Z0 00
+   W1  1 1W X4           1Y  0 03 00
+W2 W3  1 1W XY        1Z 10  0 0X 00
+   W4  0 03 Z0           11  0 00 00
+XW XX  0 2X 30        12 13  0 00 0Y
+   XY  0 12 Y3           14  1 ZW 22
+XZ X0  Z WX 31        2W 2X  0 00 00
+   X1  0 1X Y0           2Y  0 00 00
+X2 X3  0 12 33        2Z 20  0 00 0Y
+   X4  0 12 Y3           21  1 ZW 22
+YW YX  0 1Y ZX        22 23  0 00 0Y
+   YY  0 X0 1X           24  1 YY YX
+YZ Y0  0 Y4 13        3W 3X  0 00 00
+   Y1  0 04 Z0           3Y  0 00 00
+Y2 Y3  0 X0 00        3Z 30  0 00 00
+   Y4  0 11 Z0           31  0 00 00
+ZW ZX  0 2Z 3Y        32 33  0 00 00
+   ZY  0 Z3 10           34  0 00 00
+ZZ Z0  0 00 2X        4W 4X  0 00 00
+   Z1  0 W0 00           4Y  0 00 00
+Z2 Z3  0 10 ZX        4Z 40  0 00 00
+   Z4  0 WY 10           41  0 00 00
+0W 0X  1 1Z XX        42 43  0 00 00
+   0Y  Z 1W XX           44  0 00 00
+0Z 00  1 W3 00        KC     0 00 01
+   01  0 WX 00               Z Z2 1W
+
+ i=54
+
+KC:
+: [00000000+], 00001, (1)
+: [-0-+-0+--], ZZ21W, (-7123)
+-KC = 0-KC:
+: [00000000-], 0000Z, (-1)
+: [+0+-+0-++], 11YZ4, (7123)
+
 ```
 
 ## Run Test #1
@@ -145,6 +196,6 @@ Everybody is invited and welcome to contribute to Setun VM.
 
 
 - Create date: 01.11.2018
-- Edit date:   11.03.2022
+- Edit date:   12.03.2022
 
-- Current version: 1.82
+- Current version: 1.83
