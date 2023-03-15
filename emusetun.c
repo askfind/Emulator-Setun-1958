@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   12.03.2023
+ * Edit date:   15.03.2023
  *
- * Version: 1.83
+ * Version: 1.84
  */
 
 /**
@@ -3591,7 +3591,7 @@ trs_t Decoder_Symbol_Paper_Line(char *paperline, uint8_t *err)
 	/* Проверить допустимые комбинации пробивок */
 	int r;
 	res = tab4_1[byte];
-
+	
 	/* Valid */
 	*err = 0; /* Ok' */
 
@@ -4625,30 +4625,26 @@ uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa)
 		res = Decoder_Symbol_Paper_Line(cmd, &err);
 		if (err == 0)
 		{
+			/* Установить триты */
 			if (cnt_line > 0)
 			{
 				int8_t p1 = get_trit_setun(res, 1);
 				int8_t p2 = get_trit_setun(res, 2);
 				int8_t p3 = get_trit_setun(res, 3);
 				tcmd = set_trit_setun(tcmd, 7, p1);
-				tcmd = set_trit_setun(tcmd, 8, p1);
-				tcmd = set_trit_setun(tcmd, 9, p2);
+				tcmd = set_trit_setun(tcmd, 8, p2);
+				tcmd = set_trit_setun(tcmd, 9, p3);
 
 				cnt_line -= 1;
 			}
+
 			if (cnt_line == 0)
 			{
 				cnt_line = 3;
 				cnt_cmd -= 1;
 
 				sum = add_trs(sum, tcmd);
-				int32_t dtcmd = trs2digit(tcmd);
 				dsun += trs2digit(tcmd);
-				if (dtcmd == 14)
-				{
-					/* Символ 'ст' '_OO.0_' */
-					break; /* exit while(...) */
-				}
 
 				debug_print(" -> [");
 
@@ -4674,6 +4670,13 @@ uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa)
 				mod_3_n(&fa, 5);
 				tcmd.t0 = 0;
 				tcmd.t1 = 0;
+
+				int32_t dtres = trs2digit(res);
+				if (dtres == -13)
+				{
+					/* Символ 'ст' '_OO.O_' */
+					break; /* exit while(...) */
+				}
 				//
 				i += 1;
 			}
@@ -7619,7 +7622,7 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
 				//
 				memset(prlile, 0, sizeof(prlile));
-				memmove(prlile, "0__._0", sizeof(prlile));
+				memmove(prlile, "O__._O", sizeof(prlile));
 				fwrite(prlile, 1, strlen(prlile), file_txt);
 				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
 			}
