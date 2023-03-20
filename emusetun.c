@@ -36,6 +36,8 @@
 
 //  - [ ] исправить вывод в 9-ном виде.
 
+#define Version "1.85"
+
 /* Макросы максимальное значения тритов */
 #define TRIT1_MAX (+1)
 #define TRIT1_MIN (-1)
@@ -174,7 +176,7 @@ trs_t C = {.l = 5, .t0 = 0, .t1 = 0}; /* C(1:5)  программный счет
 trs_t W = {.l = 1, .t0 = 0, .t1 = 0}; /* W(1:1)  знак троичного числа */
 //
 trs_t ph1 = {.l = 1, .t0 = 0, .t1 = 0}; /* ph1(1:1) 1 разряд переполнения */
-trs_t ph2 = {.l = 2, .t0 = 0, .t1 = 0}; /* ph2(1:1) 2 разряд переполнения */
+trs_t ph2 = {.l = 1, .t0 = 0, .t1 = 0}; /* ph2(1:1) 1 разряд переполнения */
 trs_t S = {.l = 18, .t0 = 0, .t1 = 0};	/* S(1:18) аккумулятор */
 trs_t R = {.l = 18, .t0 = 0, .t1 = 0};	/* R(1:18) регистр множителя */
 trs_t MB = {.l = 4, .t0 = 0, .t1 = 0};	/* MB(1:4) троичное число зоны магнитного барабана */
@@ -7555,6 +7557,7 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 	else
 	{
 		printf("Read file list: %s\r\n", pathfilelst);
+                printf("\r\n");
 
 		/* Чтение (построчно) данных из файла в бесконечном цикле */
 		while (1)
@@ -7587,7 +7590,7 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 			 * Загрузить из файла тест-программу
 			 * ---------------------------------
 			 */
-			printf("Read file: %s", str);
+			printf("Read file: %s\r\n", str);
 
 			FILE *file;
 			char path_str[160] = {0};
@@ -7702,7 +7705,8 @@ int ConvertSWtoPaper(char *path_lst, char *path_txt)
 
 	char a_fileName[80];
 
-	printf(" --- ConvertSWtoPaper ---\r\n");
+	printf("[ Convert software files to file paper.txt ]\r\n");
+        printf("\r\n");
 
 	DIR *dir;
 	struct dirent *ent;
@@ -8371,15 +8375,26 @@ void Test10_Perforatin_Paper_Line(void)
 	printf("\r\n --- END TEST #11 --- \r\n");
 }
 
+int version(const char *argv0)
+{
+        printf(" Emulator ternary computer 'Setun-1958': ver.%s\r\n", Version);
+        printf(" Author: Vladimir V.\r\n");
+        printf(" E-mail: askfind@ya.ru\r\n");
+        printf("\r\n");
+	exit(0);
+}
+
 int usage(const char *argv0)
 {
-	printf("usage: %s [options] FILE SCRIPT(s)...\r\n", argv0);
-	printf("\t--test : number test setun1958emu\r\n");
-	printf("\t--debug : view step  setun1958emu\r\n");
-	printf("\t--breakpoint : view stop setun1958emu\r\n");
+        printf("usage: %s [options] FILE SCRIPT(s)...\r\n", argv0);
+	printf("\t--version : version software setun1958emu\r\n");
 	printf("\t--load : load software setun1958emu\r\n");
 	printf("\t--convert : convert software file.lst to paper.txt setun1958emu\r\n");
 	printf("\t--dump : dump zone from file.txs setun1958emu\r\n");
+	printf("\t--debug : view step  setun1958emu\r\n");
+	printf("\t--breakpoint : view stop setun1958emu\r\n");
+	printf("\t--test : number test setun1958emu\r\n");
+        printf("\r\n");
 	exit(0);
 }
 
@@ -8406,6 +8421,7 @@ int main(int argc, char *argv[])
 	{
 		int option_index;
 		struct option long_options[] = {
+			{"version", 0, 0, 0},
 			{"help", 0, 0, 0},
 			{"load", 0, 0, 0},
 			{"convert", 2, 0, 0},
@@ -8424,9 +8440,13 @@ int main(int argc, char *argv[])
 		case 0:
 		{
 			const char *name = long_options[option_index].name;
-			if (strcmp(name, "help") == 0)
+                        if (strcmp(name, "version") == 0)
 			{
-				usage(argv[0]);
+				(void)version(argv[0]);
+			}
+                        if (strcmp(name, "help") == 0)
+			{
+				(void)usage(argv[0]);
 			}
 			if (strcmp(name, "test") == 0)
 			{
@@ -8689,6 +8709,12 @@ int main(int argc, char *argv[])
                     char chkey = getch(); /* consume the character */
                     if(chkey == 'Q' || chkey == 'q' ) {
                       printf("\r\n[ QUIT Work ]\r\n");
+                      printf("\r\n[ Step = %d ]\r\n", counter_step);
+
+		      dump_fram_zone(smtr("-"));
+		      dump_fram_zone(smtr("0"));
+		      dump_fram_zone(smtr("+"));
+
                       break; /* EVENT KEY break */
                     }
                 }
