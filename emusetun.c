@@ -3753,7 +3753,7 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			{
 			case 0: /* letter */
 				printf("%s", "C");
-				fwrite("С", 1, 1, tty1);
+				fwrite("C", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "8");

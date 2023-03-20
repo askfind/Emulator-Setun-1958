@@ -1,19 +1,93 @@
-SETUN-1958 VM
-=============
+Эмулятор троичной машины 'СЕТУНЬ' SETUN-1958 VM
+===============================================
 
-A virtual machine of ternary computer Setun, also known as "Small Automatic Digital Machine" (in Russian: МЦВМ "
-Сетунь") written on C
+A virtual machine of ternary computer Setun, also known as "Small Automatic Digital Machine" written on C.
 
-# Using
+Виртуальная машина троичной цифровой машина "Сетунь" также известная как МЦВМ "Сетунь"), написанный на языке программиования C.
 
-Build and run
+# История
+- Дата создания:            01.11.2018
+- Дата редактирования:      20.03.2022
+- Версия:                   1.85
+-
+- Автор:                    Vladimir V.
+- E-mail:                   askfind@ya.ru
+
+# Использование
+
+## Обработка событий нажатия клавиш клавиатуры
+
+
+**При нажатии клавиши 'Q' или 'q' работа эмулятора останавливается**
+
+Вывод дампов зон ферритовой памяти и состояние регистров машины "СЕТУНЬ".
+
+
+```shell
+$ ./setun1958emu
+
+[ Start Setun-1958 ]
+
+[ QUIT Work ]
+
+[ Step = 1128271 ]
+
+[ Dump FRAM Setun-1958: ]
+                         Zone = 1
+
+WW WX  Z 11 Z0        02 03  Z 31 0X
+   WY  Z 0W 31           04  Z 22 30
+WZ W0  Z 2Z Y3        1W 1X  Z 13 Z0
+   W1  Z 13 20           1Y  1 WW Y2
+W2 W3  Z 30 Y3        1Z 10  Z 2Y ZX
+   W4  Z 34 0X           11  1 1Y 13
+XW XX  Z 11 Z0        12 13  Z 31 Z0
+   XY  Z 0W 31           14  0 04 X4
+XZ X0  Z 22 Y3        2W 2X  Z 40 Z0
+   X1  Z 13 20           2Y  Z 2X ZX
+X2 X3  Z 44 Y3        2Z 20  Z 40 0X
+   X4  Z 4X 0X           21  Z 41 0X
+YW YX  Z 13 Z0        22 23  Z 10 Z0
+   YY  Z 2Z 30           24  Z 33 0X
+YZ Y0  1 WW Y2        3W 3X  0 04 XY
+   Y1  Z 2Y ZX           3Y  Z 41 Z0
+Y2 Y3  1 Y0 13        3Z 30  Z 14 ZX
+   Y4  Z 11 Z0           31  Z 41 0X
+ZW ZX  Z 4Y 0X        32 33  1 4Y 1X
+   ZY  Z 10 Z0           34  Z 22 30
+ZZ Z0  1 WW X2        4W 4X  1 40 00
+   Z1  Z 14 ZX           4Y  Z 2Z 30
+Z2 Z3  1 Z0 13        4Z 40  Z 3W Y3
+   Z4  Z 4Y Z0           41  Z 13 Z0
+0W 0X  Z 14 ZX        42 43  1 WW 3W
+   0Y  1 ZX 13           44  Z X1 10
+0Z 00  Z 40 0X        KC     0 00 Z1
+   01  Z 10 Z0               1 WZ W3
+
+  K  : [-+--+0--0], Z2YZX, (-5277)
+  F  : [00+-0], 01X, (6)
+  C  : [--0++], ZX4, (-104)
+  W  : [+], 1, (1)
+  ph1: [0], 0, (0)
+  ph2: [0], 0, (0)
+  S  : [------------------], WWWWWWWWW, (-193710244)
+  R  : [000000000000000000], 000000000, (0)
+  MB : [+00-], 3Z, (26)
+
+
+[ Stop Setun-1958 ]
+
+```
+
+
+## Сборка эмулятора SETUN-1958
 
 ```shell
 $ make
 gcc -o emu -g emusetun.c
 ```
 
-As a result you will see dump of register and memory structure of VM after run some tests:
+## Запуск проверочной программы ТЕСТ1 в эмуляторе SETUN-1958
 
 ```shell
 
@@ -32,19 +106,23 @@ TECT1
 
 ```
 
-## Print  list commands 
+## Вывод списка команд эмулятора SETUN-1958
+
 ```shell
 ./setun1958emu --help
 
 usage: ./setun1958emu [options] FILE SCRIPT(s)...
-        --test : number test VM Setun-1958)
-        --debug : view step VM Setun-1958)
-        --breakpoint : view stop VM Setun-1958)
-        --load : load software VM Setun-1958)
-        --convert : convert software file.lst to paper.txt VM Setun-1958)
+	--version : version software setun1958emu
+	--load : load software setun1958emu
+	--convert : convert software file.lst to paper.txt setun1958emu
+	--dump : dump zone from file.txs setun1958emu
+	--debug : view step  setun1958emu
+	--breakpoint : view stop setun1958emu
+	--test : number test setun1958emu
+
 ```
 
-## Dump commands filename.txs
+## Печать файла 'test1-fram-zone-0.txs' исходного кода программы машины "Сетунь"
 
 ```shell
 ./setun1958emu --dump ./software/test1/test1-fram-zone-0.txs
@@ -95,7 +173,8 @@ KC:
 
 ```
 
-## Run Test #1
+## Запуск теста №1 для проверки функций эмулятора
+
 ```shell
 ./setun1958emu --test 1
 
@@ -133,7 +212,8 @@ KC:
 
 ```
 
-## Execute a program 'Setun-1958' with debugging information
+## Выполнение программы в эмуляторе SETUN-1958 в режиме вывода отладочной информации
+
 ```shell
 
 ./setun1958emu --debug --step 100
@@ -168,19 +248,18 @@ A*: [+0+-0], 11X, (87)          -> zone[ 1] : 0102X, (744)
 ```
 
 
-## Notes
+# Примечание
 
-* `ptr1`,`ptr2`,`ptp1`,`tty1` - virtual device files like tty and others
-* `Documentation` folder contains collection of documentation and program (`Programming` folder) examples
+*`ptr1`,`ptr2`,`ptp1`,`tty1` - это виртуальные  устройства ввода и вывода*
 
 Device 	Direction 	Description
 
-PTR1: 	source paper tape reader #1
-PTR2: 	source paper tape reader #2
-PTP1: 	destination paper tape punch #1
-TTY1: 	destination hard copy terminal #1
+PTR1: 	устройство ввода бумажной перфоленты, фототрансмиттер №1,
+PTR2: 	устройство ввода бумажной перфоленты, фототрансмиттер №2,
+PTP1: 	устройство вывода на перфоленту
+TTY1: 	устройство вывода на телетайп или печатующее устройство
 
-# Links
+# Ссылки
 
  1. *Materials on ternary computer science* - <http://ternarycomp.cs.msu.su/>
  2. *Emulator of the first ternary Soviet "Setun"* - <http://trinary.su/projects/>
@@ -192,10 +271,4 @@ TTY1: 	destination hard copy terminal #1
 
 Everybody is invited and welcome to contribute to Setun VM.
 
-# History
-
-
-- Create date: 01.11.2018
-- Edit date:   15.03.2022
-
-- Current version: 1.84
+Приглашаем всех желающих внести свой посильный вклад в эмулятор SETUN-1958
