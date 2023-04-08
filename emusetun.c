@@ -7839,7 +7839,7 @@ void Test9_Perforatin_Paper_Line(void)
 	ptr2 = fopen("ptr2/paper.txt", "r");
 	if (ptr2 == NULL)
 	{
-		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		printf("Error fopen 'ptr2/paper.txt'\r\n");
 		return;
 	}
 
