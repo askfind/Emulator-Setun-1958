@@ -1,0 +1,28 @@
+on: push
+
+runs-on: ${{ matrix.os }}
+strategy:
+  matrix:
+    include:
+      - os: ubuntu-latest
+      - os: windows-latest
+      - os: macos-latest
+
+- uses: actions/checkout@v2
+
+- name: Build for Linux
+  if: matrix.os == 'ubuntu-latest'
+  run: gcc -fPIC -lm -static emusetun.c
+
+- name: Build for Windows
+  if: matrix.os == 'windows-latest'
+  run: gcc -fPIC -lm -static emusetun.c
+
+- name: Upload binaries to release
+           uses: svenstaro/upload-release-action@v2
+              with:
+                  repo_token: ${{ secrets.GITHUB_TOKEN }}
+                  file: dist/${{ matrix.artifact_name }}
+                  asset_name: ${{ matrix.asset_name }}
+                  tag: ${{ github.ref }}
+                  

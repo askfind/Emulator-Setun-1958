@@ -14,6 +14,7 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 - E-mail:                   askfind@ya.ru
 
 
+
 ## 2. Сборка эмулятора SETUN-1958
 
 ```shell
