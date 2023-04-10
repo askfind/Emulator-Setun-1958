@@ -1,42 +1,31 @@
-name: Build, Zip and Upload C Program
-
-on:
-  push:
-    branches:
-      - main
-  pull_request:
+name: Build C code
+on: [push, pull_request]
 
 jobs:
-  build:
-    runs-on: ${{ matrix.os }}
-
-    strategy:
-      matrix:
-        os: [ubuntu-latest, windows-latest]
+  build-ubuntu:
+    runs-on: ubuntu-latest
 
     steps:
-    - name: Checkout Code
+    - name: Checkout code
       uses: actions/checkout@v2
 
-    - name: Install Dependencies
-      run: |
-        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
-          sudo apt-get update && sudo apt-get install -y build-essential zip
-        elif [ "${{ matrix.os }}" = "windows-latest" ]; then
-          choco install -y mingw zip
-        fi
+    - name: Install GCC and Make
+      run: sudo apt-get install build-essential
 
-    - name: Build setun1958emu
+    - name: Compile emusetun.c
       run: make
 
-    - name: Zip setun1958emu
-      run: zip -r setun1958emu.zip setun1958emu
+  build-windows:
+    runs-on: windows-latest
 
-    - name: Upload setun1958emu
-      uses: appleboy/scp-action@master
-      with:
-        host: ${{ secrets.REMOTE_HOST }}
-        username: ${{ secrets.REMOTE_USERNAME }}
-        password: ${{ secrets.REMOTE_PASSWORD }}
-        source: ./setun1958emu.zip
-        target: /path/to/destination
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install GCC and Make
+      run: |
+        choco install mingw
+        choco install make
+
+    - name: Compile emusetun.c
+      run: mingw32-make
