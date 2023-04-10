@@ -16,3 +16,15 @@ jobs:
         run: |
           ls ${{ github.workspace }}
       - run: echo "🍏 This job's status is ${{ job.status }}."
+
+    - name: Install compiler
+      id: install_cc
+      uses: rlalik/setup-cpp-compiler@master
+      with:
+        compiler: latest
+
+    - name: Use compiler
+        shell: bash
+        env:
+            CC: ${{ steps.install_cc.outputs.cc }}
+            CXX: ${{ steps.install_cc.outputs.cxx }}
