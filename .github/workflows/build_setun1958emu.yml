@@ -1,31 +1,33 @@
-name: Build C code
-on: [push, pull_request]
+name: Build, Zip and Upload C Program
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
-  build-ubuntu:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
-    - name: Checkout code
+    - name: Checkout Code
       uses: actions/checkout@v2
 
-    - name: Install GCC and Make
-      run: sudo apt-get install build-essential
+    - name: Install Dependencies
+      run: |
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          sudo apt-get update && sudo apt-get install -y build-essential zip
+        elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+          choco install -y mingw zip
+        fi
 
-    - name: Compile emusetun.c
+    - name: Build emusetun
       run: make
 
-  build-windows:
-    runs-on: windows-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Install GCC and Make
-      run: |
-        choco install mingw
-        choco install make
-
-    - name: Compile emusetun.c
-      run: mingw32-make
+    - name: Zip Emulator-Setun-1958
+      run: zip -r Emulator-Setun-1958.zip setun1958emu
