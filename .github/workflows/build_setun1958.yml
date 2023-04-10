@@ -37,3 +37,4 @@ jobs:
                   file: dist/${{ matrix.artifact_name }}
                   asset_name: ${{ matrix.asset_name }}
                   tag: ${{ github.ref }}
+
