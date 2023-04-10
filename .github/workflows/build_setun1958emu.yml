@@ -1,0 +1,31 @@
+name: Build C code
+on: [push, pull_request]
+
+jobs:
+  build-ubuntu:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install GCC and Make
+      run: sudo apt-get install build-essential
+
+    - name: Compile emusetun.c
+      run: make
+
+  build-windows:
+    runs-on: windows-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v2
+
+    - name: Install GCC and Make
+      run: |
+        choco install mingw
+        choco install make
+
+    - name: Compile emusetun.c
+      run: mingw32-make
