@@ -16,7 +16,7 @@ jobs:
       run: make
 
     - name: Archive main executable
-      uses: montudor/action-zip@v0.2.0
+      uses: askfind/action-zip@v2
       with:
         args: zip setun1958emu.zip setun1958emu
 
