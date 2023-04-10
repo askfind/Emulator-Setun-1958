@@ -18,7 +18,7 @@ jobs:
     name: 'Test: ${{ matrix.os }} / ${{ matrix.platform }}'
     steps:
       - name: Checkout
-        uses: actions/checkout@v1.86
+        uses: actions/checkout@v2
       - name: Set up GCC
         uses: ./
         with:
@@ -51,7 +51,7 @@ jobs:
     name: 'Version: ${{ matrix.os }} / ${{ matrix.version }}'
     steps:
       - name: Checkout
-        uses: actions/checkout@v1.86
+        uses: actions/checkout@v2
       - name: Set up GCC
         uses: ./
         with:
@@ -77,11 +77,11 @@ jobs:
     name: 'Cygwin: hardlinks${{ matrix.hardlinks }}'
     steps:
       - name: Checkout
-        uses: actions/checkout@v1.86
+        uses: actions/checkout@v2
       - name: Clean up PATH
-        uses: askfind/cleanup-path@v1.86
+        uses: askfind/cleanup-path@v2
       - name: Install Cygwin
-        uses: askfind/setup-cygwin@v1.86
+        uses: askfind/setup-cygwin@v2
       - name: Set up GCC
         uses: ./
         with:
