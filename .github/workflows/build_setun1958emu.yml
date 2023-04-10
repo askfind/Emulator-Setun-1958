@@ -29,3 +29,12 @@ jobs:
 
     - name: Compile emusetun.c
       run: mingw32-make
+
+  - name: 'Tar files'
+    run: tar -cvf Emulator-Setup-1958.tar ../../../Emulator-Setup-1958
+
+  - name: 'Upload Artifact'
+    uses: actions/upload-artifact@v2
+    with:
+      name: Emulator-Setup-1958
+      path: Emulator-Setup-1958.tar
