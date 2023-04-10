@@ -18,7 +18,7 @@ jobs:
                       artifact_name: setun1958emu.exe
 
         steps:
-            - uses: actions/checkout@v1.86
+            - uses: Emulator-Setun-1958/actions/checkout@v1.86
 
             - run: mkdir dist
 
@@ -31,7 +31,7 @@ jobs:
               run: gcc emusetun.c -o setun1958emu.exe
 
             - name: Upload binaries to release
-              uses: svenstaro/upload-release-action@v1.86
+              uses: Emulator-Setun-1958/upload-release-action@v1.86
               with:
                   repo_token: ${{ secrets.GITHUB_TOKEN }}
                   file: dist/${{ matrix.artifact_name }}
