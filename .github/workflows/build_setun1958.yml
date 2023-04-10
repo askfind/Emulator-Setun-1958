@@ -79,9 +79,9 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v3
       - name: Clean up PATH
-        uses: askfind/cleanup-path@v3
+        uses: askfind/Emulator-Setun-1958/cleanup-path@v3
       - name: Install Cygwin
-        uses: askfind/setup-cygwin@v4
+        uses: askfind/Emulator-Setun-1958/setup-cygwin@v4
       - name: Set up GCC
         uses: ./
         with:
