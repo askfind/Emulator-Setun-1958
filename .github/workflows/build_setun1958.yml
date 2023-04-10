@@ -18,7 +18,7 @@ jobs:
     name: 'Setun1958emu: ${{ matrix.os }} / ${{ matrix.platform }}'
     steps:
       - name: Checkout
-        uses: actions/checkout
+        uses: actions/checkout@v1.86
       - name: Set up GCC
         uses: ./
         with:
@@ -51,7 +51,7 @@ jobs:
     name: 'Version: ${{ matrix.os }} / ${{ matrix.version }}'
     steps:
       - name: Checkout
-        uses: actions/checkout
+        uses: actions/checkout@v1.86
       - name: Set up GCC
         uses: ./
         with:
@@ -62,7 +62,7 @@ jobs:
         uses: ./.github/actions/build-emusetun
         with:
           version: '${{ matrix.version }}'
-      - name: Run foo.exe
+      - name: Run emusetun.exe
         uses: ./.github/actions/run-emusetun
       - name: Check symlinks
         uses: ./.github/actions/check-cc
@@ -77,11 +77,11 @@ jobs:
     name: 'Cygwin: hardlinks${{ matrix.hardlinks }}'
     steps:
       - name: Checkout
-        uses: actions/checkout
+        uses: actions/checkout@v1.86
       - name: Clean up PATH
-        uses: askfind/Emulator-Setun-1958/cleanup-path
+        uses: askfind/cleanup-path@v1.86
       - name: Install Cygwin
-        uses: askfind/Emulator-Setun-1958/setup-cygwin
+        uses: askfind/setup-cygwin@v1.86
       - name: Set up GCC
         uses: ./
         with:
