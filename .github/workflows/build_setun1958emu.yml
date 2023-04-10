@@ -1,54 +1,42 @@
-name: Build and Deploy C code
-on: [push, pull_request]
+name: Build, Zip and Upload C Program
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
 
 jobs:
-  build-ubuntu:
-    runs-on: ubuntu-latest
+  build:
+    runs-on: ${{ matrix.os }}
+
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest]
 
     steps:
-    - name: Checkout code
+    - name: Checkout Code
       uses: actions/checkout@v2
 
-    - name: Install GCC and Make
-      run: sudo apt-get install build-essential
+    - name: Install Dependencies
+      run: |
+        if [ "${{ matrix.os }}" = "ubuntu-latest" ]; then
+          sudo apt-get update && sudo apt-get install -y build-essential zip
+        elif [ "${{ matrix.os }}" = "windows-latest" ]; then
+          choco install -y mingw zip
+        fi
 
-    - name: Compile emusetun.c
+    - name: Build setun1958emu
       run: make
 
-    - name: Archive main executable
-      uses: askfind/action-zip@v2
+    - name: Zip setun1958emu
+      run: zip -r setun1958emu.zip setun1958emu
+
+    - name: Upload setun1958emu
+      uses: appleboy/scp-action@master
       with:
-        args: zip setun1958emu.zip setun1958emu
-
-    - name: Upload main executable
-      uses: actions/upload-artifact@v2
-      with:
-        name: setun1958emu
-        path: setun1958emu.zip
-
-  build-windows:
-    runs-on: windows-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Install GCC and Make
-      run: |
-        choco install mingw
-        choco install make
-
-    - name: Compile emusetun.c
-      run: mingw32-make
-
-    - name: Archive main executable
-      uses: askfind/action-zip@v2
-      with:
-        args: zip setun1958emu.zip setun1958emu.exe
-
-    - name: Upload main executable
-      uses: actions/upload-artifact@v2
-      with:
-        name: setun1958emu
-        path: setun1958emu.zip
-
+        host: ${{ secrets.REMOTE_HOST }}
+        username: ${{ secrets.REMOTE_USERNAME }}
+        password: ${{ secrets.REMOTE_PASSWORD }}
+        source: ./setun1958emu.zip
+        target: /path/to/destination
