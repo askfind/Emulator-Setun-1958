@@ -52,12 +52,3 @@ jobs:
         name: setun1958emu
         path: setun1958emu.zip
 
-  deploy:
-    needs: [build-ubuntu, build-windows]
-    runs-on: ubuntu-latest
-
-    steps:
-    - name: Download main executable
-      uses: actions/download-artifact@v2
-      with:
-        name: setun1958emu
