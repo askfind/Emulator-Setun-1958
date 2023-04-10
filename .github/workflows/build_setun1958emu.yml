@@ -1,4 +1,4 @@
-name: Build C code
+name: Build and Deploy C code
 on: [push, pull_request]
 
 jobs:
@@ -15,6 +15,17 @@ jobs:
     - name: Compile emusetun.c
       run: make
 
+    - name: Archive main executable
+      uses: montudor/action-zip@v0.2.0
+      with:
+        args: zip setun1958emu.zip setun1958emu
+
+    - name: Upload main executable
+      uses: actions/upload-artifact@v2
+      with:
+        name: setun1958emu
+        path: setun1958emu.zip
+
   build-windows:
     runs-on: windows-latest
 
@@ -30,11 +41,33 @@ jobs:
     - name: Compile emusetun.c
       run: mingw32-make
 
-  - name: 'Tar files'
-    run: tar -cvf Emulator-Setup-1958.tar ../../../Emulator-Setup-1958
+    - name: Archive main executable
+      uses: montudor/action-zip@v0.2.0
+      with:
+        args: zip setun1958emu.zip setun1958emu.exe
 
-  - name: 'Upload Artifact'
-    uses: actions/upload-artifact@v2
-    with:
-      name: Emulator-Setup-1958
-      path: Emulator-Setup-1958.tar
+    - name: Upload main executable
+      uses: actions/upload-artifact@v2
+      with:
+        name: setun1958emu
+        path: setun1958emu.zip
+
+  deploy:
+    needs: [build-ubuntu, build-windows]
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Download main executable
+      uses: actions/download-artifact@v2
+      with:
+        name: setun1958emu
+
+    - name: Install SSH key
+      run: |
+        mkdir -p ~/.ssh
+        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+        ssh-keyscan -t rsa ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
+
+    - name: Deploy main executable
+      run: scp setun1958emu.zip ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.SERVER_PATH }}
