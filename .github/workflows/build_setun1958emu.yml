@@ -42,7 +42,7 @@ jobs:
       run: mingw32-make
 
     - name: Archive main executable
-      uses: montudor/action-zip@v0.2.0
+      uses: askfind/action-zip@v2
       with:
         args: zip setun1958emu.zip setun1958emu.exe
 
@@ -61,13 +61,3 @@ jobs:
       uses: actions/download-artifact@v2
       with:
         name: setun1958emu
-
-    - name: Install SSH key
-      run: |
-        mkdir -p ~/.ssh
-        echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
-        chmod 600 ~/.ssh/id_rsa
-        ssh-keyscan -t rsa ${{ secrets.SERVER_IP }} >> ~/.ssh/known_hosts
-
-    - name: Deploy main executable
-      run: scp setun1958emu.zip ${{ secrets.SERVER_USER }}@${{ secrets.SERVER_IP }}:${{ secrets.SERVER_PATH }}
