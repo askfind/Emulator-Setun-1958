@@ -8,8 +8,8 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 ## 1. История
 
 - Дата создания:            01.11.2018
-- Дата редактирования:      30.03.2023
-- Версия:                   1.86
+- Дата редактирования:      17.04.2023
+- Версия:                   1.87
 - Автор:                    Vladimir V.
 - E-mail:                   askfind@ya.ru
 
@@ -61,6 +61,10 @@ Commands control for setun1958emu:
 $ ./setun1958emu
 
 setun1958emu:
+calc
+MK-Setun-01
+Enter operator (+, -, *, /): + Enter two numbers: 1.500000 3.000000
+1.50 + 3.00 = 4.50
 
 ```
 
