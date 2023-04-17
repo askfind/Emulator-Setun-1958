@@ -14,7 +14,6 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 - E-mail:                   askfind@ya.ru
 
 
-
 ## 2. Сборка эмулятора SETUN-1958
 
 ```shell
@@ -54,7 +53,17 @@ Commands control for setun1958emu:
  [bram]  [br] [arglist]
  [help]  [h]
  [quit]  [q]
+ [calc]
 ```
+## 3.0. 'calc' - калькулятор 'MK-Setun-01', с использованием подпрограммы ИП-2 для эмулятора SETUN-1958
+
+```shell
+$ ./setun1958emu
+
+setun1958emu:
+
+```
+
 
 ## 3.1. 'dump' -команда печати файла 'test1-fram-zone-0.txs', с исходными кодами программы эмулятора SETUN-1958
 
