@@ -4,9 +4,16 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   17.04.2023
+ * Edit date:   20.08.2023
  */
-#define Version "1.87"
+#define Version "1.88"
+
+
+// TODO
+// 1. Добавить функцию перевод числа 3->10 float в команду view.
+// 2. Добавить вывод float в команду view.
+// 3. Команда выполнение по шагам.
+
 
 /**
  *  Заголовочные файла
@@ -54,9 +61,8 @@
 
 /* *******************************************
  * Реализация виртуальной машины "Сетунь-1958"
- * --------------------------------------------
+ * -------------------------------------------
  */
-//
 static void cli_ascii(void);
 
 /**
@@ -205,6 +211,8 @@ trs_t BRPNT = {.l = 4, .t0 = 0, .t1 = 0};	/* BRPNT(1:5) - точка остан�
  *  ------------------------------------------------------
  */
 int32_t pow3(int8_t x);
+double t3_to_d10(trs_t t);
+trs_t d10_to_t3(float f);
 int8_t trit2int(trs_t t);
 trs_t bit2trit(int8_t b);
 
@@ -354,6 +362,41 @@ int32_t pow3(int8_t x)
 	}
 	return r;
 }
+
+/**
+* Преобразование 3 -> 10
+*/
+double t3_to_d10(trs_t t)
+{
+	int i;
+	float lf = 0.0; 	
+	float lfp = 0.0;
+ 
+	lf += 3 * get_trit_setun(t,1); 
+	lf += 1 * get_trit_setun(t,2); 
+
+	for (i=3; i<=18;i++) {
+		lfp += (double)( pow3(i-2)*get_trit_setun(t,i) );		
+	}
+	
+	if ( lfp != 0.0 ) {
+		return (lf + ((float)(1.0) / lfp)); }
+	else {
+		return (lf); 
+	}	
+}
+
+/**
+* Преобразование 10 -> 3
+*/
+trs_t d10_to_t3(float f)
+{	
+	// x = +|- a1,a2a3a4
+	// Проверить условие x <= 1.5	
+	// На ленте пс.+|-a1a2a3a4
+	return smtr("000000000000000000");
+}
+
 
 /**
  * Очистить поле битов троичного числа
@@ -2459,6 +2502,56 @@ void view_short_reg(trs_t *t, uint8_t *ch)
  * Печать троичного регистра
  *
  */
+void view_short_reg_fixpoint(trs_t *t, uint8_t *ch)
+{
+	int8_t i;
+	int8_t l;
+	int8_t trit;
+	trs_t tv = *t;
+
+	printf("%s: ", (char *)ch);
+	if (tv.l <= 0)
+	{
+		printf("\n");
+		return;
+	}
+
+	l = min(tv.l, SIZE_TRITS_MAX);
+	printf("[");
+	// printf("\nt1 % 8x\n",t->t1);
+	// printf("t2 % 8x\n",t->t0);
+	for (i = 0; i < l; i++)
+	{
+		tv = *t;
+		trit = get_trit(tv, l - 1 - i);
+		printf("%c", numb2symtrs(trit));
+	}
+	printf("], ");
+	//
+	tv = *t;
+	trs2str(tv);
+	printf(", "); //
+	printf("(%li)", (long int)trs2digit(*t));
+	printf(", "); //
+	double lf = t3_to_d10(*t);
+	printf("{%lf}",lf);
+#if 0	
+	printf(", {");
+	for (i = 0; i < l; i++)	{
+		tv = *t;
+		trit = get_trit(tv, l - 1 - i);
+		printf("%i", trit);
+	}
+	printf("}");
+#endif
+	printf("\r\n");
+}
+
+
+/**
+ * Печать троичного регистра
+ *
+ */
 void view_step_short_reg(trs_t *t, uint8_t *ch)
 {
 	int8_t i;
@@ -2695,9 +2788,13 @@ void view_short_regs(void)
 	view_short_reg(&W, "  W  ");
 	view_short_reg(&ph1, "  ph1");
 	view_short_reg(&ph2, "  ph2");
-	view_short_reg(&S, "  S  ");
-	view_short_reg(&R, "  R  ");
+	//printf("TODO Добавить вывод S,R float числа. \r\n");
+	//view_short_reg(&S, "  S  ");
+	//view_short_reg(&R, "  R  ");
+	view_short_reg_fixpoint(&S, "  S  ");
+	view_short_reg_fixpoint(&R, "  R  ");
 	view_short_reg(&MB, "  MB ");
+
 }
 
 /**
