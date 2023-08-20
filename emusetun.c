@@ -302,7 +302,8 @@ void st_fram(trs_t ea, trs_t v);
 /* Операции ввода и вывода "Сетунь-1958" */
 
 /* Регист переключения Русский/Латинский */
-static uint8_t russian_latin_sw = 1;
+static uint8_t russian_latin_sw = 1
+;
 /* Регист переключения Буквенный/Цифровой */
 static uint8_t letter_number_sw = 0;
 /* Регист переключения цвета печатающей ленты */
@@ -369,21 +370,19 @@ int32_t pow3(int8_t x)
 double t3_to_d10(trs_t t)
 {
 	int i;
-	float lf = 0.0; 	
-	float lfp = 0.0;
+	double lf = 0.0; 	
+	double lfp = 0.0;
  
 	lf += 3 * get_trit_setun(t,1); 
 	lf += 1 * get_trit_setun(t,2); 
 
-	for (i=3; i<=18;i++) {
-		lfp += (double)( pow3(i-2)*get_trit_setun(t,i) );		
+	for (i=3; i<=18;i++) {		
+		if (get_trit_setun(t,i) != 0) {
+			lfp += 1.0 / (double)( pow3(i-2)*get_trit_setun(t,i) );		
+		}
 	}
-	
-	if ( lfp != 0.0 ) {
-		return (lf + ((float)(1.0) / lfp)); }
-	else {
-		return (lf); 
-	}	
+		
+	return (lf + lfp);
 }
 
 /**
