@@ -4,16 +4,16 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   20.08.2023
+ * Edit date:   22.08.2023
  */
-#define Version "1.88"
+#define Version "1.89"
 
 
 // TODO
-// 1. Добавить функцию перевод числа 3->10 float в команду view.
-// 2. Добавить вывод float в команду view.
-// 3. Команда выполнение по шагам.
-
+// Добавить статус палели управления Сетунь.
+// CLI команды изменяют статус панели управления.
+// Команда выполнение по шагам.
+// Команда останов по условию BREAKPOINT.
 
 /**
  *  Заголовочные файла
@@ -136,7 +136,8 @@ typedef struct long_trs
 static uint8_t  LOGGING = 0;   // флаг логирование выполнение операций
 static uint8_t  STEP_FLAG = 0; // флаг выполнить количество шагов
 static uint32_t STEP = 0;      // счетчик количества операций
-static int32_t  BREAKPOINT_FLAG = 0; // флаг режима останова по значению программного счетчика
+static uint32_t counter_step = 0;
+static int32_t  BREAKPOINT = 0; // режима останова по значению программного счетчика
 
 /**
  * Статус выполнения операции  "Сетунь-1958"
@@ -292,6 +293,7 @@ uint8_t trit2lt(int8_t v);
 int8_t symtrs2numb(uint8_t c);
 int8_t str_symtrs2numb(uint8_t *s);
 trs_t smtr(uint8_t *s);
+uint8_t valid_smtr(uint8_t *s) ;
 
 /* Операции с ферритовой памятью машины FRAM */
 void clean_fram_zone(trs_t z);
@@ -2214,6 +2216,21 @@ trs_t smtr(uint8_t *s)
 		t = set_trit(t, i, trit);
 	}
 	return t;
+}
+
+uint8_t valid_smtr(uint8_t *s) {
+	uint8_t i;
+	uint8_t novalid=0;
+	int8_t len = strlen(s);
+	
+	for (i = 0; i < len; i++)
+	{	
+		uint8_t c = *(s + i);
+		if( !( c == '-' || c == '0' || c == '+') ) {
+			novalid |= 1;
+		}
+	}
+	return novalid;
 }
 
 /**
@@ -8558,9 +8575,6 @@ void Emu_Begin(void) {
 		/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
 		init_tab4();
 
-		/* Сброс виртуальной машины "Сетунь-1958" */
-		reset_setun_1958();
-
 		/* В режиме отладки вывод регистров */
 		if (LOGGING > 0)
 		{
@@ -8622,6 +8636,12 @@ void Emu_Stop(void) {
 			/* Печать завершения работы "Setun-1958" */
 			if (STEP == 0)
 			{
+				/**/
+				counter_step = 0;		
+				
+				//Новое состояние
+				emu_stat = PAUSE_EMU_ST;
+
 				printf("\r\n[ Stop Setun-1958 ]\r\n");
 			}
 			else
@@ -8652,9 +8672,6 @@ int Process_Work_Emulation(void)
 	*/
 	uint8_t cmd[20] = {0};
 	uint8_t ret_exec = 0;
-	static uint32_t counter_step = 0;
-	
-	LOGGING = 0; /* Вывод отладочной информации  */
 
 	/* Состояние после включения питания */
 	if( emu_stat == NOREADY_EMU_ST ) {		
@@ -8664,9 +8681,6 @@ int Process_Work_Emulation(void)
 		/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
 		init_tab4();
 
-		/* Сброс виртуальной машины "Сетунь-1958" */
-		reset_setun_1958();
-		
 		/* Новое состоняие */
 		emu_stat = WAIT_EMU_ST;
 	}
@@ -8686,42 +8700,42 @@ int Process_Work_Emulation(void)
 		if ((ret_exec == STOP))
 		{
 			printf("\r\n<STOP>\r\n");
-			emu_stat = STOP_EMU_ST;
-			//break;
+			emu_stat = STOP_EMU_ST;			
 		}
 		else if (ret_exec == STOP_OVER)
 		{
 			printf("\r\n<STOP_OVER>\r\n");			
-			emu_stat = STOP_EMU_ST;
-			//break;
+			emu_stat = STOP_EMU_ST;			
 		}
 		else if (ret_exec == STOP_ERROR)
 		{
 			printf("\r\nERR#:%i<STOP_ERROR>\r\n", ret_exec);			
-			emu_stat = ERROR_EMU_ST;
-			//break;
+			emu_stat = ERROR_EMU_ST;			
 		}
 		else if (ret_exec == STOP_ERROR_MB_NUMBER)
 		{
 			printf("\r\nERR#:%i<STOP_ERROR_MB_NUMBER>\r\n", ret_exec);
 			cli_ascii();
-			emu_stat = ERROR_MB_NUMBER_EMU_ST;
-			//break;
+			emu_stat = ERROR_MB_NUMBER_EMU_ST;			
 		}
 
 		/**/
 		counter_step++;		
 
-		if (STEP == counter_step)
+		if (STEP >= counter_step)
 		{
-				//break; // STEP break
+				STEP = 0;
+				counter_step = 0;
+				
+				//Новое состояние
+				emu_stat = PAUSE_EMU_ST;				
 		}
 
 		//viv- old code
-		//if (BREAKPOINT == trs2digit(C_cur) && (BREAKPOINT != INT32_MAX))
-		//{
-		//	//break; // BREAKPOINT break
-		//}	
+		if (BREAKPOINT == trs2digit(C) && (BREAKPOINT != INT32_MAX))
+		{
+			//break; // BREAKPOINT break
+		}	
 		
 		view_short_regs();
 
@@ -8767,16 +8781,20 @@ int Process_Work_Emulation(void)
 		/**/
 		counter_step++;		
 
-		if (STEP == counter_step)
+		if (STEP >= counter_step)
 		{
-				//break; // STEP break
+				STEP = 0;
+				counter_step = 0;
+				
+				//Новое состояние
+				emu_stat = PAUSE_EMU_ST;
 		}
 
 		//viv- old code
-		//if (BREAKPOINT == trs2digit(C_cur) && (BREAKPOINT != INT32_MAX))
-		//{
-		//	//break; // BREAKPOINT break
-		//}	
+		if (BREAKPOINT == trs2digit(C) && (BREAKPOINT != INT32_MAX))
+		{
+			//break; // BREAKPOINT break
+		}	
 	}	
 	
 	/* Состояние  */
@@ -9089,16 +9107,26 @@ char load_cmd(char *buf, void *data)
 /* Func 'debug_cmd' */
 char debug_cmd(char *buf, void *data)
 {
-    printf("TODO: debug_cmd() \r\n");
-
     cmd_data_t *pars = (cmd_data_t *)data;
 
-    if (pars->count > 1)
+    if ( (pars->count < 1) || (pars->count > 1) )
     {
         /* Error */
         printf("dbg: ERR#1\r\n");
         return 1; /* ERR#1 */
     }
+
+	int par2_numb = 0;
+	sscanf(pars->par2,"%i", &par2_numb);
+
+	if( par2_numb > 0 ) {		
+		LOGGING = 1; /* Вывод отладочной информации  */
+		printf("switch debug on\r\n");
+	}
+	else {
+		LOGGING = 0; /* Вывод отладочной информации  */
+		printf("switch debug off\r\n");
+	}
 
     return 0; /* OK' */
 }
@@ -9223,6 +9251,8 @@ char step_cmd(char *buf, void *data)
         printf("dbg: ERR#1\r\n");
         return 1; /* ERR#1 */
     }
+	
+	sscanf(pars->par2,"%ul", &STEP);	
 
 	if( emu_stat == WAIT_EMU_ST ) {
 		emu_stat = STEP_EMU_ST;	
@@ -9242,6 +9272,8 @@ char break_cmd(char *buf, void *data)
         printf("dbg: ERR#1\r\n");
         return 1; /* ERR#1 */
     }
+	
+	BREAKPOINT = trs2digit(smtr(pars->par2));	
 
     return 0; /* OK' */
 }
@@ -9322,7 +9354,23 @@ char fram_cmd(char *buf, void *data)
         return 1; /* ERR#1 */
     }
 
-	dump_fram_zone(smtr(pars->par2));
+	if ( valid_smtr(pars->par2) == 0 ) {
+		dump_fram_zone(smtr(pars->par2));
+	}
+	else {
+		int8_t len;				
+		uint8_t pr[2]={0};				
+		uint8_t sm[1]={0};						
+		len = strlen(pars->par2);		
+		if(len<1 || len>1) {
+        	/* Error */
+        	printf("dbg: ERR#1\r\n");
+        	return 1; /* ERR#1 */			
+		}
+		memcpy(pr,lt2symtrs( *(pars->par2)),2);
+		sm[0] = pr[1];
+		dump_fram_zone(smtr(sm));
+	}
     
 	return 0;
 }
@@ -9339,7 +9387,34 @@ char drum_cmd(char *buf, void *data)
         return 1; /* ERR#1 */
     }
 	
-	view_drum_zone(smtr(pars->par2));
+	if ( valid_smtr(pars->par2) == 0 ) {
+		view_drum_zone(smtr(pars->par2));
+	}
+	else {
+		int8_t len;				
+		uint8_t sm[4]={0};				
+		
+		len = strlen(pars->par2);
+		
+		if(len<1 || len>2) {
+        	/* Error */
+        	printf("dbg: ERR#1\r\n");
+        	return 1; /* ERR#1 */			
+		}
+		
+		switch(len) {
+			case 1: {
+				memcpy(sm,lt2symtrs( *(pars->par2 +0)),2);
+			}
+			break;
+			case 2: {
+				memcpy(sm,lt2symtrs( *(pars->par2+0)),2);
+				memcpy(sm+2,lt2symtrs( *(pars->par2+1)),2);
+			}
+			break;
+		}		
+		view_drum_zone(smtr(sm));
+	}
 
     return 0; /* OK' */
 }
@@ -9381,30 +9456,29 @@ char quit_cmd(char *buf, void *data)
 }
 
 /*
-* Func 'calc_cmd' - реализация калькулятора с использованием
-*                   ИП-2.
+* Func 'calc_cmd' - реализация калькулятора MK-Setun-01 
+* с использованием  ИП-2.
 */
 char calc_cmd(char *buf, void *data) {
 
     char operator;
     double num1, num2, result;
 
-    printf("MK-Setun-01\r\n");
+    printf("\r\nMK-Setun-01\r\n");
+	
+    printf("calc: ");
 
-    printf("Enter operator (+, -, *, /): ");
-    scanf("%c", &operator);
+    cmd_data_t *pars = (cmd_data_t *)data;
+    if ( (pars->count < 1) || (pars->count > 3) )
+    {
+        /* Error */
+        printf("\r\ndbg: ERR#1\r\n");
+        return 1; /* ERR#1 */
+    }
 
-    operator = '+';
-    printf("%c ",operator);
-
-    printf("Enter two numbers: ");
-    scanf("%lf %lf", &num1, &num2);
-
-    num1 = 1.5;
-    num2 = 3.0;
-    printf("%f ",num1);
-    printf("%f",num2);
-    printf("\r\n");
+	sscanf(pars->par2,"%lf", &num1);
+	sscanf(pars->par3,"%c", &operator);
+	sscanf(pars->par4,"%lf", &num2);
 
     switch(operator) {
         case '+':
@@ -9424,7 +9498,9 @@ char calc_cmd(char *buf, void *data) {
             return 1;
     }
 
-    printf("%.2lf %c %.2lf = %.2lf\n", num1, operator, num2, result);
+    printf("%.8lf %c %.8lf = %.8lf\n", num1, operator, num2, result);
+
+    printf("\r\nTODO: add codes for calculate trits !\r\n\r\n");
 
     return 0;
 }
