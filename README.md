@@ -9,7 +9,7 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 
 - Дата создания:            01.11.2018
 - Дата редактирования:      22.08.2023
-- Версия:                   1.89
+- Версия:                   1.90
 - Автор:                    Vladimir V.
 - E-mail:                   askfind@ya.ru
 
@@ -191,6 +191,12 @@ view
   S  : [000000000000000000], 000000000, (0), {0.000000}
   R  : [000000000000000000], 000000000, (0), {0.000000}
   MB : [0000], 00, (0)
+
+[ Tools ]
+  status: wait
+  debug: on
+  breakpoint: [000+0], 003, (3)
+  steps: 0
 ```
 
 ## 3.6. 'pause' или 'p' - остановить выполнение программы эмулятора SETUN-1958

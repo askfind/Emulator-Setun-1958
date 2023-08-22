@@ -6,14 +6,11 @@
  * Create date: 01.11.2018
  * Edit date:   22.08.2023
  */
-#define Version "1.89"
+#define Version "1.90"
 
 
 // TODO
 // Добавить статус палели управления Сетунь.
-// CLI команды изменяют статус панели управления.
-// Команда выполнение по шагам.
-// Команда останов по условию BREAKPOINT.
 
 /**
  *  Заголовочные файла
@@ -138,6 +135,7 @@ static uint8_t  STEP_FLAG = 0; // флаг выполнить количеств
 static uint32_t STEP = 0;      // счетчик количества операций
 static uint32_t counter_step = 0;
 static int32_t  BREAKPOINT = 0; // режима останова по значению программного счетчика
+static trs_t  BREAKPOINT_TRS; // режима останова по значению программного счетчика
 
 /**
  * Статус выполнения операции  "Сетунь-1958"
@@ -7086,7 +7084,7 @@ void Test5_Setun_Load(void)
 	FILE *file_lst;
 
 	/* Переменная, в которую поочередно будут помещаться считываемые строки */
-	char str[80] = {0};
+	char str[1024] = {0};
 
 	/* Указатель, в который будет помещен адрес массива, в который считана */
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
@@ -7219,7 +7217,7 @@ void Test6_Setun_Load(void)
 	FILE *file_lst;
 
 	/* Переменная, в которую поочередно будут помещаться считываемые строки */
-	char str[80] = {0};
+	char str[1024] = {0};
 
 	/* Указатель, в который будет помещен адрес массива, в который считана */
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
@@ -7352,7 +7350,7 @@ void Test7_Setun_Load(void)
 	FILE *file_lst;
 
 	/* Переменная, в которую поочередно будут помещаться считываемые строки */
-	char str[80] = {0};
+	char str[1024] = {0};
 
 	/* Указатель, в который будет помещен адрес массива, в который считана */
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
@@ -8023,7 +8021,7 @@ void Test10_LoadSWSetun(void)
 	FILE *file_lst;
 
 	/* Переменная, в которую поочередно будут помещаться считываемые строки */
-	char str[80] = {0};
+	char str[1024] = {0};
 
 	/* Указатель, в который будет помещен адрес массива, в который считана */
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
@@ -8168,7 +8166,7 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 	FILE *file_txt;
 
 	/* Переменная, в которую поочередно будут помещаться считываемые строки */
-	char str[80] = {0};
+	char str[1024] = {0};
 
 	/* Указатель, в который будет помещен адрес массива, в который считана */
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
@@ -8336,7 +8334,7 @@ int ConvertSWtoPaper(char *path_lst, char *path_txt)
 
 	int res = 0;
 
-	char a_fileName[80];
+	char a_fileName[1024];
 
 	printf("[ Convert software files to file paper.txt ]\r\n");
         printf("\r\n");
@@ -8385,8 +8383,8 @@ int ConvertSWtoPaper(char *path_lst, char *path_txt)
 	/* Прочитать файлы программы из каталога и преобразовать в paper.txt */
 	if (res == 0)
 	{
-		char pathfile1[255];
-		char pathfile2[255];
+		char pathfile1[1024];
+		char pathfile2[1024];
 		// clear
 		memset(pathfile1, 0, sizeof(pathfile1));
 		memset(pathfile2, 0, sizeof(pathfile2));
@@ -8636,9 +8634,6 @@ void Emu_Stop(void) {
 			/* Печать завершения работы "Setun-1958" */
 			if (STEP == 0)
 			{
-				/**/
-				counter_step = 0;		
-				
 				//Новое состояние
 				emu_stat = PAUSE_EMU_ST;
 
@@ -8646,7 +8641,7 @@ void Emu_Stop(void) {
 			}
 			else
 			{
-				printf("\r\n[ Step = %d : Break work Setun-1958 ]\r\n", STEP);
+				printf("\r\n[ Step = %d : Stop Setun-1958 ]\r\n", STEP);
 			}
 
 			/* Закрыть файлы виртуальных устройств */
@@ -8721,20 +8716,18 @@ int Process_Work_Emulation(void)
 
 		/**/
 		counter_step++;		
-
-		if (STEP >= counter_step)
-		{
-				STEP = 0;
-				counter_step = 0;
-				
+		if( STEP>0 ) 
+			STEP--;
+		if (STEP == 0)
+		{				
 				//Новое состояние
 				emu_stat = PAUSE_EMU_ST;				
 		}
 
-		//viv- old code
-		if (BREAKPOINT == trs2digit(C) && (BREAKPOINT != INT32_MAX))
+		/**/
+		if (BREAKPOINT == trs2digit(C) && (BREAKPOINT <= INT32_MAX))
 		{
-			//break; // BREAKPOINT break
+			emu_stat = PAUSE_EMU_ST;							
 		}	
 		
 		view_short_regs();
@@ -8781,20 +8774,14 @@ int Process_Work_Emulation(void)
 		/**/
 		counter_step++;		
 
-		if (STEP >= counter_step)
+		/**/
+		if (BREAKPOINT == trs2digit(C) && (BREAKPOINT <= INT32_MAX))
 		{
-				STEP = 0;
-				counter_step = 0;
-				
-				//Новое состояние
-				emu_stat = PAUSE_EMU_ST;
-		}
-
-		//viv- old code
-		if (BREAKPOINT == trs2digit(C) && (BREAKPOINT != INT32_MAX))
-		{
-			//break; // BREAKPOINT break
+			view_short_regs();
+			view_short_reg(&BREAKPOINT_TRS,"\r\n[ BREAK ] ");
+			emu_stat = PAUSE_EMU_ST;							
 		}	
+	
 	}	
 	
 	/* Состояние  */
@@ -8840,14 +8827,14 @@ int Process_Work_Emulation(void)
  */
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 //
-#define BUF_SIZE 81        /* размер буфера */
+#define BUF_SIZE 1024        /* размер буфера */
 static char buf[BUF_SIZE]; /* буфер для приема сообщений */
 
 /* Разбор параметров команды с параметрами */
-char par1[80];
-char par2[80];
-char par3[80];
-char par4[80];
+char par1[1024];
+char par2[1024];
+char par3[1024];
+char par4[1024];
 
 /* Cтруктура, описывающая ascii-сообщение */
 typedef struct _ascii_message
@@ -9091,7 +9078,7 @@ char load_cmd(char *buf, void *data)
     if (pars->count > 2)
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error load_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 
@@ -9195,10 +9182,11 @@ char begin_cmd(char *buf, void *data)
     if (pars->count > 0)
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error begin_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 	
+	counter_step = 0;
 	emu_stat = BEGIN_EMU_ST;
 
     return 0; /* OK' */
@@ -9212,7 +9200,7 @@ char pause_cmd(char *buf, void *data)
     if (pars->count > 0)
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error pause_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 
@@ -9230,7 +9218,7 @@ char run_cmd(char *buf, void *data)
     if (pars->count > 0)
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error run_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 
@@ -9248,16 +9236,14 @@ char step_cmd(char *buf, void *data)
     if (pars->count > 1)
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error step_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 	
 	sscanf(pars->par2,"%ul", &STEP);	
 
-	if( emu_stat == WAIT_EMU_ST ) {
-		emu_stat = STEP_EMU_ST;	
-	}
-
+	emu_stat = STEP_EMU_ST;	
+	
     return 0; /* OK' */
 }
 
@@ -9269,11 +9255,12 @@ char break_cmd(char *buf, void *data)
     if ((pars->count < 1) || (pars->count > 1))
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error break_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 	
 	BREAKPOINT = trs2digit(smtr(pars->par2));	
+	BREAKPOINT_TRS = smtr(pars->par2);
 
     return 0; /* OK' */
 }
@@ -9286,7 +9273,7 @@ char reg_cmd(char *buf, void *data)
     if ((pars->count < 1) || (pars->count > 2))
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error reg_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 
@@ -9331,14 +9318,41 @@ char view_cmd(char *buf, void *data)
     if (pars->count > 0)
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error view_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 
 	/* Prints REGS */
 	view_short_regs();
 	printf("\r\n");
+    printf("[ Tools ]\r\n");
+	
+	switch(emu_stat) {
+		case NOREADY_EMU_ST: printf("  status: noready\r\n");	break;
+		case BEGIN_EMU_ST: printf("  status: begin\r\n");	break;
+		case LOOP_WORK_EMU_ST: printf("  status: loop\r\n");	break;
+		case STEP_EMU_ST: printf("  status: step\r\n");	break;
+		case ERROR_EMU_ST: printf("  status: error\r\n");	break;
+		case ERROR_MB_NUMBER_EMU_ST: printf("  status: error drum\r\n");	break;
+		case CLI_WELCOM_EMU_ST: printf("  status: welcom\r\n");	break;
+		case WAIT_EMU_ST: printf("  status: wait\r\n");	break;
+		//
+		default: 
+		break;
+	}
 
+	if(LOGGING) {
+		printf("  debug: on\r\n");
+	} else {
+		printf("  debug: off\r\n");
+	}
+	if(BREAKPOINT_TRS.l != 0) {
+		view_short_reg(&BREAKPOINT_TRS,"  breakpoint");
+	} else {
+		printf("  breakpoint: no used\r\n");		
+	}
+	printf("  steps: %d\r\n", counter_step);
+	
     return 0; /* OK' */
 }
 
@@ -9350,7 +9364,7 @@ char fram_cmd(char *buf, void *data)
     if (pars->count > 1)
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error fram_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 
@@ -9364,7 +9378,7 @@ char fram_cmd(char *buf, void *data)
 		len = strlen(pars->par2);		
 		if(len<1 || len>1) {
         	/* Error */
-        	printf("dbg: ERR#1\r\n");
+        	printf("Error fram_cmd!\r\n");
         	return 1; /* ERR#1 */			
 		}
 		memcpy(pr,lt2symtrs( *(pars->par2)),2);
@@ -9383,7 +9397,7 @@ char drum_cmd(char *buf, void *data)
     if (pars->count > 1)
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error drum_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 	
@@ -9398,7 +9412,7 @@ char drum_cmd(char *buf, void *data)
 		
 		if(len<1 || len>2) {
         	/* Error */
-        	printf("dbg: ERR#1\r\n");
+        	printf("Error drum_cmd!\r\n");
         	return 1; /* ERR#1 */			
 		}
 		
@@ -9427,7 +9441,7 @@ char help_cmd(char *buf, void *data)
     if (pars->count > 0)
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error help_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 
@@ -9444,7 +9458,7 @@ char quit_cmd(char *buf, void *data)
     if (pars->count > 0)
     {
         /* Error */
-        printf("dbg: ERR#1\r\n");
+        printf("Error quit_cmd!\r\n");
         return 1; /* ERR#1 */
     }
 
@@ -9636,7 +9650,7 @@ int main(void)
     /* Loop work CLI and setun1958emu */	
     while(1)
 	{
-		char bufin[80]; 
+		char bufin[1024]; 
 		
     	fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
     	
