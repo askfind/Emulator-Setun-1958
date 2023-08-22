@@ -4,14 +4,12 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   22.08.2023
+ * Edit date:   23.08.2023
  */
-#define Version "1.90"
-
+#define Version "1.90.1"
 
 // TODO
 // Добавить статус палели управления Сетунь.
-
 /**
  *  Заголовочные файла
  */
@@ -28,14 +26,14 @@
 #include <sys/select.h>
 #include <ctype.h>
 
-#include <fcntl.h>   
+#include <fcntl.h>
 
 #include "emusetun.h"
 
-#define LOGGING_print(...)                  \
+#define LOGGING_print(...)                \
 	do                                    \
 	{                                     \
-		if (LOGGING)                        \
+		if (LOGGING)                      \
 			fprintf(stdout, __VA_ARGS__); \
 	} while (0)
 
@@ -115,14 +113,14 @@ typedef uintptr_t addr;
 
 typedef struct trs
 {
-	uint8_t l;   /* длина троичного числа в тритах */
+	uint8_t l;	 /* длина троичного числа в тритах */
 	uint32_t t1; /* троичное число FALSE,TRUE */
 	uint32_t t0; /* троичное число NIL */
 } trs_t;
 
 typedef struct long_trs
 {
-	uint8_t l;   /* длина троичного числа в тритах			*/
+	uint8_t l;	 /* длина троичного числа в тритах			*/
 	uint64_t t1; /* троичное число FALSE,TRUE */
 	uint64_t t0; /* троичное число NIL */
 } long_trs_t;
@@ -130,39 +128,40 @@ typedef struct long_trs
 /**
  * Вывод отладочной информации памяти машины "Сетунь-1958"
  */
-static uint8_t  LOGGING = 0;   // флаг логирование выполнение операций
-static uint8_t  STEP_FLAG = 0; // флаг выполнить количество шагов
-static uint32_t STEP = 0;      // счетчик количества операций
+static uint8_t LOGGING = 0;	  // флаг логирование выполнение операций
+static uint8_t STEP_FLAG = 0; // флаг выполнить количество шагов
+static uint32_t STEP = 0;	  // счетчик количества операций
 static uint32_t counter_step = 0;
-static int32_t  BREAKPOINT = 0; // режима останова по значению программного счетчика
-static trs_t  BREAKPOINT_TRS; // режима останова по значению программного счетчика
+static int32_t BREAKPOINT = 0; // режима останова по значению программного счетчика
+static trs_t BREAKPOINT_TRS;   // режима останова по значению программного счетчика
 
 /**
  * Статус выполнения операции  "Сетунь-1958"
  */
 enum
 {
-	OK = 0,				/* Успешное выполнение операции */
-	WORK = 1,			/* Выполнение операций виртуальной машины */
-	STOP = 2,			/* Успешный останов машины */
-	STOP_OVER = 3,			/* Останов по переполнению результата операции машины */
-	STOP_ERROR = 4,			/* Аварийный останов машины */
-	STOP_ERROR_MB_NUMBER = 5        /* Номер зоны DRUM не поддерживается */
+	OK = 0,					 /* Успешное выполнение операции */
+	WORK = 1,				 /* Выполнение операций виртуальной машины */
+	STOP = 2,				 /* Успешный останов машины */
+	STOP_OVER = 3,			 /* Останов по переполнению результата операции машины */
+	STOP_ERROR = 4,			 /* Аварийный останов машины */
+	STOP_ERROR_MB_NUMBER = 5 /* Номер зоны DRUM не поддерживается */
 };
 
 /* Состояние работы эмулятора */
-typedef enum {
+typedef enum
+{
 	NOREADY_EMU_ST = 0,		/* Не готов после сброса питания */
 	BEGIN_EMU_ST,			/* Готов к работе */
 	LOOP_WORK_EMU_ST,		/* Непрерывная работа */
 	STEP_EMU_ST,			/* Пошаговая выполнение операций */
 	PAUSE_EMU_ST,			/* Пауза */
 	STOP_EMU_ST,			/* Стоп */
-	ERROR_EMU_ST,	 		/* Ошибка */
-	ERROR_MB_NUMBER_EMU_ST,	        /* */
+	ERROR_EMU_ST,			/* Ошибка */
+	ERROR_MB_NUMBER_EMU_ST, /* */
 	CLI_WELCOM_EMU_ST,		/* */
-	WAIT_EMU_ST			/* */
-} emustatus_e ;
+	WAIT_EMU_ST				/* */
+} emustatus_e;
 
 static emustatus_e emu_stat = NOREADY_EMU_ST;
 
@@ -203,7 +202,7 @@ trs_t MB = {.l = 4, .t0 = 0, .t1 = 0};	/* MB(1:4) троичное число з
 trs_t MR = {.l = 9, .t0 = 0, .t1 = 0};		  /* временный регистр для обмена с FRAM */
 long_trs_t TMP = {.l = 36, .t0 = 0, .t1 = 0}; /* временная переменная для троичного числа */
 //
-trs_t BRPNT = {.l = 4, .t0 = 0, .t1 = 0};	/* BRPNT(1:5) - точка остановки по значению программного счетчика */
+trs_t BRPNT = {.l = 4, .t0 = 0, .t1 = 0}; /* BRPNT(1:5) - точка остановки по значению программного счетчика */
 
 /** ------------------------------------------------------
  *  Прототипы функций для виртуальной машины "Сетунь-1958"
@@ -291,7 +290,7 @@ uint8_t trit2lt(int8_t v);
 int8_t symtrs2numb(uint8_t c);
 int8_t str_symtrs2numb(uint8_t *s);
 trs_t smtr(uint8_t *s);
-uint8_t valid_smtr(uint8_t *s) ;
+uint8_t valid_smtr(uint8_t *s);
 
 /* Операции с ферритовой памятью машины FRAM */
 void clean_fram_zone(trs_t z);
@@ -302,8 +301,7 @@ void st_fram(trs_t ea, trs_t v);
 /* Операции ввода и вывода "Сетунь-1958" */
 
 /* Регист переключения Русский/Латинский */
-static uint8_t russian_latin_sw = 1
-;
+static uint8_t russian_latin_sw = 1;
 /* Регист переключения Буквенный/Цифровой */
 static uint8_t letter_number_sw = 0;
 /* Регист переключения цвета печатающей ленты */
@@ -344,15 +342,14 @@ int8_t execute_trs(trs_t addr, trs_t oper); /* Выполнение кодов �
 void view_short_reg(trs_t *t, uint8_t *ch);
 void view_short_regs(void);
 
-
 /** ---------------------------------------------------
-*  Реализации функций виртуальной машины "Сетунь-1958"
-*  ---------------------------------------------------
-*/
+ *  Реализации функций виртуальной машины "Сетунь-1958"
+ *  ---------------------------------------------------
+ */
 
 /**
-* Возведение в степень по модулю 3
-*/
+ * Возведение в степень по модулю 3
+ */
 int32_t pow3(int8_t x)
 {
 	int8_t i;
@@ -365,37 +362,38 @@ int32_t pow3(int8_t x)
 }
 
 /**
-* Преобразование 3 -> 10
-*/
+ * Преобразование 3 -> 10
+ */
 double t3_to_d10(trs_t t)
 {
 	int i;
-	double lf = 0.0; 	
+	double lf = 0.0;
 	double lfp = 0.0;
- 
-	lf += 3 * get_trit_setun(t,1); 
-	lf += 1 * get_trit_setun(t,2); 
 
-	for (i=3; i<=18;i++) {		
-		if (get_trit_setun(t,i) != 0) {
-			lfp += 1.0 / (double)( pow3(i-2)*get_trit_setun(t,i) );		
+	lf += 3 * get_trit_setun(t, 1);
+	lf += 1 * get_trit_setun(t, 2);
+
+	for (i = 3; i <= 18; i++)
+	{
+		if (get_trit_setun(t, i) != 0)
+		{
+			lfp += 1.0 / (double)(pow3(i - 2) * get_trit_setun(t, i));
 		}
 	}
-		
+
 	return (lf + lfp);
 }
 
 /**
-* Преобразование 10 -> 3
-*/
+ * Преобразование 10 -> 3
+ */
 trs_t d10_to_t3(float f)
-{	
+{
 	// x = +|- a1,a2a3a4
-	// Проверить условие x <= 1.5	
+	// Проверить условие x <= 1.5
 	// На ленте пс.+|-a1a2a3a4
 	return smtr("000000000000000000");
 }
-
 
 /**
  * Очистить поле битов троичного числа
@@ -2216,15 +2214,17 @@ trs_t smtr(uint8_t *s)
 	return t;
 }
 
-uint8_t valid_smtr(uint8_t *s) {
+uint8_t valid_smtr(uint8_t *s)
+{
 	uint8_t i;
-	uint8_t novalid=0;
+	uint8_t novalid = 0;
 	int8_t len = strlen(s);
-	
+
 	for (i = 0; i < len; i++)
-	{	
+	{
 		uint8_t c = *(s + i);
-		if( !( c == '-' || c == '0' || c == '+') ) {
+		if (!(c == '-' || c == '0' || c == '+'))
+		{
 			novalid |= 1;
 		}
 	}
@@ -2548,7 +2548,7 @@ void view_short_reg_fixpoint(trs_t *t, uint8_t *ch)
 	printf("(%li)", (long int)trs2digit(*t));
 	printf(", "); //
 	double lf = t3_to_d10(*t);
-	printf("{%lf}",lf);
+	printf("{%lf}", lf);
 #if 0	
 	printf(", {");
 	for (i = 0; i < l; i++)	{
@@ -2560,7 +2560,6 @@ void view_short_reg_fixpoint(trs_t *t, uint8_t *ch)
 #endif
 	printf("\r\n");
 }
-
 
 /**
  * Печать троичного регистра
@@ -2802,13 +2801,12 @@ void view_short_regs(void)
 	view_short_reg(&W, "  W  ");
 	view_short_reg(&ph1, "  ph1");
 	view_short_reg(&ph2, "  ph2");
-	//printf("TODO Добавить вывод S,R float числа. \r\n");
-	//view_short_reg(&S, "  S  ");
-	//view_short_reg(&R, "  R  ");
+	// printf("TODO Добавить вывод S,R float числа. \r\n");
+	// view_short_reg(&S, "  S  ");
+	// view_short_reg(&R, "  R  ");
 	view_short_reg_fixpoint(&S, "  S  ");
 	view_short_reg_fixpoint(&R, "  R  ");
 	view_short_reg(&MB, "  MB ");
-
 }
 
 /**
@@ -3728,7 +3726,7 @@ trs_t Decoder_Symbol_Paper_Line(char *paperline, uint8_t *err)
 	/* Проверить допустимые комбинации пробивок */
 	int r;
 	res = tab4_1[byte];
-	
+
 	/* Valid */
 	*err = 0; /* Ok' */
 
@@ -5948,7 +5946,6 @@ error_over:
 	return STOP_ERROR;
 }
 
-
 /* **********************************************************************************
  * Тестирование функций операций с тритами
  * ----------------------------------------------------------------------------------
@@ -8159,7 +8156,6 @@ const char *get_file_ext(const char *filename)
 	return dot + 1;
 }
 
-
 void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathfiletxt)
 {
 	FILE *file_lst;
@@ -8188,7 +8184,7 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 	else
 	{
 		printf("Read file list: %s\r\n", pathfilelst);
-                printf("\r\n");
+		printf("\r\n");
 
 		/* Чтение (построчно) данных из файла в бесконечном цикле */
 		while (1)
@@ -8337,7 +8333,7 @@ int ConvertSWtoPaper(char *path_lst, char *path_txt)
 	char a_fileName[1024];
 
 	printf("[ Convert software files to file paper.txt ]\r\n");
-        printf("\r\n");
+	printf("\r\n");
 
 	DIR *dir;
 	struct dirent *ent;
@@ -8462,28 +8458,28 @@ int DumpFileTxs(char *pathfiletxs)
 	return 0; /* Ok' */
 }
 
-
-void print_version(void) {
-        printf(" Emulator ternary computer 'Setun-1958':\r\n");
-        printf(" Version: %s\r\n",Version);
-		printf(" Author:  Vladimir V.\r\n");
-        printf(" E-mail:  askfind@ya.ru\r\n");
-        printf("\r\n");
+void print_version(void)
+{
+	printf(" Emulator ternary computer 'Setun-1958':\r\n");
+	printf(" Version: %s\r\n", Version);
+	printf(" Author:  Vladimir V.\r\n");
+	printf(" E-mail:  askfind@ya.ru\r\n");
+	printf("\r\n");
 }
 
 int version(const char *argv0)
 {
-    printf(" Emulator ternary computer 'Setun-1958': ver.%s\r\n", Version);
-    printf(" Author: Vladimir V.\r\n");
-    printf(" E-mail: askfind@ya.ru\r\n");
-    printf("\r\n");
+	printf(" Emulator ternary computer 'Setun-1958': ver.%s\r\n", Version);
+	printf(" Author: Vladimir V.\r\n");
+	printf(" E-mail: askfind@ya.ru\r\n");
+	printf("\r\n");
 
 	exit(0);
 }
 
 int usage(const char *argv0)
 {
-    printf("usage: %s [options] FILE SCRIPT(s)...\r\n", argv0);
+	printf("usage: %s [options] FILE SCRIPT(s)...\r\n", argv0);
 	printf("\t--version : version software setun1958emu\r\n");
 	printf("\t--load : load software setun1958emu\r\n");
 	printf("\t--convert : convert software file.lst to paper.txt setun1958emu\r\n");
@@ -8491,108 +8487,110 @@ int usage(const char *argv0)
 	printf("\t--LOGGING : view step  setun1958emu\r\n");
 	printf("\t--breakpoint : view stop setun1958emu\r\n");
 	printf("\t--test : number test setun1958emu\r\n");
-    printf("\r\n");
+	printf("\r\n");
 
 	exit(0);
 }
 
+void Emu_Open_Files_ptr1_ptr2(void)
+{
+	/* Открыть файлы для виртуальных устройств	*/
+	ptr1 = fopen("ptr1/paper.txt", "w");
+	if (ptr1 == NULL)
+	{
+		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		// viv~ TODO
+		// return 0;
+	}
 
-void Emu_Open_Files_ptr1_ptr2(void) {		
-		/* Открыть файлы для виртуальных устройств	*/
-		ptr1 = fopen("ptr1/paper.txt", "w");
-		if (ptr1 == NULL)
-		{	
-			printf("Error fopen 'ptr1/paper.txt'\r\n");
-			//viv~ TODO
-			//return 0; 
-		}
-
-		ptr2 = fopen("ptr2/paper.txt", "w");
-		if (ptr2 == NULL)
-		{
-			printf("Error fopen 'ptr1/paper.txt'\r\n");
-			//viv~ TODO
-			//return 0;
-		}
+	ptr2 = fopen("ptr2/paper.txt", "w");
+	if (ptr2 == NULL)
+	{
+		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		// viv~ TODO
+		// return 0;
+	}
 }
 
 void Emu_Close_Files_ptr1_ptr2(void)
 {
-			/* Закрыть файлы виртуальных устройств */
-			fclose(ptr1);
-			fclose(ptr2);
+	/* Закрыть файлы виртуальных устройств */
+	fclose(ptr1);
+	fclose(ptr2);
 }
 
-void Emu_Open_Files(void) {
+void Emu_Open_Files(void)
+{
 
-		/* Открыть файлы для виртуальных устройств	*/
-		ptr1 = fopen("ptr1/paper.txt", "r");
-		if (ptr1 == NULL)
-		{	
-			printf("Error fopen 'ptr1/paper.txt'\r\n");
-			//viv~ TODO
-			//return 0; 
-		}
+	/* Открыть файлы для виртуальных устройств	*/
+	ptr1 = fopen("ptr1/paper.txt", "r");
+	if (ptr1 == NULL)
+	{
+		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		// viv~ TODO
+		// return 0;
+	}
 
-		ptr2 = fopen("ptr2/paper.txt", "r");
-		if (ptr2 == NULL)
-		{
-			printf("Error fopen 'ptr1/paper.txt'\r\n");
-			//viv~ TODO
-			//return 0;
-		}
+	ptr2 = fopen("ptr2/paper.txt", "r");
+	if (ptr2 == NULL)
+	{
+		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		// viv~ TODO
+		// return 0;
+	}
 
-		ptp1 = fopen("ptp1/paper.txt", "w");
-		if (ptp1 == NULL)
-		{
-			printf("Error fopen 'ptp1/paper.txt'\r\n");
-			//viv~ TODO
-			//return 0;
-		}
+	ptp1 = fopen("ptp1/paper.txt", "w");
+	if (ptp1 == NULL)
+	{
+		printf("Error fopen 'ptp1/paper.txt'\r\n");
+		// viv~ TODO
+		// return 0;
+	}
 
-		tty1 = fopen("tty1/printout.txt", "w");
-		if (tty1 == NULL)
-		{
-			printf("Error fopen 'tty1/printout.txt'\r\n");
-			//viv~ TODO
-			//return 0;
-		}
+	tty1 = fopen("tty1/printout.txt", "w");
+	if (tty1 == NULL)
+	{
+		printf("Error fopen 'tty1/printout.txt'\r\n");
+		// viv~ TODO
+		// return 0;
+	}
 }
 
 void Emu_Close_Files(void)
 {
-			/* Закрыть файлы виртуальных устройств */
-			fclose(ptr1);
-			fclose(ptr2);
-			fclose(ptp1);
-			fclose(tty1);
+	/* Закрыть файлы виртуальных устройств */
+	fclose(ptr1);
+	fclose(ptr2);
+	fclose(ptp1);
+	fclose(tty1);
 }
 
-void Emu_Begin(void) {
+void Emu_Begin(void)
+{
 
-		/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
-		init_tab4();
+	/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
+	init_tab4();
 
-		/* В режиме отладки вывод регистров */
-		if (LOGGING > 0)
-		{
-			view_short_regs();
-		}		
-		
-		Emu_Open_Files();
+	/* В режиме отладки вывод регистров */
+	if (LOGGING > 0)
+	{
+		view_short_regs();
+	}
 
-		/*  Выполнить первый код "Сетунь-1958" */
-		printf("\r\n[ Start Setun-1958 ]\r\n");
+	Emu_Open_Files();
 
-		/* Выполение программы в ферритовой памяти "Сетунь-1958" */
-		Begin_Read_Commands_from_FT1(ptr1);
+	/*  Выполнить первый код "Сетунь-1958" */
+	printf("\r\n[ Start Setun-1958 ]\r\n");
 
-		/* Begin address fram */
-		C = smtr("0000+");
+	/* Выполение программы в ферритовой памяти "Сетунь-1958" */
+	Begin_Read_Commands_from_FT1(ptr1);
 
+	/* Begin address fram */
+	C = smtr("0000+");
 }
 
-int Emu_Step(void) {
+int Emu_Step(void)
+{
 
 	trs_t addr;
 	trs_t C_cur;
@@ -8610,67 +8608,67 @@ int Emu_Step(void) {
 	addr = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
 
-	return  execute_trs(addr, oper);
+	return execute_trs(addr, oper);
 }
 
-void Emu_Stop(void) {
-			
-			//dump_fram_zone(smtr("-"));
-		    //dump_fram_zone(smtr("0"));
-		    //dump_fram_zone(smtr("+"));
-            
-			/* Prints REGS */
-			view_short_regs();
-			printf("\r\n");
+void Emu_Stop(void)
+{
 
-			/* Prints REGS and FRAM */
-			if (LOGGING > 0)
-			{
-				// dump_fram_zone(smtr("-"));
-				// dump_fram_zone(smtr("0"));
-				// dump_fram_zone(smtr("+"));
-			}
+	// dump_fram_zone(smtr("-"));
+	// dump_fram_zone(smtr("0"));
+	// dump_fram_zone(smtr("+"));
 
-			/* Печать завершения работы "Setun-1958" */
-			if (STEP == 0)
-			{
-				//Новое состояние
-				emu_stat = PAUSE_EMU_ST;
+	/* Prints REGS */
+	view_short_regs();
+	printf("\r\n");
 
-				printf("\r\n[ Stop Setun-1958 ]\r\n");
-			}
-			else
-			{
-				printf("\r\n[ Step = %d : Stop Setun-1958 ]\r\n", STEP);
-			}
+	/* Prints REGS and FRAM */
+	if (LOGGING > 0)
+	{
+		// dump_fram_zone(smtr("-"));
+		// dump_fram_zone(smtr("0"));
+		// dump_fram_zone(smtr("+"));
+	}
 
-			/* Закрыть файлы виртуальных устройств */
-			Emu_Close_Files();
+	/* Печать завершения работы "Setun-1958" */
+	if (STEP == 0)
+	{
+		// Новое состояние
+		emu_stat = PAUSE_EMU_ST;
+
+		printf("\r\n[ Stop Setun-1958 ]\r\n");
+	}
+	else
+	{
+		printf("\r\n[ Step = %d : Stop Setun-1958 ]\r\n", STEP);
+	}
+
+	/* Закрыть файлы виртуальных устройств */
+	Emu_Close_Files();
 }
-
-
 
 /** -------------------------------
- *  
+ *
  *  -------------------------------
  */
 int Process_Work_Emulation(void)
-{	
+{
 	int test = 0;
 	int convert = 0;
 	int dump = 0;
 	char *output = "-";
-	int ret = 0;	
+	int ret = 0;
 
 	/* ------------------------------
-	*  Переменные emulator Setun-1958
-	*/
+	 *  Переменные emulator Setun-1958
+	 */
 	uint8_t cmd[20] = {0};
 	uint8_t ret_exec = 0;
 
 	/* Состояние после включения питания */
-	if( emu_stat == NOREADY_EMU_ST ) {		
-		
+	if (emu_stat == NOREADY_EMU_ST)
+	{
+
 		Emu_Open_Files();
 
 		/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
@@ -8680,7 +8678,8 @@ int Process_Work_Emulation(void)
 		emu_stat = WAIT_EMU_ST;
 	}
 
-	if( emu_stat == BEGIN_EMU_ST ) {	
+	if (emu_stat == BEGIN_EMU_ST)
+	{
 		/* Начальный старт */
 		Emu_Begin();
 
@@ -8688,146 +8687,153 @@ int Process_Work_Emulation(void)
 		emu_stat = LOOP_WORK_EMU_ST;
 	}
 
-	
-	if( emu_stat == STEP_EMU_ST ) {		
+	if (emu_stat == STEP_EMU_ST)
+	{
 		ret_exec = Emu_Step();
-		
-		if ((ret_exec == STOP))
-		{
-			printf("\r\n<STOP>\r\n");
-			emu_stat = STOP_EMU_ST;			
-		}
-		else if (ret_exec == STOP_OVER)
-		{
-			printf("\r\n<STOP_OVER>\r\n");			
-			emu_stat = STOP_EMU_ST;			
-		}
-		else if (ret_exec == STOP_ERROR)
-		{
-			printf("\r\nERR#:%i<STOP_ERROR>\r\n", ret_exec);			
-			emu_stat = ERROR_EMU_ST;			
-		}
-		else if (ret_exec == STOP_ERROR_MB_NUMBER)
-		{
-			printf("\r\nERR#:%i<STOP_ERROR_MB_NUMBER>\r\n", ret_exec);
-			cli_ascii();
-			emu_stat = ERROR_MB_NUMBER_EMU_ST;			
-		}
 
-		/**/
-		counter_step++;		
-		if( STEP>0 ) 
-			STEP--;
-		if (STEP == 0)
-		{				
-				//Новое состояние
-				emu_stat = PAUSE_EMU_ST;				
-		}
-
-		/**/
-		if (BREAKPOINT == trs2digit(C) && (BREAKPOINT <= INT32_MAX))
-		{
-			emu_stat = PAUSE_EMU_ST;							
-		}	
-		
-		view_short_regs();
-
-		/* Новое состояние */
-		emu_stat = WAIT_EMU_ST;
-	}
-	
-	if( emu_stat == PAUSE_EMU_ST ) {		
-		emu_stat = WAIT_EMU_ST;
-	}
-	
-	/* Состояние готов к работе */
-	if( emu_stat == LOOP_WORK_EMU_ST ) {
-		
-		ret_exec = Emu_Step();
-		
 		if ((ret_exec == STOP))
 		{
 			printf("\r\n<STOP>\r\n");
 			emu_stat = STOP_EMU_ST;
-			//break;
 		}
 		else if (ret_exec == STOP_OVER)
 		{
-			printf("\r\n<STOP_OVER>\r\n");			
+			printf("\r\n<STOP_OVER>\r\n");
 			emu_stat = STOP_EMU_ST;
-			//break;
 		}
 		else if (ret_exec == STOP_ERROR)
 		{
-			printf("\r\nERR#:%i<STOP_ERROR>\r\n", ret_exec);			
+			printf("\r\nERR#:%i<STOP_ERROR>\r\n", ret_exec);
 			emu_stat = ERROR_EMU_ST;
-			//break;
 		}
 		else if (ret_exec == STOP_ERROR_MB_NUMBER)
 		{
 			printf("\r\nERR#:%i<STOP_ERROR_MB_NUMBER>\r\n", ret_exec);
 			cli_ascii();
 			emu_stat = ERROR_MB_NUMBER_EMU_ST;
-			//break;
 		}
 
 		/**/
-		counter_step++;		
+		counter_step++;
+		if (STEP > 0)
+			STEP--;
+		if (STEP == 0)
+		{
+			// Новое состояние
+			emu_stat = PAUSE_EMU_ST;
+		}
 
 		/**/
 		if (BREAKPOINT == trs2digit(C) && (BREAKPOINT <= INT32_MAX))
 		{
-			view_short_regs();
-			view_short_reg(&BREAKPOINT_TRS,"\r\n[ BREAK ] ");
-			emu_stat = PAUSE_EMU_ST;							
-		}	
-	
-	}	
-	
+			emu_stat = PAUSE_EMU_ST;
+		}
+
+		view_short_regs();
+
+		/* Новое состояние */
+		emu_stat = WAIT_EMU_ST;
+	}
+
+	if (emu_stat == PAUSE_EMU_ST)
+	{
+		emu_stat = WAIT_EMU_ST;
+	}
+
+	/* Состояние готов к работе */
+	if (emu_stat == LOOP_WORK_EMU_ST)
+	{
+
+		ret_exec = Emu_Step();
+
+		if ((ret_exec == STOP))
+		{
+			printf("\r\n<STOP>\r\n");
+			emu_stat = STOP_EMU_ST;
+			// break;
+		}
+		else if (ret_exec == STOP_OVER)
+		{
+			printf("\r\n<STOP_OVER>\r\n");
+			emu_stat = STOP_EMU_ST;
+			// break;
+		}
+		else if (ret_exec == STOP_ERROR)
+		{
+			printf("\r\nERR#:%i<STOP_ERROR>\r\n", ret_exec);
+			emu_stat = ERROR_EMU_ST;
+			// break;
+		}
+		else if (ret_exec == STOP_ERROR_MB_NUMBER)
+		{
+			printf("\r\nERR#:%i<STOP_ERROR_MB_NUMBER>\r\n", ret_exec);
+			cli_ascii();
+			emu_stat = ERROR_MB_NUMBER_EMU_ST;
+			// break;
+		}
+
+		/**/
+		counter_step++;
+
+		/**/
+		if (BREAKPOINT_TRS.l != 0)
+		{
+			if (BREAKPOINT == trs2digit(C) && (BREAKPOINT <= INT32_MAX))
+			{
+				view_short_regs();
+				view_short_reg(&BREAKPOINT_TRS, "\r\n[ BREAK ] ");
+				emu_stat = PAUSE_EMU_ST;
+			}
+		}
+	}
+
 	/* Состояние  */
-	if( emu_stat == STOP_EMU_ST ) {
-		emu_stat = CLI_WELCOM_EMU_ST;
-	} /* if(...) */		
-		
-	/* Состояние  */
-	if( emu_stat == ERROR_EMU_ST ) {
-		emu_stat = CLI_WELCOM_EMU_ST;
-	} /* if(...) */		
-	
-	/* Состояние  */
-	if( emu_stat == ERROR_MB_NUMBER_EMU_ST ) {
+	if (emu_stat == STOP_EMU_ST)
+	{
 		emu_stat = CLI_WELCOM_EMU_ST;
 	} /* if(...) */
 
 	/* Состояние  */
-	if( emu_stat == CLI_WELCOM_EMU_ST ) {
+	if (emu_stat == ERROR_EMU_ST)
+	{
+		emu_stat = CLI_WELCOM_EMU_ST;
+	} /* if(...) */
+
+	/* Состояние  */
+	if (emu_stat == ERROR_MB_NUMBER_EMU_ST)
+	{
+		emu_stat = CLI_WELCOM_EMU_ST;
+	} /* if(...) */
+
+	/* Состояние  */
+	if (emu_stat == CLI_WELCOM_EMU_ST)
+	{
 		/* Prints REGS */
 		view_short_regs();
-		printf("\r\n");		
+		printf("\r\n");
 		//
 		cli_ascii();
 		emu_stat = WAIT_EMU_ST;
 	} /* if(...) */
-	
 
 	/* Состояние  */
-	if( emu_stat == WAIT_EMU_ST ) {
-		
+	if (emu_stat == WAIT_EMU_ST)
+	{
+
 	} /* if(...) */
-		
+
 } /*  */
 
-
 /** ------------------------------------------------------------------------
-*  Командный интепретатор виртуального пульта управления МЦВМ "Сетунь" 1958
-*/
+ *  Командный интепретатор виртуального пульта управления МЦВМ "Сетунь" 1958
+ */
 
 /** --------------------------------------------------------
  *  CLI командный интерпретатор
  */
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
 //
-#define BUF_SIZE 1024        /* размер буфера */
+#define BUF_SIZE 1024	   /* размер буфера */
 static char buf[BUF_SIZE]; /* буфер для приема сообщений */
 
 /* Разбор параметров команды с параметрами */
@@ -8839,18 +8845,18 @@ char par4[1024];
 /* Cтруктура, описывающая ascii-сообщение */
 typedef struct _ascii_message
 {
-    char *name_cmd;                        /* имя команды */
-    char (*parser)(char *buf, void *data); /* функция команды */
-    void *data;                            /* дополнительный параметры команды */
+	char *name_cmd;						   /* имя команды */
+	char (*parser)(char *buf, void *data); /* функция команды */
+	void *data;							   /* дополнительный параметры команды */
 } ascii_message_t;
 
 /* Cтруктура описывающая информацию в сообщении. */
 typedef struct _cmd_data
 {
-    int count; /* счетчик парметров */
-    char *par2;
-    char *par3;
-    char *par4;
+	int count; /* счетчик парметров */
+	char *par2;
+	char *par3;
+	char *par4;
 } cmd_data_t;
 
 cmd_data_t cmd_data;
@@ -8858,7 +8864,7 @@ cmd_data_t cmd_data;
 //
 void Emu_Begin(void);
 int Emu_Step(void);
-void Emu_Stop(void); 
+void Emu_Stop(void);
 
 static char dump_cmd(char *buf, void *data);
 static char load_cmd(char *buf, void *data);
@@ -8882,763 +8888,797 @@ static char calc_cmd(char *buf, void *data);
  * Массив команд CLI
  */
 ascii_message_t command[] =
-    {        
+	{
 		{.name_cmd = "dump",
-         .parser = dump_cmd,
-         .data = &cmd_data},
+		 .parser = dump_cmd,
+		 .data = &cmd_data},
 		//
 		{.name_cmd = "load",
-         .parser = load_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "l",
-         .parser = load_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "debug",
-         .parser = debug_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "d",
-         .parser = debug_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "test",
-         .parser = test_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "t",
-         .parser = test_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "begin",
-         .parser = begin_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "b",
-         .parser = begin_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "pause",
-         .parser = pause_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "p",
-         .parser = pause_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "run",
-         .parser = run_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "r",
-         .parser = run_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "step",
-         .parser = step_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "s",
-         .parser = step_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "break",
-         .parser = break_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "br",
-         .parser = break_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "reg",
-         .parser = reg_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "rg",
-         .parser = reg_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "view",
-         .parser = view_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "v",
-         .parser = view_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "fram",
-         .parser = fram_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "fr",
-         .parser = fram_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "drum",
-         .parser = drum_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "dr",
-         .parser = drum_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "help",
-         .parser = help_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "h",
-         .parser = help_cmd,
-         .data = &cmd_data},
-        //
-        {.name_cmd = "quit",
-         .parser = quit_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "q",
-         .parser = quit_cmd,
-         .data = &cmd_data},
-        {.name_cmd = "calc",
-         .parser = calc_cmd,
-         .data = &cmd_data}
-         };
+		 .parser = load_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "l",
+		 .parser = load_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "debug",
+		 .parser = debug_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "d",
+		 .parser = debug_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "test",
+		 .parser = test_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "t",
+		 .parser = test_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "begin",
+		 .parser = begin_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "b",
+		 .parser = begin_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "pause",
+		 .parser = pause_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "p",
+		 .parser = pause_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "run",
+		 .parser = run_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "r",
+		 .parser = run_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "step",
+		 .parser = step_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "s",
+		 .parser = step_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "break",
+		 .parser = break_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "br",
+		 .parser = break_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "reg",
+		 .parser = reg_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "rg",
+		 .parser = reg_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "view",
+		 .parser = view_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "v",
+		 .parser = view_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "fram",
+		 .parser = fram_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "fr",
+		 .parser = fram_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "drum",
+		 .parser = drum_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "dr",
+		 .parser = drum_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "help",
+		 .parser = help_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "h",
+		 .parser = help_cmd,
+		 .data = &cmd_data},
+		//
+		{.name_cmd = "quit",
+		 .parser = quit_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "q",
+		 .parser = quit_cmd,
+		 .data = &cmd_data},
+		{.name_cmd = "calc",
+		 .parser = calc_cmd,
+		 .data = &cmd_data}};
 
 /* Func nmea_next_field */
 char *ascii_next_field(char *buf)
 {
-    /* Eсли следующее поле не найдено, то она возвращает NULL */
-    while (*buf++ != ',')
-    {
-        if (*buf == '\0')
-        {
-            return NULL;
-        }
-    }
-    return buf;
+	/* Eсли следующее поле не найдено, то она возвращает NULL */
+	while (*buf++ != ',')
+	{
+		if (*buf == '\0')
+		{
+			return NULL;
+		}
+	}
+	return buf;
 }
 
 /* Func 'cli_ascii' */
 void cli_ascii(void)
 {
-    puts("");
-    printf("setun1958emu:\r\n");
+	puts("");
+	printf("setun1958emu:\r\n");
 }
 
 /* Func 'exit_cmd' */
 char exit_cmd(char *buf, void *data)
 {
-    cmd_data_t *msg = (cmd_data_t *)data;
+	cmd_data_t *msg = (cmd_data_t *)data;
 
-    printf("dbg: exit_cmd() \r\n");
+	printf("dbg: exit_cmd() \r\n");
 
-    exit(0);
+	exit(0);
 
-    return 0;
+	return 0;
 }
 
 /* Вывод списка команд виртуальной панели управления */
 void help_print(void)
 {
-    printf("Commands control for setun1958emu:\r\n");
+	printf("Commands control for setun1958emu:\r\n");
 	printf(" [dump]       [arglist]\r\n");
 	printf(" [load]  [l]  [arglist]\r\n");
-    printf(" [debug] [d]  [arglist]\r\n");
+	printf(" [debug] [d]  [arglist]\r\n");
 	printf(" [test]  [t]  [arglist]\r\n");
-    printf(" [view]  [v]\r\n");
-    printf(" [begin] [b]\r\n");
-    printf(" [pause] [p]\r\n");
-    printf(" [run]   [r]\r\n");
-    printf(" [step]  [s]  [arglist] \r\n");
-    printf(" [break] [br] [arglist]\r\n");
-    printf(" [reg]   [rg] [arglist]\r\n");
-    printf(" [fram]  [fr] [arglist]\r\n");
-    printf(" [drum]  [dr] [arglist]\r\n");
-    printf(" [help]  [h]\r\n");
-    printf(" [quit]  [q]\r\n");
-    printf(" [calc]  \r\n");
+	printf(" [view]  [v]\r\n");
+	printf(" [begin] [b]\r\n");
+	printf(" [pause] [p]\r\n");
+	printf(" [run]   [r]\r\n");
+	printf(" [step]  [s]  [arglist] \r\n");
+	printf(" [break] [br] [arglist]\r\n");
+	printf(" [reg]   [rg] [arglist]\r\n");
+	printf(" [fram]  [fr] [arglist]\r\n");
+	printf(" [drum]  [dr] [arglist]\r\n");
+	printf(" [help]  [h]\r\n");
+	printf(" [quit]  [q]\r\n");
+	printf(" [calc]  \r\n");
 }
 
 /** -------------------------------
  *   Реализация команд
  */
- 
+
 /* Func 'dump_cmd' */
 char dump_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if (pars->count > 1)
-    {
-        /* Error */
-        printf("dbg: ERR#1\r\n");
-        return 1; /* ERR#1 */
-    }
+	if (pars->count > 1)
+	{
+		/* Error */
+		printf("dbg: ERR#1\r\n");
+		return 1; /* ERR#1 */
+	}
 
 	/* Проверить путь к каталогам,  файл списка lst */
 	if (DumpFileTxs(pars->par2) != 0)
 	{
 		printf("no path file\r\n");
 	}
-    
+
 	return 0; /* OK' */
 }
-
 
 /* Func 'load_cmd' */
 char load_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if (pars->count > 2)
-    {
-        /* Error */
-        printf("Error load_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
+	if (pars->count > 2)
+	{
+		/* Error */
+		printf("Error load_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
 
 	/* Проверить путь к каталогам,  файл списка lst */
 	if (ConvertSWtoPaper(pars->par2, pars->par3) != 0)
 	{
 		printf("no path file\r\n");
 	}
-    
+
 	return 0; /* OK' */
 }
 
 /* Func 'debug_cmd' */
 char debug_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if ( (pars->count < 1) || (pars->count > 1) )
-    {
-        /* Error */
-        printf("dbg: ERR#1\r\n");
-        return 1; /* ERR#1 */
-    }
+	if ((pars->count < 1) || (pars->count > 1))
+	{
+		/* Error */
+		printf("dbg: ERR#1\r\n");
+		return 1; /* ERR#1 */
+	}
 
 	int par2_numb = 0;
-	sscanf(pars->par2,"%i", &par2_numb);
+	sscanf(pars->par2, "%i", &par2_numb);
 
-	if( par2_numb > 0 ) {		
+	if (par2_numb > 0)
+	{
 		LOGGING = 1; /* Вывод отладочной информации  */
 		printf("switch debug on\r\n");
 	}
-	else {
+	else
+	{
 		LOGGING = 0; /* Вывод отладочной информации  */
 		printf("switch debug off\r\n");
 	}
 
-    return 0; /* OK' */
+	return 0; /* OK' */
 }
 
 /* Func 'test_cmd' */
 char test_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if ( (pars->count < 1) || (pars->count > 1) )
-    {
-        /* Error */
-        printf("dbg: ERR#1\r\n");
-        return 1; /* ERR#1 */
-    }
+	if ((pars->count < 1) || (pars->count > 1))
+	{
+		/* Error */
+		printf("dbg: ERR#1\r\n");
+		return 1; /* ERR#1 */
+	}
 
 	int test_numb = 0;
-	sscanf(pars->par2,"%i", &test_numb);
+	sscanf(pars->par2, "%i", &test_numb);
 
-	switch(test_numb) {
-		case 1:
-			Test1_Ariphmetic_Ternary();
-			break;
-		case 2:
-			Test2_Opers_TRITS_32();		
-			break;
-		case 3:
-			Test3_Setun_Opers();
-			break;
-		case 4:
-			Test4_Setun_Opers();
-			break;
-		case 5:
-			Test5_Setun_Load();
-			break;
-		case 6:
-			Test6_Setun_Load();
-			break;
-		case 7:
-			Test7_Setun_Load();
-			break;
-		case 8:
-			Test8_Setun_Electrified_Typewriter();
-			break;
-		case 9:
-			Test9_Perforatin_Paper_Line();
-			break;
-		case 10:
-			Test10_LoadSWSetun();			
-			break;			
-		default:
-	        /* Error */
-    	    printf("no test#%i\r\n",test_numb);
-        	return 2; /* ERR#2 */
+	switch (test_numb)
+	{
+	case 1:
+		Test1_Ariphmetic_Ternary();
+		break;
+	case 2:
+		Test2_Opers_TRITS_32();
+		break;
+	case 3:
+		Test3_Setun_Opers();
+		break;
+	case 4:
+		Test4_Setun_Opers();
+		break;
+	case 5:
+		Test5_Setun_Load();
+		break;
+	case 6:
+		Test6_Setun_Load();
+		break;
+	case 7:
+		Test7_Setun_Load();
+		break;
+	case 8:
+		Test8_Setun_Electrified_Typewriter();
+		break;
+	case 9:
+		Test9_Perforatin_Paper_Line();
+		break;
+	case 10:
+		Test10_LoadSWSetun();
+		break;
+	default:
+		/* Error */
+		printf("no test#%i\r\n", test_numb);
+		return 2; /* ERR#2 */
 		break;
 	}
-    
-    return 0; /* OK' */
+
+	return 0; /* OK' */
 }
 
 /* Func 'begin_cmd' */
 char begin_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if (pars->count > 0)
-    {
-        /* Error */
-        printf("Error begin_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
-	
+	if (pars->count > 0)
+	{
+		/* Error */
+		printf("Error begin_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
+
 	counter_step = 0;
 	emu_stat = BEGIN_EMU_ST;
 
-    return 0; /* OK' */
+	return 0; /* OK' */
 }
 
 /* Func 'pause_cmd' */
 char pause_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
-    
-    if (pars->count > 0)
-    {
-        /* Error */
-        printf("Error pause_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
+	cmd_data_t *pars = (cmd_data_t *)data;
+
+	if (pars->count > 0)
+	{
+		/* Error */
+		printf("Error pause_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
 
 	/* Новое состояние пауза */
-	emu_stat = PAUSE_EMU_ST;	
+	emu_stat = PAUSE_EMU_ST;
 
-    return 0; /* OK' */
+	return 0; /* OK' */
 }
 
 /* Func 'run_cmd' */
 char run_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if (pars->count > 0)
-    {
-        /* Error */
-        printf("Error run_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
+	if (pars->count > 0)
+	{
+		/* Error */
+		printf("Error run_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
 
 	/* Новое состояние выполнять операцииы */
-	emu_stat = LOOP_WORK_EMU_ST;	
+	emu_stat = LOOP_WORK_EMU_ST;
 
-    return 0; /* OK' */
+	return 0; /* OK' */
 }
 
 /* Func 'step_cmd' */
 char step_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if (pars->count > 1)
-    {
-        /* Error */
-        printf("Error step_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
-	
-	sscanf(pars->par2,"%ul", &STEP);	
+	if (pars->count > 1)
+	{
+		/* Error */
+		printf("Error step_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
 
-	emu_stat = STEP_EMU_ST;	
-	
-    return 0; /* OK' */
+	sscanf(pars->par2, "%ul", &STEP);
+
+	emu_stat = STEP_EMU_ST;
+
+	return 0; /* OK' */
 }
 
 /* Func 'break_cmd' */
 char break_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if ((pars->count < 1) || (pars->count > 1))
-    {
-        /* Error */
-        printf("Error break_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
-	
-	BREAKPOINT = trs2digit(smtr(pars->par2));	
+	if ((pars->count < 1) || (pars->count > 1))
+	{
+		/* Error */
+		printf("Error break_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
+
+	BREAKPOINT = trs2digit(smtr(pars->par2));
 	BREAKPOINT_TRS = smtr(pars->par2);
 
-    return 0; /* OK' */
+	return 0; /* OK' */
 }
 
 /* Func 'reg_cmd' */
 char reg_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if ((pars->count < 1) || (pars->count > 2))
-    {
-        /* Error */
-        printf("Error reg_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
-
-	int rg = toupper(pars->par2[0]);	
-	trs_t trs = smtr(pars->par3);
-	switch(rg) {
-		case 'K':
-			copy_trs(&trs,&K);
-			break;		
-		case 'F':
-			copy_trs(&trs,&F);
-			break;		
-		case 'C':
-			copy_trs(&trs,&C);
-			break;		
-		case 'W':
-			copy_trs(&trs,&W);
-			break;		
-		case 'S':
-			copy_trs(&trs,&S);
-			break;		
-		case 'R':
-			copy_trs(&trs,&R);
-			break;		
-		case 'M':
-			copy_trs(&trs,&MB);
-			break;
-		default:
-			break;
+	if ((pars->count < 1) || (pars->count > 2))
+	{
+		/* Error */
+		printf("Error reg_cmd!\r\n");
+		return 1; /* ERR#1 */
 	}
 
-    return 0; /* OK' */
+	int rg = toupper(pars->par2[0]);
+	trs_t trs = smtr(pars->par3);
+	switch (rg)
+	{
+	case 'K':
+		copy_trs(&trs, &K);
+		break;
+	case 'F':
+		copy_trs(&trs, &F);
+		break;
+	case 'C':
+		copy_trs(&trs, &C);
+		break;
+	case 'W':
+		copy_trs(&trs, &W);
+		break;
+	case 'S':
+		copy_trs(&trs, &S);
+		break;
+	case 'R':
+		copy_trs(&trs, &R);
+		break;
+	case 'M':
+		copy_trs(&trs, &MB);
+		break;
+	default:
+		break;
+	}
+
+	return 0; /* OK' */
 }
 
 /* Func 'view_cmd' */
 char view_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    printf("[ View registers Setun-1958 ]\r\n");
+	printf("[ View registers Setun-1958 ]\r\n");
 
-    if (pars->count > 0)
-    {
-        /* Error */
-        printf("Error view_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
+	if (pars->count > 0)
+	{
+		/* Error */
+		printf("Error view_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
 
 	/* Prints REGS */
 	view_short_regs();
 	printf("\r\n");
-    printf("[ Tools ]\r\n");
-	
-	switch(emu_stat) {
-		case NOREADY_EMU_ST: printf("  status: noready\r\n");	break;
-		case BEGIN_EMU_ST: printf("  status: begin\r\n");	break;
-		case LOOP_WORK_EMU_ST: printf("  status: loop\r\n");	break;
-		case STEP_EMU_ST: printf("  status: step\r\n");	break;
-		case ERROR_EMU_ST: printf("  status: error\r\n");	break;
-		case ERROR_MB_NUMBER_EMU_ST: printf("  status: error drum\r\n");	break;
-		case CLI_WELCOM_EMU_ST: printf("  status: welcom\r\n");	break;
-		case WAIT_EMU_ST: printf("  status: wait\r\n");	break;
-		//
-		default: 
+	printf("[ Tools ]\r\n");
+
+	switch (emu_stat)
+	{
+	case NOREADY_EMU_ST:
+		printf("  status: noready\r\n");
+		break;
+	case BEGIN_EMU_ST:
+		printf("  status: begin\r\n");
+		break;
+	case LOOP_WORK_EMU_ST:
+		printf("  status: loop\r\n");
+		break;
+	case STEP_EMU_ST:
+		printf("  status: step\r\n");
+		break;
+	case ERROR_EMU_ST:
+		printf("  status: error\r\n");
+		break;
+	case ERROR_MB_NUMBER_EMU_ST:
+		printf("  status: error drum\r\n");
+		break;
+	case CLI_WELCOM_EMU_ST:
+		printf("  status: welcom\r\n");
+		break;
+	case WAIT_EMU_ST:
+		printf("  status: wait\r\n");
+		break;
+	//
+	default:
 		break;
 	}
 
-	if(LOGGING) {
+	if (LOGGING)
+	{
 		printf("  debug: on\r\n");
-	} else {
+	}
+	else
+	{
 		printf("  debug: off\r\n");
 	}
-	if(BREAKPOINT_TRS.l != 0) {
-		view_short_reg(&BREAKPOINT_TRS,"  breakpoint");
-	} else {
-		printf("  breakpoint: no used\r\n");		
+	if (BREAKPOINT_TRS.l != 0)
+	{
+		view_short_reg(&BREAKPOINT_TRS, "  breakpoint");
+	}
+	else
+	{
+		printf("  breakpoint: no used\r\n");
 	}
 	printf("  steps: %d\r\n", counter_step);
-	
-    return 0; /* OK' */
+
+	return 0; /* OK' */
 }
 
 /* Func 'fram_cmd' */
 char fram_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if (pars->count > 1)
-    {
-        /* Error */
-        printf("Error fram_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
+	if (pars->count > 1)
+	{
+		/* Error */
+		printf("Error fram_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
 
-	if ( valid_smtr(pars->par2) == 0 ) {
+	if (valid_smtr(pars->par2) == 0)
+	{
 		dump_fram_zone(smtr(pars->par2));
 	}
-	else {
-		int8_t len;				
-		uint8_t pr[2]={0};				
-		uint8_t sm[1]={0};						
-		len = strlen(pars->par2);		
-		if(len<1 || len>1) {
-        	/* Error */
-        	printf("Error fram_cmd!\r\n");
-        	return 1; /* ERR#1 */			
+	else
+	{
+		int8_t len;
+		uint8_t pr[2] = {0};
+		uint8_t sm[1] = {0};
+		len = strlen(pars->par2);
+		if (len < 1 || len > 1)
+		{
+			/* Error */
+			printf("Error fram_cmd!\r\n");
+			return 1; /* ERR#1 */
 		}
-		memcpy(pr,lt2symtrs( *(pars->par2)),2);
+		memcpy(pr, lt2symtrs(*(pars->par2)), 2);
 		sm[0] = pr[1];
 		dump_fram_zone(smtr(sm));
 	}
-    
+
 	return 0;
 }
 
 /* Func 'drum_cmd' */
 char drum_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if (pars->count > 1)
-    {
-        /* Error */
-        printf("Error drum_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
-	
-	if ( valid_smtr(pars->par2) == 0 ) {
+	if (pars->count > 1)
+	{
+		/* Error */
+		printf("Error drum_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
+
+	if (valid_smtr(pars->par2) == 0)
+	{
 		view_drum_zone(smtr(pars->par2));
 	}
-	else {
-		int8_t len;				
-		uint8_t sm[4]={0};				
-		
+	else
+	{
+		int8_t len;
+		uint8_t sm[4] = {0};
+
 		len = strlen(pars->par2);
-		
-		if(len<1 || len>2) {
-        	/* Error */
-        	printf("Error drum_cmd!\r\n");
-        	return 1; /* ERR#1 */			
+
+		if (len < 1 || len > 2)
+		{
+			/* Error */
+			printf("Error drum_cmd!\r\n");
+			return 1; /* ERR#1 */
 		}
-		
-		switch(len) {
-			case 1: {
-				memcpy(sm,lt2symtrs( *(pars->par2 +0)),2);
-			}
-			break;
-			case 2: {
-				memcpy(sm,lt2symtrs( *(pars->par2+0)),2);
-				memcpy(sm+2,lt2symtrs( *(pars->par2+1)),2);
-			}
-			break;
-		}		
+
+		switch (len)
+		{
+		case 1:
+		{
+			memcpy(sm, lt2symtrs(*(pars->par2 + 0)), 2);
+		}
+		break;
+		case 2:
+		{
+			memcpy(sm, lt2symtrs(*(pars->par2 + 0)), 2);
+			memcpy(sm + 2, lt2symtrs(*(pars->par2 + 1)), 2);
+		}
+		break;
+		}
 		view_drum_zone(smtr(sm));
 	}
 
-    return 0; /* OK' */
+	return 0; /* OK' */
 }
 
 /* Func 'help_cmd' */
 char help_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if (pars->count > 0)
-    {
-        /* Error */
-        printf("Error help_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
+	if (pars->count > 0)
+	{
+		/* Error */
+		printf("Error help_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
 
-    help_print();
+	help_print();
 
-    return 0; /* OK' */
+	return 0; /* OK' */
 }
 
 /* Func 'quit_cmd' */
 char quit_cmd(char *buf, void *data)
 {
-    cmd_data_t *pars = (cmd_data_t *)data;
+	cmd_data_t *pars = (cmd_data_t *)data;
 
-    if (pars->count > 0)
-    {
-        /* Error */
-        printf("Error quit_cmd!\r\n");
-        return 1; /* ERR#1 */
-    }
+	if (pars->count > 0)
+	{
+		/* Error */
+		printf("Error quit_cmd!\r\n");
+		return 1; /* ERR#1 */
+	}
 
 	Emu_Stop();
 
-    exit(0);
+	exit(0);
 
-    return 0;
+	return 0;
 }
 
 /*
-* Func 'calc_cmd' - реализация калькулятора MK-Setun-01 
-* с использованием  ИП-2.
-*/
-char calc_cmd(char *buf, void *data) {
+ * Func 'calc_cmd' - реализация калькулятора MK-Setun-01
+ * с использованием  ИП-2.
+ */
+char calc_cmd(char *buf, void *data)
+{
 
-    char operator;
-    double num1, num2, result;
+	char operator;
+	double num1, num2, result;
 
-    printf("\r\nMK-Setun-01\r\n");
-	
-    printf("calc: ");
+	printf("\r\nMK-Setun-01\r\n");
 
-    cmd_data_t *pars = (cmd_data_t *)data;
-    if ( (pars->count < 1) || (pars->count > 3) )
-    {
-        /* Error */
-        printf("\r\ndbg: ERR#1\r\n");
-        return 1; /* ERR#1 */
-    }
+	printf("calc: ");
 
-	sscanf(pars->par2,"%lf", &num1);
-	sscanf(pars->par3,"%c", &operator);
-	sscanf(pars->par4,"%lf", &num2);
+	cmd_data_t *pars = (cmd_data_t *)data;
+	if ((pars->count < 1) || (pars->count > 3))
+	{
+		/* Error */
+		printf("\r\ndbg: ERR#1\r\n");
+		return 1; /* ERR#1 */
+	}
 
-    switch(operator) {
-        case '+':
-            result = num1 + num2;
-            break;
-        case '-':
-            result = num1 - num2;
-            break;
-        case '*':
-            result = num1 * num2;
-            break;
-        case '/':
-            result = num1 / num2;
-            break;
-        default:
-            printf("Error: Invalid operator\n");
-            return 1;
-    }
+	sscanf(pars->par2, "%lf", &num1);
+	sscanf(pars->par3, "%c", &operator);
+	sscanf(pars->par4, "%lf", &num2);
 
-    printf("%.8lf %c %.8lf = %.8lf\n", num1, operator, num2, result);
+	switch (operator)
+	{
+	case '+':
+		result = num1 + num2;
+		break;
+	case '-':
+		result = num1 - num2;
+		break;
+	case '*':
+		result = num1 * num2;
+		break;
+	case '/':
+		result = num1 / num2;
+		break;
+	default:
+		printf("Error: Invalid operator\n");
+		return 1;
+	}
 
-    printf("\r\nTODO: add codes for calculate trits !\r\n\r\n");
+	printf("%.8lf %c %.8lf = %.8lf\n", num1, operator, num2, result);
 
-    return 0;
+	printf("\r\nTODO: add codes for calculate trits !\r\n\r\n");
+
+	return 0;
 }
-
 
 /** -------------------
  *   Func 'ascii parser'
  */
 int ascii_parser(char *buf)
 {
-    int i;
+	int i;
 
-    memset(par1, 0, sizeof(par1));
-    memset(par2, 0, sizeof(par2));
-    memset(par3, 0, sizeof(par3));
-    memset(par4, 0, sizeof(par4));
-    //
-    sscanf(buf, "%s %s %s %s", par1, par2, par3, par4);
-    // viv- old  printf("par1=%s par2=%s par3=%s par3=%s\r\n",par1,par2,par3,par4);
-    //
-    for (i = 0; i < ARRAY_SIZE(command); i++)
-    {
-        if ((strncmp(par1, command[i].name_cmd, strlen(command[i].name_cmd)) == 0) &&
-            (strlen(par1) == strlen(command[i].name_cmd)))
-        {
-            if (command[i].parser)
-            {
-                int cnt = 0;
-                cmd_data.par2 = par2;
-                if (strlen(par2) > 0)
-                    cnt++;
-                cmd_data.par3 = par3;
-                if (strlen(par3) > 0)
-                    cnt++;
-                cmd_data.par4 = par4;
-                if (strlen(par4) > 0)
-                    cnt++;
-                cmd_data.count = cnt;
+	memset(par1, 0, sizeof(par1));
+	memset(par2, 0, sizeof(par2));
+	memset(par3, 0, sizeof(par3));
+	memset(par4, 0, sizeof(par4));
+	//
+	sscanf(buf, "%s %s %s %s", par1, par2, par3, par4);
+	// viv- old  printf("par1=%s par2=%s par3=%s par3=%s\r\n",par1,par2,par3,par4);
+	//
+	for (i = 0; i < ARRAY_SIZE(command); i++)
+	{
+		if ((strncmp(par1, command[i].name_cmd, strlen(command[i].name_cmd)) == 0) &&
+			(strlen(par1) == strlen(command[i].name_cmd)))
+		{
+			if (command[i].parser)
+			{
+				int cnt = 0;
+				cmd_data.par2 = par2;
+				if (strlen(par2) > 0)
+					cnt++;
+				cmd_data.par3 = par3;
+				if (strlen(par3) > 0)
+					cnt++;
+				cmd_data.par4 = par4;
+				if (strlen(par4) > 0)
+					cnt++;
+				cmd_data.count = cnt;
 
-                command[i].data = (cmd_data_t *)&cmd_data;
-                return command[i].parser(par1, command[i].data);
-            }
-        }
-    }
-    return -1;
+				command[i].data = (cmd_data_t *)&cmd_data;
+				return command[i].parser(par1, command[i].data);
+			}
+		}
+	}
+	return -1;
 }
 
 /* Process ascii string + <LF><CR> */
 void Process_ascii_string(char c)
 {
-    static char *p_beg = NULL;
-    static char *p_cur = NULL;
-    static char *p_end = NULL;
+	static char *p_beg = NULL;
+	static char *p_cur = NULL;
+	static char *p_end = NULL;
 
-    static char status = 0;
-    /*
-     * Сканер строк ascii
-     */
-    switch (status)
-    {
-    case 0: /* Иницализация сканера */
-    {
-        memset(buf, 0, ARRAY_SIZE(buf));
-        p_beg = &buf[0];
-        p_cur = p_beg;
-        p_end = p_beg + ARRAY_SIZE(buf) - 1;
-        status = 1;
-    }
-    case 1: /* Ввод символов и прверка 'LF' или 'CR' */
-    {
-        if (c == '\r' || c == '\n')
-        {            
-            static char res = 0;
+	static char status = 0;
+	/*
+	 * Сканер строк ascii
+	 */
+	switch (status)
+	{
+	case 0: /* Иницализация сканера */
+	{
+		memset(buf, 0, ARRAY_SIZE(buf));
+		p_beg = &buf[0];
+		p_cur = p_beg;
+		p_end = p_beg + ARRAY_SIZE(buf) - 1;
+		status = 1;
+	}
+	case 1: /* Ввод символов и прверка 'LF' или 'CR' */
+	{
+		if (c == '\r' || c == '\n')
+		{
+			static char res = 0;
 
-            res = ascii_parser(buf);
-            if (res >= 0)
-            {
-            }
-            else
-            {
-                printf("no command\r\n");
-            }
-            cli_ascii();
+			res = ascii_parser(buf);
+			if (res >= 0)
+			{
+			}
+			else
+			{
+				printf("no command\r\n");
+			}
+			cli_ascii();
 
-            /* Новый статус сканера */
-            status = 0;
-        }
-        else
-        {
-            if (p_cur < p_end)
-            {
-                *p_cur++ = c; /* Сохранить байт в буфере */
-            }
-            else
-            {
-                *p_cur = c;
-            }
-        }
-    }
-    break;
-    default:        /* Что-то не так !*/
-        status = 0; /* Сброс сканера фысшш */
-        break;
-    } /* end switch() */
+			/* Новый статус сканера */
+			status = 0;
+		}
+		else
+		{
+			if (p_cur < p_end)
+			{
+				*p_cur++ = c; /* Сохранить байт в буфере */
+			}
+			else
+			{
+				*p_cur = c;
+			}
+		}
+	}
+	break;
+	default:		/* Что-то не так !*/
+		status = 0; /* Сброс сканера фысшш */
+		break;
+	} /* end switch() */
 }
-
 
 /** ------
  *  main()
  */
 int main(void)
 {
-    int c;
+	int c;
 
 	int test = 0;
 	int convert = 0;
 	int dump = 0;
 	char *output = "-";
-	int ret = 0;	
+	int ret = 0;
 
 	/* Печать версии приложение */
 	print_version();
 
-    /* Строка приглашение */
+	/* Строка приглашение */
 	cli_ascii();
 
 	/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
@@ -9647,26 +9687,28 @@ int main(void)
 	/* Сброс виртуальной машины "Сетунь-1958" */
 	reset_setun_1958();
 
-    /* Loop work CLI and setun1958emu */	
-    while(1)
+	/* Loop work CLI and setun1958emu */
+	while (1)
 	{
-		char bufin[1024]; 
-		
-    	fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
-    	
-    	int numRead = read(0, bufin, 1);
-    	if (numRead > 0) {        	
+		char bufin[1024];
+
+		fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
+
+		int numRead = read(0, bufin, 1);
+		if (numRead > 0)
+		{
 			/* Проверить команду CLI */
-       		Process_ascii_string(bufin[0]);
-    	}
-    	else {       		
+			Process_ascii_string(bufin[0]);
+		}
+		else
+		{
 			/* Работа виртуальной машины */
 			Process_Work_Emulation();
 		}
-    }
+	}
 
-    printf("\r\n");
-    return 0;
+	printf("\r\n");
+	return 0;
 }
 
 /* EOF 'setun_core.c' */
