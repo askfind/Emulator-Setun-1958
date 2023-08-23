@@ -4,6 +4,7 @@ emu : emusetun.c
 	gcc -o setun1958emu -g emusetun.c
 clean :
 	rm -f setun1958emu
+	rm -f emusetun
 	rm -f output.vcd
 
 run : emu
