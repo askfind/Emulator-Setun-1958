@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   24.08.2023
+ * Edit date:   28.08.2023
  */
-#define Version "1.91"
+#define Version "1.92"
 
 // TODO
 // Добавить статус палели управления Сетунь.
@@ -133,11 +133,10 @@ static uint8_t LOGGING = 0;	  // флаг логирование выполне�
 static uint8_t STEP_FLAG = 0; // флаг выполнить количество шагов
 static uint32_t STEP = 0;	  // счетчик количества операций
 static uint32_t counter_step = 0;
-static int32_t BREAKPOINT = 0; // режима останова по значению программного счетчика
-static trs_t BREAKPOINT_TRS;   // режима останова по значению программного счетчика
+static int32_t BREAKPOINT = 0;	  // режима останова по значению программного счетчика
+static trs_t BREAKPOINT_TRS;	  // режима останова по значению программного счетчика
 static int32_t BREAKPOINT_MB = 0; // режима останова по значению адреса магнитного барабана
-static trs_t BREAKPOINT_MB_TRS;   // режима останова по значению адреса магнитного барабана
-
+static trs_t BREAKPOINT_MB_TRS;	  // режима останова по значению адреса магнитного барабана
 
 /**
  * Статус выполнения операции  "Сетунь-1958"
@@ -8752,8 +8751,32 @@ int Process_Work_Emulation(void)
 	/* Состояние готов к работе */
 	if (emu_stat == LOOP_WORK_EMU_ST)
 	{
+		/**/
+		if (BREAKPOINT_TRS.l != 0)
+		{
+			if (BREAKPOINT == trs2digit(C) && (BREAKPOINT <= INT32_MAX))
+			{
+				view_short_regs();
+				view_short_reg(&BREAKPOINT_TRS, "\r\n[ BREAK ] ");
+				emu_stat = PAUSE_EMU_ST;
+			}
+		}
+
+		/**/
+		if (BREAKPOINT_MB_TRS.l != 0)
+		{
+			if (BREAKPOINT_MB == trs2digit(MB) && (BREAKPOINT_MB <= INT32_MAX))
+			{
+				view_short_regs();
+				view_short_reg(&BREAKPOINT_MB_TRS, "\r\n[ BREAK ADDR DRUM] ");
+				emu_stat = PAUSE_EMU_ST;
+			}
+		}
 
 		ret_exec = Emu_Step();
+
+		/**/
+		counter_step++;
 
 		if ((ret_exec == STOP))
 		{
@@ -8780,32 +8803,6 @@ int Process_Work_Emulation(void)
 			emu_stat = ERROR_MB_NUMBER_EMU_ST;
 			// break;
 		}
-
-		/**/
-		counter_step++;
-
-		/**/
-		if (BREAKPOINT_TRS.l != 0)
-		{
-			if (BREAKPOINT == trs2digit(C) && (BREAKPOINT <= INT32_MAX))
-			{
-				view_short_regs();
-				view_short_reg(&BREAKPOINT_TRS, "\r\n[ BREAK ] ");
-				emu_stat = PAUSE_EMU_ST;
-			}
-		}
-
-		/**/
-		if (BREAKPOINT_MB_TRS.l != 0)
-		{
-			if (BREAKPOINT_MB == trs2digit(MB) && (BREAKPOINT_MB <= INT32_MAX))
-			{
-				view_short_regs();
-				view_short_reg(&BREAKPOINT_MB_TRS, "\r\n[ BREAK ADDR DRUM] ");
-				emu_stat = PAUSE_EMU_ST;
-			}
-		}
-
 	}
 
 	/* Состояние  */
@@ -9289,47 +9286,52 @@ char break_cmd(char *buf, void *data)
 {
 	cmd_data_t *pars = (cmd_data_t *)data;
 
-	if ( pars->count > 1 )
+	if (pars->count > 1)
 	{
 		/* Error */
 		printf("Error break_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
-	if (pars->count == 0) {
-		BREAKPOINT = 0;	
+	if (pars->count == 0)
+	{
+		BREAKPOINT = 0;
 		BREAKPOINT_TRS.l = 0;
-	} else {
+	}
+	else
+	{
 		BREAKPOINT = trs2digit(smtr(pars->par2));
 		BREAKPOINT_TRS = smtr(pars->par2);
 	}
-	
+
 	return 0; /* OK' */
 }
 
 /* Func 'break_drum_cmd' */
-char break_drum_cmd(char *buf, void *data) 
+char break_drum_cmd(char *buf, void *data)
 {
 	cmd_data_t *pars = (cmd_data_t *)data;
 
-	if ( pars->count > 1 )
+	if (pars->count > 1)
 	{
 		/* Error */
 		printf("Error break_drum_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
-	if (pars->count == 0) {
-		BREAKPOINT_MB = 0;	
+	if (pars->count == 0)
+	{
+		BREAKPOINT_MB = 0;
 		BREAKPOINT_MB_TRS.l = 0;
-	} else {
+	}
+	else
+	{
 		BREAKPOINT_MB = trs2digit(smtr(pars->par2));
 		BREAKPOINT_MB_TRS = smtr(pars->par2);
 	}
 
 	return 0; /* OK' */
 }
-
 
 /* Func 'reg_cmd' */
 char reg_cmd(char *buf, void *data)
