@@ -5817,6 +5817,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		case (+0 * 27 - 1 * 9 + 0 * 3 + 0): /* Печать одним цветом в виде символов на пишущей машинке ПМ (ЭУМ-46) */
 			LOGGING_print("   k2..5[0-00]: Печать одним цветом в виде символов на пишущей машинке ПМ (ЭУМ-46)\n");
 
+			//TODO ERROR!
 			for (uint8_t i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
 			{
 				int32_t symbcode;
@@ -8752,7 +8753,7 @@ int Process_Work_Emulation(void)
 	if (emu_stat == LOOP_WORK_EMU_ST)
 	{
 		/**/
-		if (BREAKPOINT_TRS.l != 0)
+		if (BREAKPOINT_TRS.l != 0)	
 		{
 			if (BREAKPOINT == trs2digit(C) && (BREAKPOINT <= INT32_MAX))
 			{
