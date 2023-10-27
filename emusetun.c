@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   28.08.2023
+ * Edit date:   16.10.2023
  */
-#define Version "1.92"
+#define Version "1.93"
 
 // TODO
 // Добавить статус палели управления Сетунь.
@@ -179,6 +179,8 @@ FILE *ptr2;
 FILE *ptp1;
 /* Печать Телетайп ТП, Пишущая машинка ПМ */
 FILE *tty1;
+/* Состояние DRUM */
+FILE *drum;
 
 /**
  * Определение памяти машины "Сетунь-1958"
@@ -330,6 +332,10 @@ void init_tab4(void);
 void clean_drum(void);
 trs_t ld_drum(trs_t ea, uint8_t ind);
 void st_drum(trs_t ea, uint8_t ind, trs_t v);
+
+/* Читать / Записать зоны магнитного барабана в файл paper.txt */
+uint8_t Read_from_DRUM(FILE *file);
+uint8_t Write_from_DRUM(FILE *file);
 
 /* Операции копирования */
 void fram_to_drum(trs_t ea);
@@ -1869,6 +1875,26 @@ void clean_drum(void)
 			mem_drum[zone][row].t0 = 0;
 		}
 	}
+}
+
+uint8_t Read_from_DRUM(FILE *file)
+{
+	trs_t fa;
+	
+	/* zone 0 DRUM */
+	//fa = smtr("0---0");
+	
+	return 0;;
+}
+
+uint8_t Write_from_DRUM(FILE *file)
+{
+	trs_t fa;
+	
+	/* zone 0 DRUM */
+	//fa = smtr("0---0");
+	
+	return 0;;
 }
 
 /* Функция "Читать троичное число из ферритовой памяти" */
@@ -3750,6 +3776,8 @@ void electrified_typewriter(trs_t t, uint8_t local)
 	russian_latin_sw = local;
 	code = trs2digit(t);
 
+	color_sw += 0;
+
 	switch (code)
 	{
 	case 6: /* t = 1-10 */
@@ -5214,6 +5242,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 {
 	// TODO проверить выполнение команды
 	// для С(5) = -1 выполнить 2-раза старшей половине A(9:18) и сделать inc C
+		
+	trs_t fa;
 
 	trs_t k1_5;		 /* K(1:5)	*/
 	trs_t k6_8;		 /* K(6:8)	*/
@@ -5681,7 +5711,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ // -00 : Ввод в Фа* - Вывод из Фа*
 		LOGGING_print(" k6..8[-00]: Ввод в Фа* - Вывод из Фа*\n");
 
-		trs_t fa;
+		//trs_t fa;
 		if (LOGGING > 0)
 		{
 			view_short_reg(&k1_5, "k1_5");
@@ -5818,21 +5848,26 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			LOGGING_print("   k2..5[0-00]: Печать одним цветом в виде символов на пишущей машинке ПМ (ЭУМ-46)\n");
 
 			//TODO ERROR!
-			for (uint8_t i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
+			uint8_t i = 0;
+			for (i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
 			{
 				int32_t symbcode;
 				trs_t symb;
 				symb.l = 3;
+				int32_t code = 0;
 				//
 				MR = ld_fram(fa);
 
 				symb = slice_trs_setun(MR, 1, 3);
+				code = trs2digit(symb);				
 				Write_Symbols_to_TTY1(tty1, symb);
 
 				symb = slice_trs_setun(MR, 4, 6);
+				code = trs2digit(symb);				
 				Write_Symbols_to_TTY1(tty1, symb);
 
 				symb = slice_trs_setun(MR, 7, 9);
+				code = trs2digit(symb);				
 				if (trs2digit(symb) == -13)
 					break;
 				Write_Symbols_to_TTY1(tty1, symb);
@@ -7968,6 +8003,13 @@ void Test9_Perforatin_Paper_Line(void)
 	if (tty1 == NULL)
 	{
 		printf("Error fopen 'tty1/printout.txt'\r\n");
+		return;
+	}
+
+	drum = fopen("drum/paper.txt", "wr");
+	if (drum == NULL)
+	{
+		printf("Error fopen 'drum/paper.txt'\r\n");
 		return;
 	}
 
