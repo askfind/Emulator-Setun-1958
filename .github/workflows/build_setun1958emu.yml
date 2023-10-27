@@ -14,18 +14,4 @@ jobs:
 
     - name: Compile emusetun.c
       run: make
-
-  build-windows:
-    runs-on: windows-latest
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v2
-
-    - name: Install GCC and Make
-      run: |
-        choco install mingw
-        choco install make
-
-    - name: Compile emusetun.c
-      run: mingw32-make
+  
