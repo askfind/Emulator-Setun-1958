@@ -4,12 +4,19 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   16.10.2023
+ * Edit date:   16.11.2024
  */
-#define Version "1.93"
+#define Version "1.94"
 
-// TODO
-// Добавить статус палели управления Сетунь.
+/*
+ TODO
+ 0. Комментарии как
+ 1. Изменить инициализацию struct.
+ 2. Переместить тестирование в отдельные файлы как unitests.
+ 3. Библиотека ncurser "Новая отладка" для эмулятора.
+ 4. Добавить статус палели управления Сетунь.
+ 5. Разделить код на работу машину и отладку
+*/
 
 /**
  *  Заголовочные файла
@@ -17,17 +24,16 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <unistd.h>
+#include <ctype.h>
 #include <stdarg.h>
 #include <string.h>
 #include <math.h>
 #include <getopt.h>
 #include <dirent.h>
-#include <errno.h>
-#include <unistd.h>
-#include <sys/select.h>
-#include <ctype.h>
-
 #include <fcntl.h>
+#include <sys/select.h>
+#include <errno.h>
 
 #include "emusetun.h"
 
@@ -52,8 +58,10 @@
 #define TRIT18_MAX (+193710244L)
 #define TRIT18_MIN (-193710244L)
 
-#define SIZE_TRITS_MAX (32)		 /* максимальная количество тритов троичного числа */
-#define SIZE_LONG_TRITS_MAX (64) /* максимальная количество тритов в длинном троичном числе */
+/* Максимальная количество тритов троичного числа */
+#define SIZE_TRITS_MAX (32)
+/* максимальная количество тритов в длинном троичном числе */
+#define SIZE_LONG_TRITS_MAX (64)
 
 /* *******************************************
  * Реализация виртуальной машины "Сетунь-1958"
@@ -74,19 +82,27 @@ static void cli_ascii(void);
  *  S(1...18)	S, {t1,t0} = {t1:[b17...b0],t0:[b17...b0]}
  *
  */
-#define SIZE_WORD_SHORT (9)		 /* короткое слово 9-трит  */
-#define SIZE_WORD_LONG (18)		 /* длинное слово  18-трит */
-#define SIZE_WORD_LONG_LONG (36) /* двойное длинное слово  36-трит */
+/* Короткое слово 9-трит  */
+#define SIZE_WORD_SHORT (9)
+/*Длинное слово  18-трит */
+#define SIZE_WORD_LONG (18)
+/* Двойное длинное слово  36-трит */
+#define SIZE_WORD_LONG_LONG (36)
 
 /**
  * Описание ферритовой памяти FRAM
  */
-#define NUMBER_ZONE_FRAM (3)	 /* количество зон ферритовой памяти */
-#define SIZE_ZONE_TRIT_FRAM (54) /* количнество коротких 9-тритных слов в зоне */
-#define SIZE_ALL_TRIT_FRAM (162) /* всего количество коротких 9-тритных слов */
+/* Количество зон ферритовой памяти */
+#define NUMBER_ZONE_FRAM (3)
+/* Количнество коротких 9-тритных слов в зоне */
+#define SIZE_ZONE_TRIT_FRAM (54)
+/* Всего количество коротких 9-тритных слов */
+#define SIZE_ALL_TRIT_FRAM (162)
 
-#define SIZE_GRFRAM (2)		   /* количнество груп (0...2) в FRAM */
-#define SIZE_GR_TRIT_FRAM (81) /* количнество коротких 9-тритных слов в зоне */
+/* Количнество груп (0...2) в FRAM */
+#define SIZE_GRFRAM (2)
+/* Количнество коротких 9-тритных слов в зоне */
+#define SIZE_GR_TRIT_FRAM (81)
 
 /**
  * Адреса зон ферритовой памяти FRAM
@@ -101,16 +117,19 @@ static void cli_ascii(void);
 /**
  * Описание магнитного барабана DRUM
  */
-#define SIZE_TRIT_DRUM (1944)	 /* количество хранения коротких слов из 9-тритов */
-#define SIZE_ZONE_TRIT_DRUM (54) /* количество 9-тритных слов в зоне */
-#define NUMBER_ZONE_DRUM (36)	 /* количество зон на магнитном барабане */
-#define ZONE_DRUM_BEG (5)		 /* 01-- */
-#define ZONE_DRUM_END (40)		 /* ++++ */
+/* Количество хранения коротких слов из 9-тритов */
+#define SIZE_TRIT_DRUM (1944)
+/* Количество 9-тритных слов в зоне */
+#define SIZE_ZONE_TRIT_DRUM (54)
+/* Количество зон на магнитном барабане */
+#define NUMBER_ZONE_DRUM (36)
+#define ZONE_DRUM_BEG (5)  /* 01-- */
+#define ZONE_DRUM_END (40) /* ++++ */
 
 /**
  * Типы данных для виртуальной троичной машины "Сетунь-1958"
  */
-typedef uintptr_t addr;
+typedef unsigned int addr;
 
 typedef struct trs
 {
@@ -121,7 +140,7 @@ typedef struct trs
 
 typedef struct long_trs
 {
-	uint8_t l;	 /* длина троичного числа в тритах			*/
+	uint8_t l;	 /* длина троичного числа в тритах */
 	uint64_t t1; /* троичное число FALSE,TRUE */
 	uint64_t t0; /* троичное число NIL */
 } long_trs_t;
@@ -129,14 +148,14 @@ typedef struct long_trs
 /**
  * Вывод отладочной информации памяти машины "Сетунь-1958"
  */
-static uint8_t LOGGING = 0;	  // флаг логирование выполнение операций
-static uint8_t STEP_FLAG = 0; // флаг выполнить количество шагов
-static uint32_t STEP = 0;	  // счетчик количества операций
+static uint8_t LOGGING = 0;	  /* флаг логирование выполнение операций */
+static uint8_t STEP_FLAG = 0; /* флаг выполнить количество шагов */
+static uint32_t STEP = 0;	  /* счетчик количества операций */
 static uint32_t counter_step = 0;
-static int32_t BREAKPOINT = 0;	  // режима останова по значению программного счетчика
-static trs_t BREAKPOINT_TRS;	  // режима останова по значению программного счетчика
-static int32_t BREAKPOINT_MB = 0; // режима останова по значению адреса магнитного барабана
-static trs_t BREAKPOINT_MB_TRS;	  // режима останова по значению адреса магнитного барабана
+static int32_t BREAKPOINT = 0;	  /* режима останова по значению программного счетчика */
+static trs_t BREAKPOINT_TRS;	  /* режима останова по значению программного счетчика */
+static int32_t BREAKPOINT_MB = 0; /* режима останова по значению адреса магнитного барабана */
+static trs_t BREAKPOINT_MB_TRS;	  /* режима останова по значению адреса магнитного барабана */
 
 /**
  * Статус выполнения операции  "Сетунь-1958"
@@ -154,16 +173,16 @@ enum
 /* Состояние работы эмулятора */
 typedef enum
 {
-	NOREADY_EMU_ST = 0,		/* Не готов после сброса питания */
-	BEGIN_EMU_ST,			/* Готов к работе */
-	LOOP_WORK_EMU_ST,		/* Непрерывная работа */
-	STEP_EMU_ST,			/* Пошаговая выполнение операций */
-	PAUSE_EMU_ST,			/* Пауза */
-	STOP_EMU_ST,			/* Стоп */
-	ERROR_EMU_ST,			/* Ошибка */
-	ERROR_MB_NUMBER_EMU_ST, /* */
-	CLI_WELCOM_EMU_ST,		/* */
-	WAIT_EMU_ST				/* */
+	NOREADY_EMU_ST = 0, /* Не готов после сброса питания */
+	BEGIN_EMU_ST,		/* Готов к работе */
+	LOOP_WORK_EMU_ST,	/* Непрерывная работа */
+	STEP_EMU_ST,		/* Пошаговая выполнение операций */
+	PAUSE_EMU_ST,		/* Пауза */
+	STOP_EMU_ST,		/* Стоп */
+	ERROR_EMU_ST,		/* Ошибка */
+	ERROR_MB_NUMBER_EMU_ST,
+	CLI_WELCOM_EMU_ST,
+	WAIT_EMU_ST
 } emustatus_e;
 
 static emustatus_e emu_stat = NOREADY_EMU_ST;
@@ -193,21 +212,22 @@ trs_t mem_drum[NUMBER_ZONE_DRUM + ZONE_DRUM_BEG][SIZE_ZONE_TRIT_DRUM]; /* зап
  *  -----------------------------------
  */
 /* Основные регистры в порядке пульта управления */
-trs_t K = {.l = 9, .t0 = 0, .t1 = 0}; /* K(1:9)  код команды (адрес ячейки оперативной памяти) */
-trs_t F = {.l = 5, .t0 = 0, .t1 = 0}; /* F(1:5)  индекс регистр  */
-trs_t C = {.l = 5, .t0 = 0, .t1 = 0}; /* C(1:5)  программный счетчик  */
-trs_t W = {.l = 1, .t0 = 0, .t1 = 0}; /* W(1:1)  знак троичного числа */
-//
-trs_t ph1 = {.l = 1, .t0 = 0, .t1 = 0}; /* ph1(1:1) 1 разряд переполнения */
-trs_t ph2 = {.l = 1, .t0 = 0, .t1 = 0}; /* ph2(1:1) 1 разряд переполнения */
-trs_t S = {.l = 18, .t0 = 0, .t1 = 0};	/* S(1:18) аккумулятор */
-trs_t R = {.l = 18, .t0 = 0, .t1 = 0};	/* R(1:18) регистр множителя */
-trs_t MB = {.l = 4, .t0 = 0, .t1 = 0};	/* MB(1:4) троичное число зоны магнитного барабана */
+trs_t K = {9, 0, 0}; /* K(1:9)  код команды (адрес ячейки оперативной памяти) */
+trs_t F = {5, 0, 0}; /* F(1:5)  индекс регистр  */
+trs_t C = {5, 0, 0}; /* C(1:5)  программный счетчик  */
+trs_t W = {1, 0, 0}; /* W(1:1)  знак троичного числа */
+
+trs_t ph1 = {1, 0, 0}; /* ph1(1:1) 1 разряд переполнения */
+trs_t ph2 = {1, 0, 0}; /* ph2(1:1) 1 разряд переполнения */
+trs_t S = {18, 0, 0};  /* S(1:18) аккумулятор */
+trs_t R = {18, 0, 0};  /* R(1:18) регистр множителя */
+trs_t MB = {4, 0, 0};  /* MB(1:4) троичное число зоны магнитного барабана */
+
 /* Дополнительные */
-trs_t MR = {.l = 9, .t0 = 0, .t1 = 0};		  /* временный регистр для обмена с FRAM */
-long_trs_t TMP = {.l = 36, .t0 = 0, .t1 = 0}; /* временная переменная для троичного числа */
-//
-trs_t BRPNT = {.l = 4, .t0 = 0, .t1 = 0}; /* BRPNT(1:5) - точка остановки по значению программного счетчика */
+trs_t MR = {9, 0, 0};		 /* временный регистр для обмена с FRAM */
+long_trs_t TMP = {36, 0, 0}; /* временная переменная для троичного числа */
+
+trs_t BRPNT = {4, 0, 0}; /* BRPNT(1:5) - точка остановки по значению программного счетчика */
 
 /** ------------------------------------------------------
  *  Прототипы функций для виртуальной машины "Сетунь-1958"
@@ -226,7 +246,6 @@ trs_t bit2trit(int8_t b);
 void and_t(int8_t *a, int8_t *b, int8_t *s);
 void xor_t(int8_t *a, int8_t *b, int8_t *s);
 void or_t(int8_t *a, int8_t *b, int8_t *s);
-//  - [ ] исправить вывод в 9-ном виде.
 void not_t(int8_t *a, int8_t *s);
 void sum_t(int8_t *a, int8_t *b, int8_t *p0, int8_t *s, int8_t *p1);
 
@@ -398,9 +417,11 @@ double t3_to_d10(trs_t t)
  */
 trs_t d10_to_t3(float f)
 {
-	// x = +|- a1,a2a3a4
-	// Проверить условие x <= 1.5
-	// На ленте пс.+|-a1a2a3a4
+	/*
+	 x = +|- a1,a2a3a4
+	 Проверить условие x <= 1.5
+	 На ленте пс.+|-a1a2a3a4
+	*/
 	return smtr("000000000000000000");
 }
 
@@ -1087,7 +1108,7 @@ trs_t add_trs(trs_t x, trs_t y)
 		a = get_trit(x, i);
 		b = get_trit(y, i);
 		sum_t(&a, &b, &p0, &s, &p1);
-		//
+
 		if (s > 0)
 		{
 			r.t1 |= (1 << m);
@@ -1182,7 +1203,7 @@ long_trs_t add_long_trs(long_trs_t xx, long_trs_t yy)
 		a = get_long_trit(xx, i);
 		b = get_long_trit(yy, i);
 		sum_t(&a, &b, &p0, &s, &p1);
-		//
+
 		if (s > 0)
 		{
 			rr.t1 = rr.t1 | (uint64_t)(1) << m;
@@ -1264,7 +1285,7 @@ trs_t sub_trs(trs_t x, trs_t y)
 		b = get_trit(y, i);
 		b = -b;
 		sum_t(&a, &b, &p0, &s, &p1);
-		//
+
 		if (s > 0)
 		{
 			r.t1 |= 1 << m;
@@ -1361,7 +1382,7 @@ long_trs_t sub_long_trs(long_trs_t xx, long_trs_t yy)
 		a = get_long_trit(xx, i);
 		b = -get_long_trit(yy, i);
 		sum_t(&a, &b, &p0, &s, &p1);
-		//
+
 		if (s > 0)
 		{
 			rr.t1 = rr.t1 | (uint64_t)(1) << m;
@@ -1436,7 +1457,7 @@ trs_t shift_trs(trs_t t, int8_t d)
 trs_t mul_trs(trs_t a, trs_t b)
 {
 	int8_t i;
-	//
+
 	int8_t s;
 	int8_t l;
 	trs_t r;
@@ -1770,10 +1791,12 @@ trs_t rowzose2addr(uint8_t rind, uint8_t zind)
 	rind -= 40;
 	r.l = 5;
 	r = set_trit_setun(r, 5, zind);
-	// r += get_trit_setun(z, 4) * 1;
-	// r += get_trit_setun(z, 3) * 3;
-	// r += get_trit_setun(z, 2) * 9;
-	// r += get_trit_setun(z, 1) * 27;
+	/*
+	 r += get_trit_setun(z, 4) * 1;
+	 r += get_trit_setun(z, 3) * 3;
+	 r += get_trit_setun(z, 2) * 9;
+	 r += get_trit_setun(z, 1) * 27;
+	*/
 	return r;
 }
 
@@ -1880,21 +1903,27 @@ void clean_drum(void)
 uint8_t Read_from_DRUM(FILE *file)
 {
 	trs_t fa;
-	
+
 	/* zone 0 DRUM */
-	//fa = smtr("0---0");
-	
-	return 0;;
+	/*
+	fa = smtr("0---0");
+	*/
+
+	return 0;
+	;
 }
 
 uint8_t Write_from_DRUM(FILE *file)
 {
 	trs_t fa;
-	
+
 	/* zone 0 DRUM */
-	//fa = smtr("0---0");
-	
-	return 0;;
+	/*
+	fa = smtr("0---0");
+	*/
+
+	return 0;
+	;
 }
 
 /* Функция "Читать троичное число из ферритовой памяти" */
@@ -1968,7 +1997,9 @@ void st_fram(trs_t ea, trs_t v)
 
 	eap5 = get_trit_setun(ea, 5);
 
-	// viv+ dbg	printf(" ri=%d, zi=%d\r\n",rind,zind);
+	/*
+	viv+ dbg	printf(" ri=%d, zi=%d\r\n",rind,zind);
+	*/
 
 	if (eap5 < 0)
 	{ /* Записать 18-тритное число */
@@ -2351,12 +2382,16 @@ trs_t digit2trs(int8_t n)
 	trs_t r;
 	if (n < 3)
 	{
-		// printf("%d",n);
+		/*
+		printf("%d",n);
+		*/
 	}
 	else
 	{
 		digit2trs(n / 3);
-		// printf("%d",n%3);
+		/*
+		printf("%d",n%3);
+		*/
 	}
 	return r;
 }
@@ -2515,8 +2550,10 @@ void view_short_reg(trs_t *t, uint8_t *ch)
 
 	l = min(tv.l, SIZE_TRITS_MAX);
 	printf("[");
-	// printf("\nt1 % 8x\n",t->t1);
-	// printf("t2 % 8x\n",t->t0);
+	/*
+	 printf("\nt1 % 8x\n",t->t1);
+	 printf("t2 % 8x\n",t->t0);
+	*/
 	for (i = 0; i < l; i++)
 	{
 		tv = *t;
@@ -2524,10 +2561,10 @@ void view_short_reg(trs_t *t, uint8_t *ch)
 		printf("%c", numb2symtrs(trit));
 	}
 	printf("], ");
-	//
+
 	tv = *t;
 	trs2str(tv);
-	printf(", "); //
+	printf(", ");
 	printf("(%li)", (long int)trs2digit(*t));
 #if 0	
 	printf(", {");
@@ -2561,8 +2598,12 @@ void view_short_reg_fixpoint(trs_t *t, uint8_t *ch)
 
 	l = min(tv.l, SIZE_TRITS_MAX);
 	printf("[");
-	// printf("\nt1 % 8x\n",t->t1);
-	// printf("t2 % 8x\n",t->t0);
+
+	/*
+	 printf("\nt1 % 8x\n",t->t1);
+	 printf("t2 % 8x\n",t->t0);
+	*/
+
 	for (i = 0; i < l; i++)
 	{
 		tv = *t;
@@ -2570,12 +2611,12 @@ void view_short_reg_fixpoint(trs_t *t, uint8_t *ch)
 		printf("%c", numb2symtrs(trit));
 	}
 	printf("], ");
-	//
+
 	tv = *t;
 	trs2str(tv);
-	printf(", "); //
+	printf(", ");
 	printf("(%li)", (long int)trs2digit(*t));
-	printf(", "); //
+	printf(", ");
 	double lf = t3_to_d10(*t);
 	printf("{%lf}", lf);
 #if 0	
@@ -2610,8 +2651,10 @@ void view_step_short_reg(trs_t *t, uint8_t *ch)
 
 	l = min(tv.l, SIZE_TRITS_MAX);
 	printf("[");
-	// printf("\r\nt1 % 8x\r\n",t->t1);
-	// printf("t2 % 8x\r\n",t->t0);
+	/*
+	 printf("\r\nt1 % 8x\r\n",t->t1);
+	 printf("t2 % 8x\r\n",t->t0);
+	*/
 	for (i = 0; i < l; i++)
 	{
 		tv = *t;
@@ -2619,10 +2662,10 @@ void view_step_short_reg(trs_t *t, uint8_t *ch)
 		printf("%c", numb2symtrs(trit));
 	}
 	printf("], ");
-	//
+
 	tv = *t;
 	trs2str(tv);
-	printf(", "); //
+	printf(", ");
 	printf("(%li)", (long int)trs2digit(*t));
 #if 0	
 	printf(", {");
@@ -2644,7 +2687,9 @@ void view_step_short_reg(trs_t *t, uint8_t *ch)
 		tv = set_trit_setun(tv, 5, 1);
 		MR = ld_fram(tv);
 		trs2str(MR);
-		// printf("\r\n");
+		/*
+		 printf("\r\n");
+		*/
 		tv = set_trit_setun(tv, 5, -1);
 		MR = ld_fram(tv);
 	}
@@ -2652,20 +2697,24 @@ void view_step_short_reg(trs_t *t, uint8_t *ch)
 	{
 		MR = ld_fram(tv);
 		trs2str(MR);
-		// printf("\r\n");
+		/*
+		 printf("\r\n");
+		*/
 	}
 
 	printf(", ");
 	printf("(%li)", (long int)trs2digit(MR));
 	printf("\r\n");
 
-	//
-	// tv = next_address(tv);
-	// MR = ld_fram(tv);
-	// printf("                                \t");
-	// trs2str(MR);
-	//
-	// printf("\r\n");
+	/*
+
+	 tv = next_address(tv);
+	 MR = ld_fram(tv);
+	 printf("                                \t");
+	 trs2str(MR);
+
+	 printf("\r\n");
+	*/
 }
 
 /**
@@ -2688,8 +2737,10 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 
 	l = min(tv.l, SIZE_TRITS_MAX);
 	printf("[");
-	// printf("\r\nt1 % 8x\r\n",t->t1);
-	// printf("t2 % 8x\r\n",t->t0);
+	/*
+	 printf("\r\nt1 % 8x\r\n",t->t1);
+	 printf("t2 % 8x\r\n",t->t0);
+	*/
 	for (i = 0; i < l; i++)
 	{
 		tv = *t;
@@ -2697,10 +2748,10 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 		printf("%c", numb2symtrs(trit));
 	}
 	printf("], ");
-	//
+
 	tv = *t;
 	trs2str(tv);
-	printf(", "); //
+	printf(", ");
 	printf("(%li)", (long int)trs2digit(*t));
 
 	printf("\t\t-> zone[% 2i] : ", get_trit_setun(tv, 1));
@@ -2715,7 +2766,9 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 		tv = set_trit_setun(tv, 5, 1);
 		MR = ld_fram(tv);
 		trs2str(MR);
-		// printf("\r\n");
+		/*
+		 printf("\r\n");
+		*/
 		tv = set_trit_setun(tv, 5, -1);
 		MR = ld_fram(tv);
 	}
@@ -2723,7 +2776,9 @@ void view_step_new_addres(trs_t *t, uint8_t *ch)
 	{
 		MR = ld_fram(tv);
 		trs2str(MR);
-		// printf("\r\n");
+		/*
+		 printf("\r\n");
+		*/
 	}
 	printf(", ");
 	printf("(%li)", (long int)trs2digit(MR));
@@ -2760,8 +2815,10 @@ void view_short_long_reg(long_trs_t *t, uint8_t *ch)
 
 	l = min(tv.l, SIZE_LONG_TRITS_MAX);
 	printf("[");
-	// printf("\r\nt1 %p\r\n",(* long unsigned int)t->t1);
-	// printf("t2 %p\r\n",(* long unsigned int)t->t0);
+	/*
+	 printf("\r\nt1 %p\r\n",(* long unsigned int)t->t1);
+	 printf("t2 %p\r\n",(* long unsigned int)t->t0);
+	*/
 	for (i = 0; i < l; i++)
 	{
 		tv = *t;
@@ -2769,11 +2826,13 @@ void view_short_long_reg(long_trs_t *t, uint8_t *ch)
 		printf("%c", numb2symtrs(trit));
 	}
 	printf("], ");
-	//
+
 	tv = *t;
 	long_trs2str(tv);
-	printf(", "); //
-	// printf("(%li)", (long int)trs2digit(*t));
+	printf(", ");
+	/*
+	 printf("(%li)", (long int)trs2digit(*t));
+	*/
 	printf(", {");
 	for (i = 0; i < l; i++)
 	{
@@ -2782,7 +2841,7 @@ void view_short_long_reg(long_trs_t *t, uint8_t *ch)
 		printf("%i", trit);
 	}
 	printf("}");
-	//
+
 	printf("\r\n");
 }
 
@@ -2795,10 +2854,10 @@ void view_checksum_setun(trs_t t)
 	trs_t ncheck;
 
 	printf("KC:\r\n");
-	//
+
 	check = slice_trs_setun(t, 1, 9);
 	view_short_reg(&check, "");
-	//
+
 	check = slice_trs_setun(t, 10, 18);
 	view_short_reg(&check, "");
 
@@ -2807,11 +2866,11 @@ void view_checksum_setun(trs_t t)
 	ncheck = slice_trs_setun(check, 1, 9);
 	ncheck.l = 9;
 	view_short_reg(&ncheck, "");
-	//
+
 	check = slice_trs_setun(check, 10, 18);
 	check.l = 9;
 	view_short_reg(&check, "");
-	//
+
 	printf("\r\n");
 }
 
@@ -2822,7 +2881,9 @@ void view_short_regs(void)
 {
 	int8_t i;
 
-	// printf("[Registers Setun-1958]\r\n");
+	/*
+	 printf("[Registers Setun-1958]\r\n");
+	*/
 	printf("\r\n");
 	view_short_reg(&K, "  K  ");
 	view_short_reg(&F, "  F  ");
@@ -2830,9 +2891,11 @@ void view_short_regs(void)
 	view_short_reg(&W, "  W  ");
 	view_short_reg(&ph1, "  ph1");
 	view_short_reg(&ph2, "  ph2");
-	// printf("TODO Добавить вывод S,R float числа. \r\n");
-	// view_short_reg(&S, "  S  ");
-	// view_short_reg(&R, "  R  ");
+	/*
+	 printf("TODO Добавить вывод S,R float числа. \r\n");
+	 view_short_reg(&S, "  S  ");
+	 view_short_reg(&R, "  R  ");
+	*/
 	view_short_reg_fixpoint(&S, "  S  ");
 	view_short_reg_fixpoint(&R, "  R  ");
 	view_short_reg(&MB, "  MB ");
@@ -2891,7 +2954,9 @@ void view_fram(trs_t addr1, trs_t addr2)
 	{
 		for (uint16_t i = 0; i < (abs(a2 - a1) + 1); i++)
 		{
-			// inc_trs(&ad1);
+			/*
+			 inc_trs(&ad1);
+			*/
 			if (trit2int(ad1) < 0)
 			{
 				inc_trs(&ad1);
@@ -2922,10 +2987,14 @@ void dump_fram(void)
 		{
 			r = mem_fram[row][grfram];
 			r.l = 9;
-			// viv+ dbg view_short_reg(&r,"r");
+
+			/* viv+ dbg view_short_reg(&r,"r"); */
 
 			printf("fram[.] (%3d:%2d) : ", row - SIZE_GR_TRIT_FRAM / 2, grfram);
-			// printf("%s",trs2str());
+			/*
+			 printf("%s",trs2str());
+			*/
+
 			printf(" [");
 			for (j = 1; j < 10; j++)
 			{
@@ -2998,20 +3067,20 @@ void dump_fram_zone(trs_t z)
 	for (uint8_t i = 0; i < 14; i++)
 	{
 		/* Print ROW1 */
-		// addr -1
+		/* addr -1 */
 		r = slice_trs_setun(fram_row1, 2, 3);
 		trs2str(r);
 		r = slice_trs_setun(fram_row1, 4, 5);
 		trs2str(r);
 		printf(" ");
-		// addr 0
+		/* addr 0 */
 		fram_row1 = set_trit_setun(fram_row1, 5, 0);
 		r = slice_trs_setun(fram_row1, 2, 3);
 		trs2str(r);
 		r = slice_trs_setun(fram_row1, 4, 5);
 		trs2str(r);
 		printf("  ");
-		// addr 1
+		/* addr 1 */
 		tv = ld_fram(fram_row1);
 		r = slice_trs_setun(tv, 1, 1);
 		trs2str(r);
@@ -3084,8 +3153,7 @@ void dump_fram_zone(trs_t z)
 		r = slice_trs_setun(fram_row1, 4, 5);
 		trs2str(r);
 		printf("  ");
-		//
-		//
+
 		tv = ld_fram(fram_row1);
 		r = slice_trs_setun(tv, 1, 1);
 		trs2str(r);
@@ -3113,7 +3181,7 @@ void dump_fram_zone(trs_t z)
 			r = slice_trs_setun(fram_row2, 4, 5);
 			trs2str(r);
 			printf("  ");
-			//
+
 			tv = ld_fram(fram_row2);
 			r = slice_trs_setun(tv, 1, 1);
 			trs2str(r);
@@ -3179,7 +3247,7 @@ void view_drum_zone(trs_t zone)
 
 	for (uint8_t i = 0; i < SIZE_ZONE_TRIT_DRUM; i++)
 	{
-		// Читать короткое слово
+		/* Читать короткое слово */
 		trs_t mr = ld_drum(zr, i);
 		mr.l = 9;
 		uint32_t r = ld_drum(zr, i).t1 & (uint32_t)(0x3FFFF);
@@ -3278,7 +3346,7 @@ void init_tab4(void)
 	memmove(tab4_0[trs2digit(smtr("000")) + offset], "_OO.OO", STRING_PAPER_SIZE);
 	memmove(tab4_0[trs2digit(smtr("00+")) + offset], "___._O", STRING_PAPER_SIZE);
 	memmove(tab4_0[trs2digit(smtr("0+-")) + offset], "__O.O_", STRING_PAPER_SIZE);
-	//
+
 	memmove(tab4_0[trs2digit(smtr("0+0")) + offset], "__O.__", STRING_PAPER_SIZE);
 	memmove(tab4_0[trs2digit(smtr("0++")) + offset], "__O._O", STRING_PAPER_SIZE);
 	memmove(tab4_0[trs2digit(smtr("+--")) + offset], "OO_.O_", STRING_PAPER_SIZE);
@@ -3308,7 +3376,7 @@ void init_tab4(void)
 	tab4_1[pl_to_ind("_OO.OO")] = smtr("000");
 	tab4_1[pl_to_ind("___._O")] = smtr("00+");
 	tab4_1[pl_to_ind("__O.O_")] = smtr("0+-");
-	//
+
 	tab4_1[pl_to_ind("__O.__")] = smtr("0+0");
 	tab4_1[pl_to_ind("__O._O")] = smtr("0++");
 	tab4_1[pl_to_ind("OO_.O_")] = smtr("+--");
@@ -3343,7 +3411,7 @@ void init_tab4(void)
 	tab4_2[pl_to_ind("_OO.OO")] = smtr("00");
 	tab4_2[pl_to_ind("___._O")] = smtr("0+");
 	tab4_2[pl_to_ind("__O.O_")] = smtr("+-");
-	//
+
 	tab4_2[pl_to_ind("__O.__")] = smtr("+0");
 	tab4_2[pl_to_ind("__O._O")] = smtr("++");
 	tab4_2[pl_to_ind("OO_.O_")] = smtr("+++");
@@ -3362,7 +3430,7 @@ void init_tab4(void)
 	tab4_2[pl_to_ind("OOO.OO")] = smtr("+++");
 
 	/* Init tab4_3 */
-	memmove(tab4_3[pl_to_ind("_OO.O_")], "\0", SYMBOL_SIZE); // стоп
+	memmove(tab4_3[pl_to_ind("_OO.O_")], "\0", SYMBOL_SIZE); /* стоп */
 	memmove(tab4_3[pl_to_ind("_O_.OO")], "-", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("OO_.OO")], "_", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("_OO.__")], "\n", SYMBOL_SIZE);
@@ -3378,7 +3446,7 @@ void init_tab4(void)
 	memmove(tab4_3[pl_to_ind("_OO.OO")], "O", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("___._O")], "1", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("__O.O_")], "2", SYMBOL_SIZE);
-	//
+
 	memmove(tab4_3[pl_to_ind("__O.__")], "3", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("__O._O")], "4", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("OO_.O_")], "5", SYMBOL_SIZE);
@@ -3387,17 +3455,17 @@ void init_tab4(void)
 	memmove(tab4_3[pl_to_ind("O__.O_")], "8", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("O__.__")], "9", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("O__._O")], " ", SYMBOL_SIZE);
-	memmove(tab4_3[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); // цифровой регистр
+	memmove(tab4_3[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); /* цифровой регистр */
 	memmove(tab4_3[pl_to_ind("O_O._O")], ")", SYMBOL_SIZE);
-	memmove(tab4_3[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); // буквенный регистр
+	memmove(tab4_3[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); /* буквенный регистр */
 	memmove(tab4_3[pl_to_ind("___.__")], " ", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("OOO.__")], " ", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("OOO._O")], " ", SYMBOL_SIZE);
 	memmove(tab4_3[pl_to_ind("OOO.O_")], " ", SYMBOL_SIZE);
-	memmove(tab4_3[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); // вычеркивание
+	memmove(tab4_3[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); /* вычеркивание */
 
 	/* Init tab4_4 */
-	memmove(tab4_4[pl_to_ind("_OO.O_")], "\0", SYMBOL_SIZE); // стоп
+	memmove(tab4_4[pl_to_ind("_OO.O_")], "\0", SYMBOL_SIZE); /* стоп */
 	memmove(tab4_4[pl_to_ind("_O_.OO")], "-", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("OO_.OO")], "_", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("_OO.__")], "\n", SYMBOL_SIZE);
@@ -3413,7 +3481,7 @@ void init_tab4(void)
 	memmove(tab4_4[pl_to_ind("_OO.OO")], "O", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("___._O")], "1", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("__O.O_")], "2", SYMBOL_SIZE);
-	//
+
 	memmove(tab4_4[pl_to_ind("__O.__")], "3", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("__O._O")], "4", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("OO_.O_")], "5", SYMBOL_SIZE);
@@ -3422,14 +3490,14 @@ void init_tab4(void)
 	memmove(tab4_4[pl_to_ind("O__.O_")], "8", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("O__.__")], "9", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("O__._O")], " ", SYMBOL_SIZE);
-	memmove(tab4_4[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); // цифровой регистр
+	memmove(tab4_4[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); /* цифровой регистр */
 	memmove(tab4_4[pl_to_ind("O_O._O")], "Ф", SYMBOL_SIZE);
-	memmove(tab4_4[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); // буквенный регистр
+	memmove(tab4_4[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); /* буквенный регистр */
 	memmove(tab4_4[pl_to_ind("___.__")], " ", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("OOO.__")], " ", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("OOO._O")], " ", SYMBOL_SIZE);
 	memmove(tab4_4[pl_to_ind("OOO.O_")], " ", SYMBOL_SIZE);
-	memmove(tab4_4[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); // вычеркивание
+	memmove(tab4_4[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); /* вычеркивание */
 
 	/* Init tab4_5 */
 	memmove(tab4_5[pl_to_ind("_OO.O_")], " ", SYMBOL_SIZE);
@@ -3448,7 +3516,7 @@ void init_tab4(void)
 	memmove(tab4_5[pl_to_ind("_OO.OO")], "P", SYMBOL_SIZE);
 	memmove(tab4_5[pl_to_ind("___._O")], "Q", SYMBOL_SIZE);
 	memmove(tab4_5[pl_to_ind("__O.O_")], "R", SYMBOL_SIZE);
-	//
+
 	memmove(tab4_5[pl_to_ind("__O.__")], "S", SYMBOL_SIZE);
 	memmove(tab4_5[pl_to_ind("__O._O")], "T", SYMBOL_SIZE);
 	memmove(tab4_5[pl_to_ind("OO_.O_")], "U", SYMBOL_SIZE);
@@ -3457,17 +3525,17 @@ void init_tab4(void)
 	memmove(tab4_5[pl_to_ind("O__.O_")], "C", SYMBOL_SIZE);
 	memmove(tab4_5[pl_to_ind("O__.__")], "D", SYMBOL_SIZE);
 	memmove(tab4_5[pl_to_ind("O__._O")], "E", SYMBOL_SIZE);
-	memmove(tab4_5[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); // цифровой регистр
+	memmove(tab4_5[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); /* цифровой регистр */
 	memmove(tab4_5[pl_to_ind("O_O._O")], "(", SYMBOL_SIZE);
-	memmove(tab4_5[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); // буквенный регистр
+	memmove(tab4_5[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); /* буквенный регистр */
 	memmove(tab4_5[pl_to_ind("___.__")], " ", SYMBOL_SIZE);
 	memmove(tab4_5[pl_to_ind("OOO.__")], " ", SYMBOL_SIZE);
 	memmove(tab4_5[pl_to_ind("OOO._O")], " ", SYMBOL_SIZE);
 	memmove(tab4_5[pl_to_ind("OOO.O_")], " ", SYMBOL_SIZE);
-	memmove(tab4_5[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); // вычеркивание
+	memmove(tab4_5[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); /* вычеркивание */
 
 	/* Init tab4_6 */
-	memmove(tab4_6[pl_to_ind("_OO.O_")], " ", SYMBOL_SIZE); // стоп
+	memmove(tab4_6[pl_to_ind("_OO.O_")], " ", SYMBOL_SIZE); /* стоп */
 	memmove(tab4_6[pl_to_ind("_O_.OO")], "Б", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("OO_.OO")], "_", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("_OO.__")], "\n", SYMBOL_SIZE);
@@ -3483,7 +3551,7 @@ void init_tab4(void)
 	memmove(tab4_6[pl_to_ind("_OO.OO")], "Р", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("___._O")], "Й", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("__O.O_")], "Я", SYMBOL_SIZE);
-	//
+
 	memmove(tab4_6[pl_to_ind("__O.__")], "Ь", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("__O._O")], "Т", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("OO_.O_")], "П", SYMBOL_SIZE);
@@ -3492,14 +3560,14 @@ void init_tab4(void)
 	memmove(tab4_6[pl_to_ind("O__.O_")], "С", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("O__.__")], "Д", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("O__._O")], "Е", SYMBOL_SIZE);
-	memmove(tab4_6[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); // цифровой регистр
+	memmove(tab4_6[pl_to_ind("O_O.O_")], " ", SYMBOL_SIZE); /* цифровой регистр */
 	memmove(tab4_6[pl_to_ind("O_O._O")], "Ш", SYMBOL_SIZE);
-	memmove(tab4_6[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); // буквенный регистр
+	memmove(tab4_6[pl_to_ind("O_O.__")], " ", SYMBOL_SIZE); /* буквенный регистр */
 	memmove(tab4_6[pl_to_ind("___.__")], " ", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("OOO.__")], " ", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("OOO._O")], " ", SYMBOL_SIZE);
 	memmove(tab4_6[pl_to_ind("OOO.O_")], " ", SYMBOL_SIZE);
-	memmove(tab4_6[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); // вычеркивание
+	memmove(tab4_6[pl_to_ind("OOO.OO")], " ", SYMBOL_SIZE); /* вычеркивание */
 
 	/* Init tab4_7 */
 	uint8_t offset4_7 = 4;
@@ -3683,7 +3751,10 @@ trs_t Decoder_Command_Paper_Line(char *paperline, uint8_t *err)
 			}
 		}
 	}
-	// printf(" byte=%i\r\n", byte);	//viv+ dbg
+
+	/*
+	printf(" byte=%i\r\n", byte);	viv+ dbg
+	*/
 
 	/* Проверить допустимые комбинации пробивок */
 	int r;
@@ -4491,10 +4562,10 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			switch (letter_number_sw)
 			{
 			case 0: /* letter */
-					// переключить цвет черный
+					/* переключить цвет черный */
 				break;
 			default: /* number */
-					 // переключить цвет красный
+					 /* переключить цвет красный */
 				break;
 			}
 			break;
@@ -4647,7 +4718,7 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 	sum.l = 18;
 	sum.t1 = 0;
 	sum.t0 = 0;
-	//
+
 	dst.l = 9;
 	MR.l = 18;
 	int i = 0;
@@ -4656,10 +4727,10 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 	tcmd.l = 9;
 	tcmd.t0 = 0;
 	tcmd.t1 = 0;
-	//
+
 	uint8_t cnt_cmd = 54;
 	uint8_t cnt_line = 5;
-	//
+
 	while ((fscanf(file, "%s", cmd) != EOF) && (cnt_cmd != 0))
 	{
 		uint8_t err = 0;
@@ -4681,13 +4752,16 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 			{
 				cnt_line = 5;
 				cnt_cmd -= 1;
-				// view_short_reg(&tcmd, "tcmd");
-				//
+				/*
+				view_short_reg(&tcmd, "tcmd");
+				*/
 				sum = add_trs(sum, tcmd);
 
 				dsun += trs2digit(tcmd);
 
-				// LOGGING_print("%s -> [", tcmd);
+				/*
+				LOGGING_print("%s -> [", tcmd);
+				*/
 				LOGGING_print(" -> [");
 
 				if (LOGGING > 0)
@@ -4712,7 +4786,7 @@ uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa)
 				mod_3_n(&fa, 5);
 				tcmd.t0 = 0;
 				tcmd.t1 = 0;
-				//
+
 				i += 1;
 			}
 			else
@@ -4770,7 +4844,7 @@ uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa)
 	sum.l = 18;
 	sum.t1 = 0;
 	sum.t0 = 0;
-	//
+
 	dst.l = 9;
 	MR.l = 18;
 	int i = 0;
@@ -4779,10 +4853,10 @@ uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa)
 	tcmd.l = 9;
 	tcmd.t0 = 0;
 	tcmd.t1 = 0;
-	//
+
 	uint8_t cnt_cmd = 54;
 	uint8_t cnt_line = 3;
-	//
+
 	while ((fscanf(file, "%s", cmd) != EOF) && (cnt_cmd != 0))
 	{
 		uint8_t err = 0;
@@ -4843,7 +4917,7 @@ uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa)
 					/* Символ 'ст' '_OO.O_' */
 					break; /* exit while(...) */
 				}
-				//
+
 				i += 1;
 			}
 			else
@@ -4897,7 +4971,7 @@ uint8_t Read_Commands_from_FT2(FILE *file, trs_t fa)
 	sum.l = 18;
 	sum.t1 = 0;
 	sum.t0 = 0;
-	//
+
 	dst.l = 9;
 	MR.l = 18;
 	int i = 0;
@@ -4985,7 +5059,7 @@ uint8_t Read_Symbols_from_FT2(FILE *file, trs_t fa)
 	sum.l = 18;
 	sum.t1 = 0;
 	sum.t0 = 0;
-	//
+
 	dst.l = 9;
 	MR.l = 18;
 	int i = 0;
@@ -4994,10 +5068,10 @@ uint8_t Read_Symbols_from_FT2(FILE *file, trs_t fa)
 	tcmd.l = 9;
 	tcmd.t0 = 0;
 	tcmd.t1 = 0;
-	//
+
 	uint8_t cnt_cmd = 54;
 	uint8_t cnt_line = 3;
-	//
+
 	while ((fscanf(file, "%s", cmd) != EOF) && (cnt_cmd != 0))
 	{
 		uint8_t err = 0;
@@ -5055,7 +5129,7 @@ uint8_t Read_Symbols_from_FT2(FILE *file, trs_t fa)
 				mod_3_n(&fa, 5);
 				tcmd.t0 = 0;
 				tcmd.t1 = 0;
-				//
+
 				i += 1;
 			}
 			else
@@ -5240,9 +5314,11 @@ trs_t control_trs(trs_t a)
  */
 int8_t execute_trs(trs_t addr, trs_t oper)
 {
-	// TODO проверить выполнение команды
-	// для С(5) = -1 выполнить 2-раза старшей половине A(9:18) и сделать inc C
-		
+	/*
+	 TODO проверить выполнение команды
+	 для С(5) = -1 выполнить 2-раза старшей половине A(9:18) и сделать inc C
+	*/
+
 	trs_t fa;
 
 	trs_t k1_5;		 /* K(1:5)	*/
@@ -5321,7 +5397,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	switch (codeoper)
 	{
 	case (+1 * 9 + 0 * 3 + 0):
-	{ // +00 : Посылка в S	(A*)=>(S)
+	{ /* +00 : Посылка в S	(A*)=>(S) */
 		LOGGING_print(" k6..8[+00]: (A*)=>(S)\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5337,7 +5413,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+1 * 9 + 0 * 3 + 1):
-	{ // +0+ : Сложение в S	(S)+(A*)=>(S)
+	{ /* +0+ : Сложение в S	(S)+(A*)=>(S) */
 		LOGGING_print(" k6..8[+0+]: (S)+(A*)=>(S)\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5358,7 +5434,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+1 * 9 + 0 * 3 - 1):
-	{ // +0- : Вычитание в S	(S)-(A*)=>(S)
+	{ /* +0- : Вычитание в S	(S)-(A*)=>(S) */
 		LOGGING_print(" k6..8[+0-]: (S)-(A*)=>(S)\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5378,7 +5454,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+1 * 9 + 1 * 3 + 0):
-	{ // ++0 : Умножение +	(S)=>(R); S=0; (A*)(R)=>(S)
+	{ /* ++0 : Умножение +	(S)=>(R); S=0; (A*)(R)=>(S) */
 		LOGGING_print(" k6..8[++0]: (S)=>(R); S=0; (A*)(R)=>(S)\n");
 		copy_trs_setun(&S, &R);
 		S.t1 = 0;
@@ -5403,7 +5479,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+1 * 9 + 1 * 3 + 1):
-	{ // +++ : Умножение +	(S)+(A*)(R)=>(S)
+	{ /* +++ : Умножение +	(S)+(A*)(R)=>(S) */
 		LOGGING_print(" k6..8[+++]: (S)+(A*)(R)=>(S)\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5424,7 +5500,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+1 * 9 + 1 * 3 - 1):
-	{ // ++- : Умножение - (A*)+(S)(R)=>(S)
+	{ /* ++- : Умножение - (A*)+(S)(R)=>(S) */
 		LOGGING_print(" k6..8[++-]: (A*)+(S)(R)=>(S)\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5445,7 +5521,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+1 * 9 - 1 * 3 + 0):
-	{ // +-0 : Поразрядное умножение	(A*)[x](S)=>(S)
+	{ /* +-0 : Поразрядное умножение	(A*)[x](S)=>(S) */
 		LOGGING_print(" k6..8[+-0]: (A*)[x](S)=>(S)\n");
 		MR = ld_fram(k1_5);
 
@@ -5461,7 +5537,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+1 * 9 - 1 * 3 + 1):
-	{ // +-+ : Посылка в R	(A*)=>(R)
+	{ /* +-+ : Посылка в R	(A*)=>(R) */
 		LOGGING_print(" k6..8[+-+]: (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5477,7 +5553,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+1 * 9 - 1 * 3 - 1):
-	{ // +-- : Останов	Стоп; (A*)=>(R)
+	{ /* +-- : Останов	Стоп; (A*)=>(R) */
 		LOGGING_print(" k6..8[+--]: STOP (A*)=>(R)\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5493,7 +5569,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+0 * 9 + 1 * 3 + 0):
-	{ // 0+0 : Условный переход -	A*=>(C) при w=0
+	{ /* 0+0 : Условный переход -	A*=>(C) при w=0 */
 		LOGGING_print(" k6..8[0+0]: A*=>(C) при w=0\n");
 		int8_t w;
 		w = sgn_trs(W);
@@ -5508,7 +5584,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+0 * 9 + 1 * 3 + 1):
-	{ // 0++ : Условный переход -	A*=>(C) при w=0
+	{ /* 0++ : Условный переход -	A*=>(C) при w=0 */
 		LOGGING_print(" k6..8[0++]: A*=>(C) при w=+1\n");
 		int8_t w;
 		w = sgn_trs(W);
@@ -5523,7 +5599,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+0 * 9 + 1 * 3 - 1):
-	{ // 0+- : Условный переход -	A*=>(C) при w=-
+	{ /* 0+- : Условный переход -	A*=>(C) при w=- */
 		LOGGING_print(" k6..8[0+-]: A*=>(C) при w=-1\n");
 		int8_t w;
 		w = sgn_trs(W);
@@ -5538,14 +5614,14 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+0 * 9 + 0 * 3 + 0):
-	{ //  000 : Безусловный переход	A*=>(C)
+	{ /* 000 : Безусловный переход	A*=>(C) */
 		LOGGING_print(" k6..8[000]: A*=>(C)\n");
 		copy_trs_setun(&k1_5, &C);
 		C.l = 5;
 	}
 	break;
 	case (+0 * 9 + 0 * 3 + 1):
-	{ // 00+ : Запись из C	(C)=>(A*)
+	{ /* 00+ : Запись из C	(C)=>(A*) */
 		LOGGING_print(" k6..8[00+]: (C)=>(A*)\n");
 		if (get_trit_setun(k1_5, 5) < 0)
 		{
@@ -5562,7 +5638,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+0 * 9 + 0 * 3 - 1):
-	{ // 00- : Запись из F	(F)=>(A*)
+	{ /* 00- : Запись из F	(F)=>(A*) */
 		LOGGING_print(" k6..8[00-]: (F)=>(A*)\n");
 		if (get_trit_setun(k1_5, 5) < 0)
 		{
@@ -5580,7 +5656,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+0 * 9 - 1 * 3 + 0):
-	{ // 0-0 : Посылка в F	(A*)=>(F)
+	{ /* 0-0 : Посылка в F	(A*)=>(F) */
 		LOGGING_print(" k6..8[0-0]: (A*)=>(F)\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5592,7 +5668,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+0 * 9 - 1 * 3 + 1):
-	{ // 0-+ : Сложение в F c (C)	(C)+(A*)=>F
+	{ /* 0-+ : Сложение в F c (C)	(C)+(A*)=>F */
 		LOGGING_print(" k6..8[0-+]: (C)+(A*)=>F\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5606,7 +5682,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (+0 * 9 - 1 * 3 - 1):
-	{ // 0-- : Сложение в F	(F)+(A*)=>(F)
+	{ /* 0-- : Сложение в F	(F)+(A*)=>(F) */
 		LOGGING_print(" k6..8[0--]: (F)+(A*)=>(F)\n");
 		MR = ld_fram(k1_5);
 		mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
@@ -5619,7 +5695,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (-1 * 9 + 1 * 3 + 0):
-	{ // -+0 : Сдвиг	Сдвиг (S) на (A*)=>(S)
+	{ /* -+0 : Сдвиг	Сдвиг (S) на (A*)=>(S) */
 		LOGGING_print(" k6..8[-+0]: Сдвиг (S) на (A*)=>(S)\n");
 		/*
 		 * Операция сдвига производит сдвиг содержимого регистра S на N
@@ -5636,7 +5712,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (-1 * 9 + 1 * 3 + 1):
-	{ // -++ : Запись из S	(S)=>(A*)
+	{ /* -++ : Запись из S	(S)=>(A*) */
 		LOGGING_print(" k6..8[-++]: (S)=>(A*)\n");
 		st_fram(k1_5, S);
 		W = set_trit_setun(W, 1, sgn_trs(S));
@@ -5644,7 +5720,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (-1 * 9 + 1 * 3 - 1):
-	{ // -+- : Нормализация	Норм.(S)=>(A*); (N)=>(S)
+	{ /* -+- : Нормализация	Норм.(S)=>(A*); (N)=>(S) */
 		LOGGING_print(" k6..8[-+-]: Норм.(S)=>(A*); (N)=>(S)\n");
 		/*
 		 * Операция нормализации производит сдвиг (S) при (S) != 0 в таком направлении и на такое число
@@ -5708,10 +5784,11 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (-1 * 9 + 0 * 3 + 0):
-	{ // -00 : Ввод в Фа* - Вывод из Фа*
+	{ /* -00 : Ввод в Фа* - Вывод из Фа* */
 		LOGGING_print(" k6..8[-00]: Ввод в Фа* - Вывод из Фа*\n");
 
-		//trs_t fa;
+		/* trs_t fa; */
+
 		if (LOGGING > 0)
 		{
 			view_short_reg(&k1_5, "k1_5");
@@ -5763,7 +5840,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				int32_t symbcode;
 				trs_t symb;
 				symb.l = 2;
-				//
+
 				MR = ld_fram(fa);
 
 				symb = slice_trs_setun(MR, 1, 1);
@@ -5792,7 +5869,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				int32_t symbcode;
 				trs_t symb;
 				symb.l = 3;
-				//
+
 				MR = ld_fram(fa);
 				symb = slice_trs_setun(MR, 1, 3);
 				Perforation_Symbols_to_PTP1(ptp1, symb);
@@ -5819,7 +5896,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				int32_t symbcode;
 				trs_t symb;
 				symb.l = 3;
-				//
+
 				MR = ld_fram(fa);
 
 				symb = slice_trs_setun(MR, 1, 1);
@@ -5847,7 +5924,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		case (+0 * 27 - 1 * 9 + 0 * 3 + 0): /* Печать одним цветом в виде символов на пишущей машинке ПМ (ЭУМ-46) */
 			LOGGING_print("   k2..5[0-00]: Печать одним цветом в виде символов на пишущей машинке ПМ (ЭУМ-46)\n");
 
-			//TODO ERROR!
+			/* TODO ERROR! */
 			uint8_t i = 0;
 			for (i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
 			{
@@ -5855,19 +5932,19 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				trs_t symb;
 				symb.l = 3;
 				int32_t code = 0;
-				//
+
 				MR = ld_fram(fa);
 
 				symb = slice_trs_setun(MR, 1, 3);
-				code = trs2digit(symb);				
+				code = trs2digit(symb);
 				Write_Symbols_to_TTY1(tty1, symb);
 
 				symb = slice_trs_setun(MR, 4, 6);
-				code = trs2digit(symb);				
+				code = trs2digit(symb);
 				Write_Symbols_to_TTY1(tty1, symb);
 
 				symb = slice_trs_setun(MR, 7, 9);
-				code = trs2digit(symb);				
+				code = trs2digit(symb);
 				if (trs2digit(symb) == -13)
 					break;
 				Write_Symbols_to_TTY1(tty1, symb);
@@ -5882,7 +5959,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 				int32_t symbcode;
 				trs_t symb;
 				symb.l = 3;
-				//
+
 				MR = ld_fram(fa);
 
 				symb = slice_trs_setun(MR, 1, 3);
@@ -5907,7 +5984,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (-1 * 9 + 0 * 3 + 1):
-	{ // -0+ : Запись на МБ	(Фа*)=>(Мд*)
+	{ /* -0+ : Запись на МБ	(Фа*)=>(Мд*) */
 		LOGGING_print(" k6..8[-0+]: (Фа*)=>(Мд*)\n");
 		int32_t zone = trs2digit(slice_trs_setun(k1_5, 2, 5));
 		if ((zone < ZONE_DRUM_BEG) || (zone > ZONE_DRUM_END))
@@ -5924,7 +6001,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (-1 * 9 + 0 * 3 - 1):
-	{ // -0- : Считывание с МБ	(Мд*)=>(Фа*)
+	{ /* 0- : Считывание с МБ	(Мд*)=>(Фа*) */
 		LOGGING_print(" k6..8[-0-]: (Мд*)=>(Фа*)\n");
 		int32_t zone = trs2digit(slice_trs_setun(k1_5, 2, 5));
 		if (zone == 0)
@@ -5945,28 +6022,28 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	}
 	break;
 	case (-1 * 9 - 1 * 3 + 0):
-	{ // --0 : Не задействована	Стоп
+	{ /* --0 : Не задействована	Стоп */
 		LOGGING_print(" k6..8[--0]: STOP BREAK\n");
 		view_short_reg(&k6_8, "k6..8=");
 		return STOP_ERROR;
 	}
 	break;
 	case (-1 * 9 - 1 * 3 + 1):
-	{ // --+ : Не задействована	Стоп
+	{ /* --+ : Не задействована	Стоп */
 		LOGGING_print(" k6..8[--+]: STOP BREAK\n");
 		view_short_reg(&k6_8, "k6..8=");
 		return STOP_ERROR;
 	}
 	break;
 	case (-1 * 9 - 1 * 3 - 1):
-	{ // --- : Не задействована	Стоп
+	{ /* --- : Не задействована	Стоп */
 		LOGGING_print(" k6..8[---]: STOP BREAK\n");
 		view_short_reg(&k6_8, "k6..8=");
 		return STOP_ERROR;
 	}
 	break;
 	default:
-	{ // Не допустимая команда машины
+	{ /* Не допустимая команда машины */
 		LOGGING_print("k6..8 =[]   : STOP! NO OPERATION\n");
 		view_short_reg(&k6_8, "k6..8=");
 		return STOP_ERROR;
@@ -5984,2215 +6061,6 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 error_over:
 	return STOP_ERROR;
 }
-
-/* **********************************************************************************
- * Тестирование функций операций с тритами
- * ----------------------------------------------------------------------------------
- */
-void pl(int8_t a, int8_t c)
-{
-	printf(" a,c {% 2i}->% 2i\r\n", a, c);
-}
-void p(int8_t a, int8_t b, int8_t c)
-{
-	printf(" a,b,c {% 2i,% 2i}->% 2i\r\n", a, b, c);
-}
-void pp(int8_t a, int8_t b, int8_t c, int8_t p0, int8_t p1)
-{
-	printf(" a,b,p0,c,p1 {% 2i,% 2i,% 2i}->% 2i,% 2i\r\n", a, b, p0, c, p1);
-}
-
-void Test1_Ariphmetic_Ternary(void)
-{
-
-	int8_t a, b, c, p0, p1;
-
-	printf("\r\n --- TEST #1  Logic opertion trits  for VM SETUN-1958 --- \r\n\r\n");
-
-	printf(" 1.1. Логическая операция NOT\r\n");
-	printf(" C = NOT A \r\n");
-
-	for (a = -1; a < 2; a++)
-	{
-		not_t(&a, &c);
-		pl(a, c);
-	}
-
-	printf(" 1.2. Логическая операция AND\r\n");
-	printf(" C = A AND B \r\n");
-	for (a = -1; a < 2; a++)
-	{
-		for (b = -1; b < 2; b++)
-		{
-			and_t(&a, &b, &c);
-			p(a, b, c);
-		}
-	}
-
-	printf(" 1.2. Логическая операция OR\r\n");
-	printf(" C = A OR B \r\n");
-	for (a = -1; a < 2; a++)
-	{
-		for (b = -1; b < 2; b++)
-		{
-			or_t(&a, &b, &c);
-			p(a, b, c);
-		}
-	}
-
-	printf(" 1.3. Логическая операция XOR\r\n");
-	printf(" C = A XOR B \r\n");
-	for (a = -1; a < 2; a++)
-	{
-		for (b = -1; b < 2; b++)
-		{
-			xor_t(&a, &b, &c);
-			p(a, b, c);
-		}
-	}
-
-	printf(" 1.4. Логическая операция SUM FULL\r\n");
-	printf(" C, P1 = A + B + P0 \r\n");
-	for (a = -1; a < 2; a++)
-	{
-		for (b = -1; b < 2; b++)
-		{
-			for (p0 = -1; p0 < 2; p0++)
-			{
-				sum_t(&a, &b, &p0, &c, &p1);
-				pp(a, b, c, p0, p1);
-			}
-		}
-	}
-	printf("\n --- END TEST #1 --- \r\n");
-}
-
-/** *********************************************
- *  Тестирование функций операций с тритами
- *  ---------------------------------------------
- */
-void pt(int8_t t, uint8_t p)
-{
-	printf("t[% 2i]=% 2i\r\n", p, t);
-}
-void pln(int8_t l)
-{
-	printf("TRIT-%02i : ", l);
-}
-void Test2_Opers_TRITS_32(void)
-{
-	int8_t trit; // трит
-	trs_t tr1;	 // троичное число
-	trs_t tr2;	 // троичное число
-
-	printf("\r\n --- TEST #2  Operations TRITS-32 for VM SETUN-1958 --- \r\n");
-
-	// t2.1 POW3
-	printf("\r\nt2.1 --- POW3(...)\r\n");
-	printf("pow3(3)  = %d\r\n", (int32_t)pow3(3));
-	printf("pow3(18) = %d\r\n", (int32_t)pow3(18));
-
-	// t2.2 Point address
-	printf("\r\nt2.2 --- Point address\r\n");
-	addr pMem;
-	pMem = 0xffffffff;
-	printf("pMem = 0xffffffff [%ji]\r\n", pMem);
-
-	// t2.3
-	printf("\r\nt2.3 --- TRIT-32\r\n");
-	clear_full(&tr1);
-	tr1.l = 1;
-	tr1.t1 = ~0;
-	tr1.t0 = 1;
-	pln(1);
-	view_short_reg(&tr1, "tr1");
-	tr1.t0 = 1 << 4;
-	pln(5);
-	tr1.l = 5;
-	view_short_reg(&tr1, "tr1");
-	tr1.t0 = 1 << 8;
-	pln(9);
-	tr1.l = 9;
-	view_short_reg(&tr1, "tr1");
-	tr1.t0 = 1 << 17;
-	pln(18);
-	tr1.l = 18;
-	view_short_reg(&tr1, "tr1");
-	tr1.t0 = 1 << 31;
-	pln(32);
-	tr1.l = 32;
-	view_short_reg(&tr1, "tr1");
-
-	// t2.4
-	printf("\r\nt2.4 --- get_trit(...)\r\n");
-	tr1 = smtr("+0-0+0-0+");
-	view_short_reg(&tr1, "tr1");
-	trit = get_trit(tr1, 8);
-	pt(trit, 8);
-	trit = get_trit(tr1, 7);
-	pt(trit, 7);
-	trit = get_trit(tr1, 6);
-	pt(trit, 6);
-	trit = get_trit(tr1, 5);
-	pt(trit, 5);
-	trit = get_trit(tr1, 4);
-	pt(trit, 4);
-	trit = get_trit(tr1, 3);
-	pt(trit, 3);
-	trit = get_trit(tr1, 2);
-	pt(trit, 2);
-	trit = get_trit(tr1, 1);
-	pt(trit, 1);
-	trit = get_trit(tr1, 0);
-	pt(trit, 0);
-
-	// t2.4
-	printf("\r\nt2.4 --- set_trit(...)\r\n");
-	tr1 = set_trit(tr1, 8, 0);
-	pt(0, 8);
-	tr1 = set_trit(tr1, 7, 1);
-	pt(1, 7);
-	tr1 = set_trit(tr1, 6, 0);
-	pt(0, 6);
-	tr1 = set_trit(tr1, 5, -1);
-	pt(-1, 5);
-	tr1 = set_trit(tr1, 4, 0);
-	pt(0, 4);
-	tr1 = set_trit(tr1, 3, 1);
-	pt(1, 3);
-	tr1 = set_trit(tr1, 2, 0);
-	pt(0, 2);
-	tr1 = set_trit(tr1, 1, -1);
-	pt(-1, 1);
-	tr1 = set_trit(tr1, 0, 0);
-	pt(0, 0);
-	view_short_reg(&tr1, "tr1");
-
-	// t2.5
-	printf("\r\nt2.5 --- input TRITS-32s\r\n");
-	printf("input tr1=[+000000000000000000000000000000-] \r\n");
-	tr1 = smtr("+000000000000000000000000000000-");
-	view_short_reg(&tr1, "tr1=");
-	printf("input tr2=[-000000000+] \r\n");
-	tr2 = smtr("-000000000+");
-	view_short_reg(&tr2, "tr2=");
-
-	// t2.6
-	printf("\nt2.6 --- trit2int(...)\r\n");
-	tr1 = smtr("00-");
-	printf("tr1=[00-]\r\n");
-	printf("trit2int(tr1) = % 2i\r\n", trit2int(tr1));
-	tr1 = smtr("000");
-	printf("tr1=[000]\r\n");
-	printf("trit2int(tr1) = % 2i\r\n", trit2int(tr1));
-	tr1 = smtr("00+");
-	printf("tr1=[00+]\r\n");
-	printf("trit2int(tr1) = % 2i\r\n", trit2int(tr1));
-
-	// t2.7
-	printf("\r\nt2.7 --- printf long int\r\n");
-	long int ll = 0x00000001lu;
-	printf("long int ll = 0x00000001lu\r\n");
-	printf("ll = %lu\r\n", ll);
-	ll <<= 1;
-	printf("ll <<= 1; ll = %lu\r\n", ll);
-	ll <<= 1;
-	printf("ll <<= 1; ll = %lu\r\n", ll);
-	printf("\r\n");
-
-	// t2.8
-	printf("\r\nt2.8 --- sgn_trs(...)\r\n");
-	tr1 = smtr("+0000");
-	printf("tr1=[+0000]\r\n");
-	printf("sgn_trs(tr1) = % 2i\r\n", sgn_trs(tr1));
-	tr1 = smtr("00000");
-	printf("tr1=[00000]\r\n");
-	printf("sgn_trs(tr1) = % 2i\r\n", sgn_trs(tr1));
-	tr1 = smtr("-0000");
-	printf("tr1=[-0000]\r\n");
-	printf("sgn_trs(tr1) = % 2i\r\n", sgn_trs(tr1));
-
-	trs_t w1;
-	w1.l = 1;
-	w1 = smtr("-");
-	printf("w1=[-]\r\n");
-	printf("sgn_trs(w1) = % 2i\r\n", sgn_trs(w1));
-	w1 = smtr("0");
-	printf("w1=[0]\r\n");
-	printf("sgn_trs(w1) = % 2i\r\n", sgn_trs(w1));
-	w1 = smtr("+");
-	printf("w1=[+]\r\n");
-	printf("sgn_trs(w1) = % 2i\r\n", sgn_trs(w1));
-
-	// t2.9
-	printf("\r\nt2.9 --- view_short_reg()\r\n");
-	tr1 = smtr("+-0+-0+-0");
-	view_short_reg(&tr1, "tr1 =");
-
-	// t2.10
-	printf("\r\nt2.10 --- slice_trs(...)\r\n");
-	tr1 = smtr("+000000000000000000000000000000-");
-	printf("tr1 := [+000000000000000000000000000000-]\r\n");
-	tr2 = slice_trs(tr1, 0, 15);
-	view_short_reg(&tr2, "tr2[15,0] =");
-	printf("tr1 := [+000000000000000000000000000000-]\r\n");
-	tr2 = slice_trs(tr1, 16, 31);
-	view_short_reg(&tr2, "tr2[31,16] =");
-
-	// t2.11
-	printf("\nt2.11 --- copy_trs(...)\r\n");
-	tr1 = smtr("+000000000000000000000000000000-");
-	printf("tr1 := [+000000000000000000000000000000-]\r\n");
-	tr2 = smtr("00000000000000000000000000000000");
-	printf("tr2 := [00000000000000000000000000000000]\r\n");
-	copy_trs(&tr1, &tr2);
-	view_short_reg(&tr2, "tr2 =");
-	tr1 = smtr("+00-00+00");
-	printf("tr1 := [+00-00+00]\r\n");
-	tr2 = smtr("00000000000000000000000000000000");
-	printf("tr2 := [00000000000000000000000000000000]\r\n");
-	copy_trs(&tr1, &tr2);
-	view_short_reg(&tr2, "tr2 =");
-
-	// t2.12
-	printf("\r\nt2.12 --- inc_trs(...)\r\n");
-	tr1 = smtr("+0-0+---");
-	view_short_reg(&tr1, "tr1 =");
-	inc_trs(&tr1);
-	printf("inc_trs(&tr1)\r\n");
-	view_short_reg(&tr1, "tr1 =");
-
-	// t2.13
-	printf("\r\nt2.13 --- dec_trs(...)\r\n");
-	tr1 = smtr("+0-0-+0-");
-	view_short_reg(&tr1, "tr1 =");
-	dec_trs(&tr1);
-	printf("dec_trs(&tr1)\r\n");
-	view_short_reg(&tr1, "tr1 =");
-
-	// t2.14
-	printf("\r\nt2.14 --- add_trs(...)\r\n");
-	tr1 = smtr("+---+");
-	view_short_reg(&tr1, "tr1 =");
-	tr2 = smtr("+0-+0");
-	view_short_reg(&tr2, "tr2 =");
-	tr1 = add_trs(tr1, tr2);
-	printf("tr1 = add_trs(tr1,tr2)\r\n");
-	view_short_reg(&tr1, "tr1 =");
-
-	// t2.14.1
-	printf("\r\nt2.14.1 --- add_trs(...)\r\n");
-	tr1 = smtr("-+0000000++++++++");
-	view_short_reg(&tr1, "tr1 =");
-	tr2 = smtr("0+0000000");
-	view_short_reg(&tr2, "tr2 =");
-	tr1 = add_trs(tr1, tr2);
-	printf("tr1 = add_trs(tr1,tr2)\r\n");
-	view_short_reg(&tr1, "tr1 =");
-
-	// t2.14.2
-	printf("\r\nt2.14.2 --- add_trs(...)\r\n");
-	tr1 = smtr("0+0000000+++++++++");
-	view_short_reg(&tr1, "tr1 =");
-	tr2 = smtr("0+0000000000000000");
-	view_short_reg(&tr2, "tr2 =");
-	tr1 = add_trs(tr1, tr2);
-	printf("tr1 = add_trs(tr1,tr2)\n");
-	view_short_reg(&tr1, "tr1 =");
-
-	// t2.15
-	printf("\r\nt2.15 --- sub_trs(...)\r\n");
-	tr1 = smtr("+0-+00--");
-	view_short_reg(&tr1, "tr1 =");
-	tr2 = smtr("+0-0+--+");
-	view_short_reg(&tr2, "tr2 =");
-	tr1 = sub_trs(tr1, tr2);
-	printf("tr1 = sub_trs(tr1,tr2)\r\n");
-	view_short_reg(&tr1, "tr1 =");
-
-	// t2.15
-	printf("\r\nt2.15 --- shift_trs(...)\r\n");
-	tr1 = smtr("0000+0000");
-	view_short_reg(&tr1, "tr1 =");
-	tr1 = shift_trs(tr1, -2);
-	printf("tr1 = shift_trs(tr1,-2)\r\n");
-	view_short_reg(&tr1, "tr1 =");
-	tr1 = shift_trs(tr1, -2);
-	printf("tr1 = shift_trs(tr1,-2)\r\n");
-	view_short_reg(&tr1, "tr1 =");
-
-	// t2.16
-	printf("\r\nt2.16 --- mul_trs(...)\r\n");
-	tr1 = smtr("+0000000000000000+");
-	tr1.l = 18;
-	view_short_reg(&tr1, "tr1 =");
-	tr2 = smtr("0-0000000000000000");
-	tr2.l = 18;
-	view_short_reg(&tr2, "tr2 =");
-
-	tr2 = mul_trs(tr1, tr2);
-	view_short_reg(&tr2, "tr2 =");
-
-	// t2.17
-	printf("\r\nt2.17 --- mul_trs(...)\r\n");
-	tr1 = smtr("0000000++");
-	view_short_reg(&tr1, "tr1 =");
-	tr2 = smtr("000000000000000---");
-	view_short_reg(&tr2, "tr2 =");
-	tr2 = mul_trs(tr1, tr2);
-	view_short_reg(&tr2, "tr2 =");
-
-	// t2.18
-	printf("\r\nt2.18 --- shift_long_trs(...)\r\n");
-	long_trs_t ltr1;
-	ltr1.l = 64;
-	tr1 = smtr("0-00+0000");
-	ltr1.t1 = tr1.t1;
-	ltr1.t0 = tr1.t0;
-
-	// printf("ltr1.t1=%p\r\n",(long int)ltr1.t1);
-	// printf("ltr1.t0=%p\r\n",(long int)ltr1.t0);
-
-	view_short_long_reg(&ltr1, "ltr1 =");
-	ltr1 = shift_long_trs(ltr1, -2);
-	printf("ltr1 = shift_long_trs(ltr1,-2)\r\n");
-	view_short_long_reg(&ltr1, "ltr1 =");
-	ltr1 = shift_long_trs(ltr1, -2);
-	printf("ltr1 = shift_long_trs(ltr1,-2)\r\n");
-	view_short_long_reg(&ltr1, "ltr1 =");
-
-	printf("\r\n --- END TEST #2 --- \r\n");
-}
-
-/** *********************************************
- *  Тестирование виртуальной машины "Сетунь-1958"
- *  типов данных, функции
- *  ---------------------------------------------
- */
-void ps(int8_t t, uint8_t p)
-{
-	printf("S[% 3i]=% 2i\r\n", p, t);
-}
-
-void Test3_Setun_Opers(void)
-{
-	int8_t trit;
-	trs_t aa;
-	trs_t ad1;
-	trs_t ad2;
-	trs_t addr;
-	trs_t oper;
-	trs_t exK;
-	trs_t m0;
-	trs_t m1;
-	int8_t ret_exec;
-
-	printf("\r\n --- TEST #3  Operations for VM SETUN-1958 --- \r\n\r\n");
-
-	reset_setun_1958();
-
-	// t3.1
-	printf("\r\nt3.1 --- get_trit_setun(...)\r\n");
-	S = smtr("+000000-000000000-");
-	view_short_reg(&S, "S");
-	trit = get_trit_setun(S, 1);
-	ps(trit, 1);
-	trit = get_trit_setun(S, 8);
-	ps(trit, 8);
-	trit = get_trit_setun(S, 18);
-	ps(trit, 18);
-
-	// t3.2
-	printf("\r\nt3.2 --- set_trit_setun(...)\r\n");
-	S = smtr("000000000000000000");
-	S = set_trit_setun(S, 2, -1);
-	ps(-1, 2);
-	S = set_trit_setun(S, 5, 1);
-	ps(1, 5);
-	S = set_trit_setun(S, 18, -1);
-	ps(-1, 18);
-	view_short_reg(&S, "S");
-
-	// t3.3
-	printf("\r\nt3.3 --- sgn_trs(...)\r\n");
-	S = smtr("+00000000000000000");
-	printf("S=[+00000000000000000]\r\n");
-	printf("sgn_trs(S) = % 2i\n", sgn_trs(S));
-	S = smtr("000000000000000000");
-	printf("S=[000000000000000000]\r\n");
-	printf("sgn_trs(S) = % 2i\n", sgn_trs(S));
-	S = smtr("-00000000000000000");
-	printf("S=[-00000000000000000]\r\n");
-	printf("sgn_trs(S) = % 2i\n", sgn_trs(S));
-
-	// t3.4
-	printf("\r\nt3.4 --- slice_trs_setun(...)\r\n");
-	S = smtr("+0000000000000000-000000");
-	K = slice_trs_setun(S, 1, 9);
-	view_short_reg(&S, "S");
-	view_short_reg(&K, "K[1,9] =");
-	K = slice_trs_setun(S, 10, 18);
-	view_short_reg(&S, "S");
-	view_short_reg(&K, "K[10,18] =");
-
-	// t3.5
-	printf("\r\nt3.5 --- copy_trs_setun(...)\r\n");
-	S = smtr("+0000000000000000-000000");
-	copy_trs_setun(&S, &K);
-	view_short_reg(&S, "S");
-	view_short_reg(&K, "K");
-	K = smtr("---------");
-	copy_trs_setun(&K, &S);
-	view_short_reg(&S, "S");
-	view_short_reg(&K, "K");
-
-	printf("\r\nt3.6 --- S = S + R\r\n");
-	S = smtr("0000000000000+---+");
-	R = smtr("0000000000000+0-+0");
-	view_short_reg(&S, "S");
-	view_short_reg(&R, "R");
-	S = add_trs(S, R);
-	view_short_reg(&S, "S=S+R");
-
-	// t3.7
-	printf("\r\nt3.7 --- next_address(...)\r\n");
-	C = smtr("000--");
-	view_short_reg(&C, "beg  C");
-	for (int8_t i = 0; i < 10; i++)
-	{
-		C = next_address(C);
-		view_short_reg(&C, "next C");
-	}
-
-	// t3.8
-	printf("\r\nt3.8 --- control_trs(...)\r\n");
-	trs_t Mem;
-	Mem.l = 9;
-	Mem = smtr("00000000+");
-	view_short_reg(&Mem, "Mem");
-	F = smtr("0000+");
-	view_short_reg(&F, "F");
-	K = control_trs(Mem);
-	view_short_reg(&K, "K");
-
-	Mem = smtr("000000000");
-	view_short_reg(&Mem, "Mem");
-	F = smtr("000++");
-	view_short_reg(&F, "F");
-	K = control_trs(Mem);
-	view_short_reg(&K, "K");
-
-	Mem = smtr("00000000-");
-	view_short_reg(&Mem, "Mem");
-	F = smtr("000++");
-	view_short_reg(&F, "F");
-	K = control_trs(Mem);
-	view_short_reg(&K, "K");
-
-	// t3.8
-	printf("\r\nt3.8 --- st_fram(...)\r\n");
-	//
-	aa = smtr("00000");
-	K = smtr("+0000000-");
-	st_fram(aa, K);
-	view_short_reg(&aa, "aa");
-	view_short_reg(&K, "K");
-	//
-	aa = smtr("0000+");
-	K = smtr("-0000000+");
-	st_fram(aa, K);
-	view_short_reg(&aa, "aa");
-	view_short_reg(&K, "K");
-	//
-	ad1 = smtr("000--");
-	ad2 = smtr("000++");
-	view_fram(ad1, ad2);
-
-	// t3.9
-	printf("\r\nt3.9 --- ld_fram(...)\r\n");
-	aa = smtr("000++");
-	K = smtr("+000-000+");
-	printf("st_fram(aa, K)\r\n");
-	st_fram(aa, K);
-	view_short_reg(&aa, "aa");
-	view_short_reg(&K, "K");
-	printf("ld_fram(aa)\r\n");
-	K = ld_fram(aa);
-	view_short_reg(&aa, "aa");
-	view_short_reg(&K, "K");
-
-	// t3.10 test Oper=k6..8[+00]: (A*)=>(S)
-	printf("\r\nt3.10:  Oper=k6..8[+00]: (A*)=>(S)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("00000");
-	m0 = smtr("+0-0+0-00");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	addr = smtr("0000+");
-	m1 = smtr("00000+000");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-
-	// t3.11 test Oper=k6..8[-++]: (S)=>(A*)
-	printf("\r\nt3.11:  Oper=k6..8[-++]: (S)=>(A*)\r\n");
-	//
-	reset_setun_1958();
-	//
-	S = smtr("-0000000+000-+0000");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("0000--++0");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]r\\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-	//
-	ad1 = smtr("000--");
-	ad2 = smtr("000++");
-	view_fram(ad1, ad2);
-
-	// t3.12 test Oper=k6..8[+-+]: (A*)=>(R)
-	printf("\r\nt3.12:  Oper=k6..8[+-+]: (A*)=>(R)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("00000");
-	m0 = smtr("+0-0+0-00");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	addr = smtr("0000+");
-	m1 = smtr("00000+-+0");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-
-	// t3.13 test Oper=k6..8[0-0]: (A*)=>(F)
-	printf("\r\nt3.12:  Oper=k6..8[0-0]: (A*)=>(F)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("00000");
-	m0 = smtr("+0-0+0-00");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	addr = smtr("0000+");
-	m1 = smtr("000000-00");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-
-	// t3.14 test Oper=k6..8[00-]: (F)=>(A*)
-	printf("\r\nt3.14:  Oper=k6..8[00-]: (F)=>(A*)\r\n");
-	//
-	reset_setun_1958();
-	//
-	F = smtr("-000+");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("0000000-0");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-	//
-	ad1 = smtr("000--");
-	ad2 = smtr("000++");
-	view_fram(ad1, ad2);
-
-	// t3.15 test Oper=k6..8[00+]: (C)=>(A*)
-	printf("\r\nt3.15:  Oper=k6..8[00+]: (C)=>(A*)\r\n");
-	//
-	reset_setun_1958();
-	//
-	F = smtr("-000+");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("0000000+0");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-	//
-	ad1 = smtr("000--");
-	ad2 = smtr("000++");
-	view_fram(ad1, ad2);
-
-	// t3.16 test Oper=k6..8[+0+]: (S)+(A*)=>(S)
-	printf("\r\nt3.16:  Oper=k6..8[+0+]: (S)+(A*)=>(S)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("00000");
-	m0 = smtr("0000000+0");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	S = smtr("00000000000000000+");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("00000+0+0");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-
-	// t3.17 test Oper=k6..8[+0-]: (S)-(A*)=>(S)
-	printf("\r\nt3.17:  Oper=k6..8[+0-]: (S)-(A*)=>(S)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("00000");
-	m0 = smtr("0000000++");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	S = smtr("000000000000000+0+");
-	view_short_reg(&S, "S=");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("00000+0-0");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-
-	// t3.18 test Oper=k6..8[++0]: (S)=>(R); (A*)(R)=>(S)
-	printf("\r\nt3.18:  Oper=k6..8[++0]: (S)=>(R); (A*)(R)=>(S)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("00000");
-	m0 = smtr("0+0000000");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	S = smtr("00000000+++0000000");
-	view_short_reg(&S, "S=");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("00000++00");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-
-	// t3.19 test Oper=k6..8[+++]: (S)+(A*)(R)=>(S)
-	printf("\r\nt3.19:  Oper=k6..8[+++]: (S)+(A*)(R)=>(S)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("00000");
-	m0 = smtr("000000--0");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	S = smtr("000000000000000+00");
-	view_short_reg(&S, "S=");
-	//
-	R = smtr("0000000000000000+0");
-	view_short_reg(&R, "R=");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("00000+++0");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-
-	// t3.21 test Oper=k6..8[++-]: (A*)+(S)(R)=>(S)=>(S)
-	printf("\r\nt3.21:  Oper=k6..8[++-]: (A*)+(S)(R)=>(S)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("00000");
-	m0 = smtr("000000--0");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	S = smtr("000000000000000+00");
-	view_short_reg(&S, "S=");
-	//
-	R = smtr("0000000000000000+0");
-	view_short_reg(&R, "R=");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("00000++-0");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-
-	printf("   \r\n");
-
-	// t3.22 test Oper=k6..8[+-0]: (A*)[x](S)=>(S)
-	printf("\r\nt3.22:  Oper=k6..8[+-0]: (A*)[x](S)=>(S)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("00000");
-	m0 = smtr("000000--0");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	S = smtr("000000000000000+00");
-	view_short_reg(&S, "S=");
-	//
-	R = smtr("0000000000000000+0");
-	view_short_reg(&R, "R=");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("00000+-00");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	// view_short_regs();
-
-	// t3.23 test Oper=k6..8[-+0]: S сд. (A*)=>(S)
-	printf("\r\nt3.23:  Oper=k6..8[-+0]: S сд. (A*)=>(S)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("-000-");
-	m0 = smtr("+0000000-+000-000-");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	S = smtr("000000000000000+00");
-	view_short_reg(&S, "S=");
-	//
-	// R = smtr("0000000000000000+0");
-	// view_short_reg(&R, "R=");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("-000-0-+00");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	view_short_reg(&S, "S=");
-	// view_short_regs();
-
-	// t3.24 test Oper=k6..8[-+-]: Норм.(S)=>(A*); (N)=>(S)
-	printf("\r\nt3.24:  Oper=k6..8[-+-]:  Норм.(S)=>(A*); (N)=>(S)\r\n");
-	//
-	reset_setun_1958();
-	//
-	addr = smtr("00000");
-	m0 = smtr("00000000-");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	S = smtr("000000000000000+00");
-	view_short_reg(&S, "S=");
-	//
-	// R = smtr("0000000000000000+0");
-	// view_short_reg(&R, "R=");
-	//
-	addr = smtr("0000+");
-	m1 = smtr("00000-+-0");
-	st_fram(addr, m1);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-	view_short_reg(&K, "K=");
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	printf("S.l=%d\r\n", S.l);
-	view_short_reg(&S, "S=");
-
-	addr = smtr("00000");
-	view_elem_fram(addr);
-
-	// view_short_regs();
-
-	// t3.25 test Oper=k6..8[-00]:
-	printf("\r\nt3.25:  Oper=k6..8[-00]: \r\n");
-
-	printf("\r\n --- END TEST #3 --- \r\n\r\n");
-}
-
-void Test4_Setun_Opers(void)
-{
-	int8_t trit;
-	trs_t aa;
-	trs_t ad1;
-	trs_t ad2;
-	trs_t addr;
-	trs_t oper;
-	trs_t exK;
-	trs_t m0;
-	trs_t m1;
-	int8_t ret_exec;
-
-	printf("\r\n --- TEST #4  Operations for VM SETUN-1958 --- \r\n\r\n");
-
-	// t4.1 test Oper=k6..8[+00]: (A*)=>(S)
-	printf("\r\nt4.1:  Oper=k6..8[+00]: (A*)=>(S)\r\n");
-	//
-	reset_setun_1958();
-
-	printf("\r\n");
-	// FRAM(-1) test
-	addr = smtr("-0000");
-	m0 = smtr("00000000+");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	addr = smtr("-000+");
-	m0 = smtr("-0000000+");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-	addr = smtr("-00+-");
-	m0 = smtr("0000000+0");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-
-	/* Begin address fram */
-	addr = smtr("0000+");
-	m1 = smtr("-000-+000");
-	st_fram(addr, m1);
-	view_short_reg(&m1, "m1");
-	view_elem_fram(addr);
-
-	printf("\r\n");
-
-	// work VM Setun-1958
-	C = smtr("0000+");
-	K = ld_fram(C);
-	view_short_reg(&K, "C(0000+)");
-
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("\r\n [status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("\r\n [status: ERR#%d]\r\n", ret_exec);
-
-	printf("\r\n --- END TEST #4 --- \r\n");
-}
-
-void Test5_Setun_Load(void)
-{
-	printf("\r\n --- TEST #5  Load program FT1,FT2 for VM SETUN-1958 --- \r\n\r\n");
-
-	FILE *file_lst;
-
-	/* Переменная, в которую поочередно будут помещаться считываемые строки */
-	char str[1024] = {0};
-
-	/* Указатель, в который будет помещен адрес массива, в который считана */
-	/* строка, или NULL если достигнут коней файла или произошла ошибка */
-	char *estr;
-
-	file_lst = fopen("ur1/00_ip5.lst", "r");
-	if (file_lst == NULL)
-	{
-		printf("ERR fopen ur1/00_ip5.lst\r\n");
-		return;
-	}
-	else
-	{
-		printf("fopen: ur1/00_ip5.lst\r\n");
-
-		/* Чтение (построчно) данных из файла в бесконечном цикле */
-		while (1)
-		{
-			/* Чтение одной строки  из файла */
-			estr = fgets(str, sizeof(str), file_lst);
-
-			/* Проверка на конец файла или ошибку чтения */
-			if (estr == NULL)
-			{
-				/* Проверяем, что именно произошло: кончился файл */
-				/* или это ошибка чтения */
-				if (feof(file_lst) != 0)
-				{
-					/* Если файл закончился, выводим сообщение о завершении */
-					/* чтения и выходим из бесконечного цикла */
-					printf("\r\nЧтение файла закончено\r\n");
-					break;
-				}
-				else
-				{
-					/* Если при чтении произошла ошибка, выводим сообщение */
-					/* об ошибке и выходим из бесконечного цикла */
-					printf("\r\nОшибка чтения из файла\r\n");
-					break;
-				}
-			}
-
-			/* ---------------------------------
-			 * Загрузить из файла тест-программу
-			 * ---------------------------------
-			 */
-			printf("\r\n --- Load ur1/%s --- \r\n", str);
-
-			FILE *file;
-			char path_str[160] = {0};
-			uint8_t cmd[20];
-			trs_t inr;
-			trs_t dst;
-
-			inr = smtr("0---0"); /* cчетчик адреса коротких слов */
-			trs_t sum;
-			trs_t tmp;
-
-			tmp.l = 18;
-			tmp.t1 = 0;
-			tmp.t0 = 0;
-
-			int64_t dsun = 0;
-			sum.l = 18;
-			sum.t1 = 0;
-			sum.t0 = 0;
-			//
-			dst.l = 9;
-			MR.l = 18;
-			int i = 0;
-
-			strcat(path_str, "ur1/");
-			if (str[strlen(str) - 1] == 0x0A)
-			{
-				str[strlen(str) - 1] = 0;
-			}
-			str[strlen(str)] = 0;
-			strcat(path_str, str);
-
-			file = fopen(path_str, "r");
-			if (file == NULL)
-			{
-				printf("ERR fopen %s\r\n", path_str);
-				return;
-			}
-
-			while (fscanf(file, "%s", cmd) != EOF)
-			{
-				cmd_str_2_trs(cmd, &dst);
-				sum = add_trs(sum, dst);
-				i += 1;
-
-				dsun += trs2digit(dst);
-
-				LOGGING_print("%s -> [", cmd);
-				trs2str(dst);
-				LOGGING_print("]");
-				if (LOGGING > 0)
-				{
-					view_short_reg(&inr, " addr");
-				}
-				else
-				{
-					printf("\r\n");
-				}
-
-				st_fram(inr, dst);
-				inr = next_address(inr);
-			}
-			fclose(file);
-
-			printf("\r\n i=%i\n", i);
-
-			/* Печать контрольных сумм */
-			printf("\r\n");
-			view_checksum_setun(sum);
-			//
-		}
-	}
-	fclose(file_lst);
-	printf("fclose: ur1/00_ip5.lst\r\n");
-
-	printf("\r\n --- END TEST #5 --- \r\n");
-}
-
-void Test6_Setun_Load(void)
-{
-	printf("\r\n --- TEST #6  Load program FT1,FT2 for VM SETUN-1958 --- \r\n\r\n");
-
-	FILE *file_lst;
-
-	/* Переменная, в которую поочередно будут помещаться считываемые строки */
-	char str[1024] = {0};
-
-	/* Указатель, в который будет помещен адрес массива, в который считана */
-	/* строка, или NULL если достигнут коней файла или произошла ошибка */
-	char *estr;
-
-	file_lst = fopen("software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst", "r");
-	if (file_lst == NULL)
-	{
-		printf("ERR fopen software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst\r\n");
-		return;
-	}
-	else
-	{
-		printf("fopen: software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst\r\n");
-
-		/* Чтение (построчно) данных из файла в бесконечном цикле */
-		while (1)
-		{
-			/* Чтение одной строки  из файла */
-			estr = fgets(str, sizeof(str), file_lst);
-
-			/* Проверка на конец файла или ошибку чтения */
-			if (estr == NULL)
-			{
-				/* Проверяем, что именно произошло: кончился файл */
-				/* или это ошибка чтения */
-				if (feof(file_lst) != 0)
-				{
-					/* Если файл закончился, выводим сообщение о завершении */
-					/* чтения и выходим из бесконечного цикла */
-					printf("\r\nЧтение файла закончено\r\n");
-					break;
-				}
-				else
-				{
-					/* Если при чтении произошла ошибка, выводим сообщение */
-					/* об ошибке и выходим из бесконечного цикла */
-					printf("\r\nОшибка чтения из файла\r\n");
-					break;
-				}
-			}
-
-			/* ---------------------------------
-			 * Загрузить из файла тест-программу
-			 * ---------------------------------
-			 */
-			printf("\r\n --- Load software/ip5_in_out_10_3/%s --- \r\n", str);
-
-			FILE *file;
-			char path_str[160] = {0};
-			uint8_t cmd[20];
-			trs_t inr;
-			trs_t dst;
-
-			inr = smtr("0---0"); /* cчетчик адреса коротких слов */
-			trs_t sum;
-			trs_t tmp;
-
-			tmp.l = 18;
-			tmp.t1 = 0;
-			tmp.t0 = 0;
-
-			int64_t dsun = 0;
-			sum.l = 18;
-			sum.t1 = 0;
-			sum.t0 = 0;
-			//
-			dst.l = 9;
-			MR.l = 18;
-			int i = 0;
-
-			strcat(path_str, "software/ip5_in_out_10_3/");
-			if (str[strlen(str) - 1] == 0x0A)
-			{
-				str[strlen(str) - 1] = 0;
-			}
-			str[strlen(str)] = 0;
-			strcat(path_str, str);
-
-			file = fopen(path_str, "r");
-			if (file == NULL)
-			{
-				printf("ERR fopen %s\r\n", path_str);
-				return;
-			}
-
-			while (fscanf(file, "%s", cmd) != EOF)
-			{
-				cmd_str_2_trs(cmd, &dst);
-				sum = add_trs(sum, dst);
-				i += 1;
-
-				dsun += trs2digit(dst);
-
-				LOGGING_print("%s -> [", cmd);
-				trs2str(dst);
-				LOGGING_print("]");
-				if (LOGGING > 0)
-				{
-					view_short_reg(&inr, " addr");
-				}
-				else
-				{
-					printf("\r\n");
-				}
-
-				st_fram(inr, dst);
-				inr = next_address(inr);
-			}
-			fclose(file);
-
-			printf("\r\n i=%i\r\n", i);
-
-			/* Печать контрольных сумм */
-			printf("\r\n");
-			view_checksum_setun(sum);
-			//
-		}
-	}
-	fclose(file_lst);
-	printf("fclose: software/ip5_in_out_10_3/00_ip5_in_out.lst\r\n");
-
-	printf("\r\n --- END TEST #6 --- \r\n");
-}
-
-void Test7_Setun_Load(void)
-{
-	printf("\r\n --- TEST #7  Load program FT1,FT2 for VM SETUN-1958 --- \r\n\r\n");
-
-	FILE *file_lst;
-
-	/* Переменная, в которую поочередно будут помещаться считываемые строки */
-	char str[1024] = {0};
-
-	/* Указатель, в который будет помещен адрес массива, в который считана */
-	/* строка, или NULL если достигнут коней файла или произошла ошибка */
-	char *estr;
-
-	file_lst = fopen("software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst", "r");
-	if (file_lst == NULL)
-	{
-		printf("ERR fopen software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\r\n");
-		return;
-	}
-	else
-	{
-		printf("fopen: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\r\n");
-
-		/* Чтение (построчно) данных из файла в бесконечном цикле */
-		while (1)
-		{
-			/* Чтение одной строки  из файла */
-			estr = fgets(str, sizeof(str), file_lst);
-
-			/* Проверка на конец файла или ошибку чтения */
-			if (estr == NULL)
-			{
-				/* Проверяем, что именно произошло: кончился файл */
-				/* или это ошибка чтения */
-				if (feof(file_lst) != 0)
-				{
-					/* Если файл закончился, выводим сообщение о завершении */
-					/* чтения и выходим из бесконечного цикла */
-					printf("\r\nЧтение файла закончено\r\n");
-					break;
-				}
-				else
-				{
-					/* Если при чтении произошла ошибка, выводим сообщение */
-					/* об ошибке и выходим из бесконечного цикла */
-					printf("\r\nОшибка чтения из файла\r\n");
-					break;
-				}
-			}
-
-			/* ---------------------------------
-			 * Загрузить из файла тест-программу
-			 * ---------------------------------
-			 */
-			printf("\r\n --- Load software/ip5_in_out_3_10/%s --- \r\n", str);
-
-			FILE *file;
-			char path_str[160] = {0};
-			uint8_t cmd[20];
-			trs_t inr;
-			trs_t dst;
-
-			inr = smtr("0---0"); /* cчетчик адреса коротких слов */
-			trs_t sum;
-			trs_t tmp;
-
-			tmp.l = 18;
-			tmp.t1 = 0;
-			tmp.t0 = 0;
-
-			int64_t dsun = 0;
-			sum.l = 18;
-			sum.t1 = 0;
-			sum.t0 = 0;
-			//
-			dst.l = 9;
-			MR.l = 18;
-			int i = 0;
-
-			strcat(path_str, "software/ip5_in_out_3_10/");
-			if (str[strlen(str) - 1] == 0x0A)
-			{
-				str[strlen(str) - 1] = 0;
-			}
-			str[strlen(str)] = 0;
-			strcat(path_str, str);
-
-			file = fopen(path_str, "r");
-			if (file == NULL)
-			{
-				printf("ERR fopen %s\r\n", path_str);
-				return;
-			}
-
-			cmd_str_2_trs(cmd, &dst);
-			sum = add_trs(sum, dst);
-			i += 1;
-
-			LOGGING_print("%s -> [", cmd);
-			trs2str(dst);
-			LOGGING_print("]");
-			if (LOGGING > 0)
-			{
-				view_short_reg(&inr, " addr");
-			}
-			else
-			{
-				printf("\r\n");
-			}
-
-			st_fram(inr, dst);
-			inr = next_address(inr);
-			fclose(file);
-
-			/* Печать контрольных сумм */
-			printf("\r\n");
-			view_checksum_setun(sum);
-		}
-		// printf("\r\n i=%i\r\n", i);
-		//
-	}
-
-	fclose(file_lst);
-	printf("fclose: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\r\n");
-	printf("\r\n --- END TEST #7 --- \r\n");
-}
-
-void Test8_Setun_Electrified_Typewriter(void)
-{
-	printf("\r\n --- TEST #8 electrified_typewriter() and dump --- \r\n");
-
-	trs_t inr;
-	trs_t cp;
-	clear(&cp);
-	cp.l = 3;
-	cp = set_trit_setun(cp, 1, -1);
-	cp = set_trit_setun(cp, 2, -1);
-	cp = set_trit_setun(cp, 3, -1);
-
-	uint8_t cc;
-
-	cp = set_trit_setun(cp, 1, 1);
-	cp = set_trit_setun(cp, 2, 1);
-	cp = set_trit_setun(cp, 3, 0);
-	electrified_typewriter(cp, 0);
-
-	cp = set_trit_setun(cp, 1, -1);
-	cp = set_trit_setun(cp, 2, -1);
-	cp = set_trit_setun(cp, 3, -1);
-	for (cc = 0; cc < 27; cc++)
-	{
-		if (trs2digit(cp) != 12 || trs2digit(cp) != 11)
-		{
-			electrified_typewriter(cp, 0);
-		}
-		inc_trs(&cp);
-	}
-
-	cp = set_trit_setun(cp, 1, 1);
-	cp = set_trit_setun(cp, 2, 1);
-	cp = set_trit_setun(cp, 3, -1);
-	electrified_typewriter(cp, 0);
-
-	cp = set_trit_setun(cp, 1, -1);
-	cp = set_trit_setun(cp, 2, -1);
-	cp = set_trit_setun(cp, 3, -1);
-	for (cc = 0; cc < 27; cc++)
-	{
-		if (trs2digit(cp) != 12 || trs2digit(cp) != 11)
-		{
-			electrified_typewriter(cp, 0);
-		}
-		inc_trs(&cp);
-	}
-
-	cp = set_trit_setun(cp, 1, 1);
-	cp = set_trit_setun(cp, 2, 1);
-	cp = set_trit_setun(cp, 3, 0);
-	electrified_typewriter(cp, 1);
-
-	cp = set_trit_setun(cp, 1, -1);
-	cp = set_trit_setun(cp, 2, -1);
-	cp = set_trit_setun(cp, 3, -1);
-	for (cc = 0; cc < 27; cc++)
-	{
-		if (trs2digit(cp) != 12 || trs2digit(cp) != 11)
-		{
-			electrified_typewriter(cp, 1);
-		}
-		inc_trs(&cp);
-	}
-
-	cp = set_trit_setun(cp, 1, 1);
-	cp = set_trit_setun(cp, 2, 1);
-	cp = set_trit_setun(cp, 3, -1);
-	electrified_typewriter(cp, 1);
-
-	cp = set_trit_setun(cp, 1, -1);
-	cp = set_trit_setun(cp, 2, -1);
-	cp = set_trit_setun(cp, 3, -1);
-	for (cc = 0; cc < 27; cc++)
-	{
-		if (trs2digit(cp) != 12 || trs2digit(cp) != 11)
-		{
-			electrified_typewriter(cp, 1);
-		}
-		inc_trs(&cp);
-	}
-
-	printf("\r\n --- smtr() --- \r\n");
-	R = smtr("-+0+-");
-	view_short_reg(&R, "R");
-
-	R = smtr("---------");
-	view_short_reg(&R, "R");
-
-	R = smtr("+++++++++");
-	view_short_reg(&R, "R");
-
-	// -----------------------------------------------
-	trs_t exK;
-	trs_t oper;
-	trs_t m0;
-	trs_t m1;
-	trs_t addr;
-	trs_t ad1;
-	trs_t ad2;
-	uint8_t ret_exec;
-
-	// t19 test Oper=k6..8[+00]: (A*)=>(S)
-	printf("\r\nt19: test Oper=k6..8[+00]: (A*)=>(S)\r\n");
-
-	reset_setun_1958();
-
-	F = smtr("000++");
-
-	addr = smtr("000++");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("0++++++++");
-	st_fram(addr, m0);
-
-	addr = smtr("-000-");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("0++++++++0-------");
-	st_fram(addr, m0);
-
-	addr = smtr("000-0");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("0--------");
-	st_fram(addr, m0);
-
-	addr = smtr("00000");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("+0-0+0-00");
-	st_fram(addr, m0);
-
-	addr = smtr("0000+");
-	m1 = smtr("-000-0+000");
-	st_fram(addr, m1);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-
-	printf("\r\nreg C = 00001\r\n");
-
-	/**
-	 * work VM Setun-1958
-	 */
-	K = ld_fram(C);
-	exK = control_trs(K);
-	view_short_reg(&K, "K=");
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	printf("ret_exec = %i\r\n", ret_exec);
-	printf("\r\n");
-
-	addr = smtr("0000+");
-	m1 = smtr("-000-+000");
-	st_fram(addr, m1);
-
-	/* Begin address fram */
-	C = smtr("0000+");
-
-	printf("\r\nreg C = 00001\r\n");
-
-	/**
-	 * work VM Setun-1958
-	 */
-	K = ld_fram(C);
-	exK = control_trs(K);
-	view_short_reg(&K, "K=");
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	printf("ret_exec = %i\r\n", ret_exec);
-	printf("\r\n");
-
-	view_short_regs();
-
-	/* Begin address fram */
-	C = smtr("000+0");
-	printf("\r\nreg C = 00010\r\n");
-
-	addr = smtr("000+0");
-	m1 = smtr("00000+0--");
-	st_fram(addr, m1);
-
-	/**
-	 * work VM Setun-1958
-	 */
-	K = ld_fram(C);
-	exK = control_trs(K);
-	view_short_reg(&K, "K=");
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	printf("ret_exec = %i\r\n", ret_exec);
-	printf("\r\n");
-
-	ad1 = smtr("000-0");
-	ad2 = smtr("00+-0");
-	view_fram(ad1, ad2);
-
-	view_short_regs();
-
-	/* Begin address fram */
-	C = smtr("000++");
-	printf("\r\nreg C = 00011\r\n");
-
-	addr = smtr("000++");
-	m1 = smtr("00000++00");
-	st_fram(addr, m1);
-
-	/**
-	 * work VM Setun-1958
-	 */
-	K = ld_fram(C);
-	exK = control_trs(K);
-	view_short_reg(&K, "K=");
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	printf("ret_exec = %i\r\n", ret_exec);
-	printf("\r\n");
-
-	ad1 = smtr("000-0");
-	ad2 = smtr("00+-0");
-	view_fram(ad1, ad2);
-
-	view_short_regs();
-
-	// t20 test mul_trs()
-
-	trs_t res;
-	res.l = 18;
-	res.t1 = 0;
-	res.t0 = 0;
-
-	S = smtr("0000000-0000000+++");
-	R = smtr("000000000-00+000-");
-	res = mul_trs(S, R);
-
-	view_short_reg(&S, " S");
-	view_short_reg(&R, " R");
-	view_short_reg(&res, "res = S*R");
-
-	// t21 test Oper=k6..8[+00]: (A*)=>(S)
-	printf("\r\nt19: test Oper=k6..8[+00]: (A*)=>(S)\r\n");
-
-	reset_setun_1958();
-
-	F = smtr("000++");
-
-	addr = smtr("000++");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("0++++++++");
-	st_fram(addr, m0);
-
-	addr = smtr("000--");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("0++++++++");
-	st_fram(addr, m0);
-
-	addr = smtr("000-0");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("0--------");
-	st_fram(addr, m0);
-
-	addr = smtr("00000");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("+0-0+0-00");
-	st_fram(addr, m0);
-
-	addr = smtr("0000+");
-	m1 = smtr("00000++00");
-	st_fram(addr, m1);
-
-	S = smtr("000000000-00+000-+");
-
-	/* Begin address fram */
-	C = smtr("0000+");
-
-	printf("\r\nreg C = 00001\r\n");
-
-	/**
-	 * work VM Setun-1958
-	 */
-	K = ld_fram(C);
-	exK = control_trs(K);
-	view_short_reg(&K, "K=");
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	printf("ret_exec = %i\r\n", ret_exec);
-	printf("\r\n");
-
-	// views
-	ad1 = smtr("000-0");
-	ad2 = smtr("00+-0");
-	view_fram(ad1, ad2);
-
-	view_short_regs();
-
-	printf("\r\nt22: test Oper=k6..8[-+-]: Норм.(S)=>(A*); (N)=>(S)\r\n");
-
-	reset_setun_1958();
-
-	F = smtr("000++");
-
-	addr = smtr("000++");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("0++++++++");
-	st_fram(addr, m0);
-
-	addr = smtr("000--");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("0++++++++");
-	st_fram(addr, m0);
-
-	addr = smtr("000-0");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("0--------");
-	st_fram(addr, m0);
-
-	addr = smtr("00000");
-	view_short_reg(&addr, "addr=");
-	m0 = smtr("+0-0+0-00");
-	st_fram(addr, m0);
-
-	addr = smtr("0000+");
-	m1 = smtr("00000-+-0");
-	st_fram(addr, m1);
-
-	S = smtr("000000000-00+000-+");
-	view_short_reg(&S, "S=");
-
-	/* Begin address fram */
-	C = smtr("0000+");
-
-	printf("\r\nreg C = 00001\r\n");
-
-	/**
-	 * work VM Setun-1958
-	 */
-	K = ld_fram(C);
-	exK = control_trs(K);
-	view_short_reg(&K, "K=");
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	printf("ret_exec = %i\r\n", ret_exec);
-	printf("\r\n");
-
-	// views
-	ad1 = smtr("000-0");
-	ad2 = smtr("00+-0");
-	// view_fram(ad1, ad2);
-
-	view_short_regs();
-
-	// t22 test DRUM
-	printf("t22 test zone for drum()\r\n");
-	uint32_t nz;
-
-	printf(" ad1 ='000+'");
-	ad1 = smtr("000+");
-	nz = zone_drum_to_index(ad1);
-	printf(" nz = %i\r\n", nz);
-
-	printf(" ad1 ='00+-2'");
-	ad1 = smtr("00+-");
-	nz = zone_drum_to_index(ad1);
-	printf(" nz = %i\r\n", nz);
-
-	printf(" ad1 ='00+0'");
-	ad1 = smtr("00+0");
-	nz = zone_drum_to_index(ad1);
-	printf(" nz = %i\r\n", nz);
-
-	printf("t23 test zone for view_drum()\r\n");
-
-	printf(" z ='0+--'");
-	ad1 = smtr("0+--");
-	view_drum_zone(ad1);
-
-	printf(" z ='++++'");
-	ad1 = smtr("++++");
-	view_drum_zone(ad1);
-
-	printf("\r\nt24 test DRUN fill index and view \r\n");
-
-	inr.l = 9;
-	inr = smtr("000000000");
-
-	trs_t zi;
-	zi.l = 4;
-	zi = smtr("000+"); //-17
-
-	for (uint8_t zz = 0; zz < NUMBER_ZONE_DRUM; zz++)
-	{
-		for (uint8_t mm = 0; mm < SIZE_ZONE_TRIT_FRAM; mm++)
-		{
-			st_drum(zi, mm, inr);
-			inc_trs(&inr);
-		}
-		inc_trs(&zi);
-	}
-
-	printf("\r\nt25 test oper='-0-' (Мд*)=>(Фа*) \r\n");
-
-	addr = smtr("0000+");
-	m1 = smtr("00+---0-0"); //-0-
-	st_fram(addr, m1);
-
-	S = smtr("000000000-00+000-+");
-	view_short_reg(&S, "S=");
-
-	/* Begin address fram */
-	C = smtr("0000+");
-
-	printf("\r\nreg C = 00001\r\n");
-
-	/**
-	 * work VM Setun-1958
-	 */
-	K = ld_fram(C);
-	exK = control_trs(K);
-	view_short_reg(&K, "K=");
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	printf("ret_exec = %i\r\n", ret_exec);
-
-	C = smtr("0000+");
-	addr = smtr("0000+");
-	m1 = smtr("000+--0+0"); //-0+
-	st_fram(addr, m1);
-
-	K = ld_fram(C);
-	exK = control_trs(K);
-	view_short_reg(&K, "K=");
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	printf("ret_exec = %i\r\n", ret_exec);
-
-	printf("DRUM zone='0+--'");
-	ad1 = smtr("0+--");
-	view_drum_zone(ad1);
-	printf("\r\n");
-	//
-	printf("DRUM zone='0+--'");
-	ad1 = smtr("0+--");
-	view_drum_zone(ad1);
-	printf("\r\n");
-
-	printf("\r\n --- END TEST #8 --- \r\n");
-}
-
-// Вывод "бумажной ленты.
-void Test9_Perforatin_Paper_Line(void)
-{
-	int8_t trit;
-	trs_t aa;
-	trs_t ad1;
-	trs_t ad2;
-	trs_t addr;
-	trs_t oper;
-	trs_t exK;
-	trs_t m0;
-	trs_t m1;
-	int8_t ret_exec;
-
-	printf("\r\n --- TEST #9 Perforatin paper line --- \r\n");
-
-	// t11.1 test Oper=k6..8[+00]: (A*)=>(S)
-	printf("\r\nt11.1:  Oper=k6..8[+00]: (A*)=>(S)\r\n");
-	//
-	reset_setun_1958();
-
-	/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
-	init_tab4();
-
-	/* ---------------------------------------
-	 *  Открыть файлы для виртуальных устройств
-	 */
-	ptr1 = fopen("ptr1/paper.txt", "r");
-	if (ptr1 == NULL)
-	{
-		printf("Error fopen 'ptr1/paper.txt'\r\n");
-		return;
-	}
-
-	ptr2 = fopen("ptr2/paper.txt", "r");
-	if (ptr2 == NULL)
-	{
-		printf("Error fopen 'ptr1/paper.txt'\r\n");
-		return;
-	}
-
-	ptp1 = fopen("ptp1/paper.txt", "w");
-	if (ptp1 == NULL)
-	{
-		printf("Error fopen 'ptp1/paper.txt'\r\n");
-		return;
-	}
-
-	tty1 = fopen("tty1/printout.txt", "w");
-	if (tty1 == NULL)
-	{
-		printf("Error fopen 'tty1/printout.txt'\r\n");
-		return;
-	}
-
-	drum = fopen("drum/paper.txt", "wr");
-	if (drum == NULL)
-	{
-		printf("Error fopen 'drum/paper.txt'\r\n");
-		return;
-	}
-
-	/* ----------------------------------
-	 *  Выполнить первый код "Сетунь-1958"
-	 */
-	printf("\r\n[ Start Setun-1958 ]\r\n");
-
-	/**
-	 * Выполение программы в ферритовой памяти "Сетунь-1958"
-	 */
-	Begin_Read_Commands_from_FT1(ptr1);
-
-	//
-	addr = smtr("0000+");
-	m0 = smtr("00+00-000");
-	st_fram(addr, m0);
-	view_elem_fram(addr);
-	//
-
-	/* Begin address fram */
-	C = smtr("0000+");
-	printf("\r\nreg C = 00001\r\n");
-
-	// work VM Setun-1958
-	K = ld_fram(C);
-
-	exK = control_trs(K);
-	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
-	//
-	if (ret_exec == 0)
-		printf("[status: OK']\r\n");
-	if (ret_exec != 0)
-		printf("[status: ERR#%d]\r\n", ret_exec);
-	printf("\r\n");
-	//
-	view_short_regs();
-
-	trs_t fa;
-	fa = smtr("0---0");
-
-	dump_fram_zone(smtr("0"));
-
-	printf("\r\n --- END TEST #9 --- \r\n");
-}
-
-void Test10_LoadSWSetun(void)
-{
-	printf("\r\n --- Load software anf DUMP FRAM  for VM SETUN-1958 --- \r\n\r\n");
-
-	FILE *file_lst;
-
-	/* Переменная, в которую поочередно будут помещаться считываемые строки */
-	char str[1024] = {0};
-
-	/* Указатель, в который будет помещен адрес массива, в который считана */
-	/* строка, или NULL если достигнут коней файла или произошла ошибка */
-	char *estr;
-
-	file_lst = fopen("software/tests/01-test-fram.lst", "r");
-	if (file_lst == NULL)
-	{
-		printf("ERR fopen software/tests/01-test-fram.lst\r\n");
-		return;
-	}
-	else
-	{
-		printf("fopen: software/tests/01-test-fram.lst\r\n");
-
-		/* Чтение (построчно) данных из файла в бесконечном цикле */
-		while (1)
-		{
-			/* Чтение одной строки  из файла */
-			estr = fgets(str, sizeof(str), file_lst);
-
-			/* Проверка на конец файла или ошибку чтения */
-			if (estr == NULL)
-			{
-				/* Проверяем, что именно произошло: кончился файл */
-				/* или это ошибка чтения */
-				if (feof(file_lst) != 0)
-				{
-					/* Если файл закончился, выводим сообщение о завершении */
-					/* чтения и выходим из бесконечного цикла */
-					printf("\r\nЧтение файла закончено\r\n");
-					break;
-				}
-				else
-				{
-					/* Если при чтении произошла ошибка, выводим сообщение */
-					/* об ошибке и выходим из бесконечного цикла */
-					printf("\r\nОшибка чтения из файла\r\n");
-					break;
-				}
-			}
-
-			/* ---------------------------------
-			 * Загрузить из файла тест-программу
-			 * ---------------------------------
-			 */
-			printf("\r\n Load software/tests/%s\r\n", str);
-
-			FILE *file;
-			char path_str[160] = {0};
-			uint8_t cmd[20];
-			trs_t inr;
-			trs_t dst;
-
-			inr = smtr("0---0"); /* cчетчик адреса коротких слов */
-			trs_t sum;
-			trs_t tmp;
-
-			tmp.l = 18;
-			tmp.t1 = 0;
-			tmp.t0 = 0;
-
-			int64_t dsun = 0;
-			sum.l = 18;
-			sum.t1 = 0;
-			sum.t0 = 0;
-			//
-			dst.l = 9;
-			MR.l = 18;
-			int i = 0;
-
-			strcat(path_str, "software/tests/");
-			if (str[strlen(str) - 1] == 0x0A)
-			{
-				str[strlen(str) - 1] = 0;
-			}
-			str[strlen(str)] = 0;
-			strcat(path_str, str);
-
-			file = fopen(path_str, "r");
-			if (file == NULL)
-			{
-				printf("ERR fopen %s\r\n", path_str);
-				return;
-			}
-
-			while (fscanf(file, "%s", cmd) != EOF)
-			{
-				cmd_str_2_trs(cmd, &dst);
-				sum = add_trs(sum, dst);
-				i += 1;
-
-				dsun += trs2digit(dst);
-
-				LOGGING_print("%s -> [", cmd);
-				trs2str(dst);
-				LOGGING_print("]");
-				if (LOGGING > 0)
-				{
-					view_short_reg(&inr, " addr");
-				}
-				else
-				{
-					printf("\r\n");
-				}
-
-				st_fram(inr, dst);
-				inr = next_address(inr);
-			}
-			fclose(file);
-
-			printf("\r\n i=%i\r\n", i);
-
-			/* Печать контрольных сумм */
-			printf("\r\n");
-			view_checksum_setun(sum);
-		}
-	}
-	fclose(file_lst);
-
-	// dump_fram_zone(smtr("0"));
-	// dump_fram_zone(smtr("+"));
-	// dump_fram_zone(smtr("-"));
-
-	printf("\r\n END TEST#10 Load software\r\n");
-}
-
-/*----------------- END TESTS ---------------*/
 
 const char *get_file_ext(const char *filename)
 {
@@ -8247,14 +6115,18 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 				{
 					/* Если файл закончился, выводим сообщение о завершении */
 					/* чтения и выходим из бесконечного цикла */
-					// printf("\r\nЧтение файла закончено\r\n");
+					/*
+					printf("\r\nЧтение файла закончено\r\n");
+					*/
 					break;
 				}
 				else
 				{
 					/* Если при чтении произошла ошибка, выводим сообщение */
 					/* об ошибке и выходим из бесконечного цикла */
-					// printf("\nОшибка чтения из файла\r\n");
+					/*
+					printf("\nОшибка чтения из файла\r\n");
+					*/
 					break;
 				}
 			}
@@ -8283,7 +6155,7 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 			sum.l = 18;
 			sum.t1 = 0;
 			sum.t0 = 0;
-			//
+
 			dst.l = 9;
 			MR.l = 18;
 			int i = 0;
@@ -8310,45 +6182,45 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 				uint8_t prlile[7];
 				trs_t dst;
 				trs_t trit2;
-				//
+
 				cmd_str_2_trs(cmd, &dst);
 				trit2.l = 2;
-				//
+
 				trit2 = set_trit_setun(trit2, 1, 0);
 				trit2 = set_trit_setun(trit2, 2, get_trit_setun(dst, 1));
 				memset(prlile, 0, sizeof(prlile));
 				memmove(prlile, tab4_7[trs2digit(trit2) + offset4_7], sizeof(prlile));
 				fwrite(prlile, 1, strlen(prlile), file_txt);
 				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
-				//
+
 				trit2 = set_trit_setun(trit2, 1, get_trit_setun(dst, 2));
 				trit2 = set_trit_setun(trit2, 2, get_trit_setun(dst, 3));
 				memset(prlile, 0, sizeof(prlile));
 				memmove(prlile, tab4_7[trs2digit(trit2) + offset4_7], sizeof(prlile));
 				fwrite(prlile, 1, strlen(prlile), file_txt);
 				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
-				//
+
 				trit2 = set_trit_setun(trit2, 1, get_trit_setun(dst, 4));
 				trit2 = set_trit_setun(trit2, 2, get_trit_setun(dst, 5));
 				memset(prlile, 0, sizeof(prlile));
 				memmove(prlile, tab4_7[trs2digit(trit2) + offset4_7], sizeof(prlile));
 				fwrite(prlile, 1, strlen(prlile), file_txt);
 				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
-				//
+
 				trit2 = set_trit_setun(trit2, 1, get_trit_setun(dst, 6));
 				trit2 = set_trit_setun(trit2, 2, get_trit_setun(dst, 7));
 				memset(prlile, 0, sizeof(prlile));
 				memmove(prlile, tab4_7[trs2digit(trit2) + offset4_7], sizeof(prlile));
 				fwrite(prlile, 1, strlen(prlile), file_txt);
 				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
-				//
+
 				trit2 = set_trit_setun(trit2, 1, get_trit_setun(dst, 8));
 				trit2 = set_trit_setun(trit2, 2, get_trit_setun(dst, 9));
 				memset(prlile, 0, sizeof(prlile));
 				memmove(prlile, tab4_7[trs2digit(trit2) + offset4_7], sizeof(prlile));
 				fwrite(prlile, 1, strlen(prlile), file_txt);
 				fwrite("\r\n", 1, strlen("\r\n"), file_txt);
-				//
+
 				memset(prlile, 0, sizeof(prlile));
 				memmove(prlile, "O__._O", sizeof(prlile));
 				fwrite(prlile, 1, strlen(prlile), file_txt);
@@ -8427,14 +6299,14 @@ int ConvertSWtoPaper(char *path_lst, char *path_txt)
 	{
 		char pathfile1[1024];
 		char pathfile2[1024];
-		// clear
+		/* clear */
 		memset(pathfile1, 0, sizeof(pathfile1));
 		memset(pathfile2, 0, sizeof(pathfile2));
-		// path file1
+		/* path file1 */
 		strcat(pathfile1, path_lst);
 		strcat(pathfile1, "/");
 		strcat(pathfile1, a_fileName);
-		// path file2
+		/* path file2 */
 		strcat(pathfile2, path_txt);
 		strcat(pathfile2, "/");
 		strcat(pathfile2, "paper.txt");
@@ -8474,7 +6346,7 @@ int DumpFileTxs(char *pathfiletxs)
 	sum.l = 18;
 	sum.t1 = 0;
 	sum.t0 = 0;
-	//
+
 	dst.l = 9;
 	MR.l = 18;
 	int i = 0;
@@ -8545,16 +6417,20 @@ void Emu_Open_Files_ptr1_ptr2(void)
 	if (ptr1 == NULL)
 	{
 		printf("Error fopen 'ptr1/paper.txt'\r\n");
-		// viv~ TODO
-		// return 0;
+		/*
+		 viv~ TODO
+		 return 0;
+		*/
 	}
 
 	ptr2 = fopen("ptr2/paper.txt", "w");
 	if (ptr2 == NULL)
 	{
 		printf("Error fopen 'ptr1/paper.txt'\r\n");
-		// viv~ TODO
-		// return 0;
+		/*
+		 viv~ TODO
+		 return 0;
+		 */
 	}
 }
 
@@ -8573,32 +6449,40 @@ void Emu_Open_Files(void)
 	if (ptr1 == NULL)
 	{
 		printf("Error fopen 'ptr1/paper.txt'\r\n");
-		// viv~ TODO
-		// return 0;
+		/*
+		 viv~ TODO
+		 return 0;
+		 */
 	}
 
 	ptr2 = fopen("ptr2/paper.txt", "r");
 	if (ptr2 == NULL)
 	{
 		printf("Error fopen 'ptr1/paper.txt'\r\n");
-		// viv~ TODO
-		// return 0;
+		/*
+		 viv~ TODO
+		 return 0;
+		 */
 	}
 
 	ptp1 = fopen("ptp1/paper.txt", "w");
 	if (ptp1 == NULL)
 	{
 		printf("Error fopen 'ptp1/paper.txt'\r\n");
-		// viv~ TODO
-		// return 0;
+		/*
+		 viv~ TODO
+		 return 0;
+		*/
 	}
 
 	tty1 = fopen("tty1/printout.txt", "w");
 	if (tty1 == NULL)
 	{
 		printf("Error fopen 'tty1/printout.txt'\r\n");
-		// viv~ TODO
-		// return 0;
+		/*
+		 viv~ TODO
+		 return 0;
+		 */
 	}
 }
 
@@ -8660,9 +6544,11 @@ int Emu_Step(void)
 void Emu_Stop(void)
 {
 
-	// dump_fram_zone(smtr("-"));
-	// dump_fram_zone(smtr("0"));
-	// dump_fram_zone(smtr("+"));
+	/*
+	 dump_fram_zone(smtr("-"));
+	 dump_fram_zone(smtr("0"));
+	 dump_fram_zone(smtr("+"));
+	 */
 
 	/* Prints REGS */
 	view_short_regs();
@@ -8671,15 +6557,17 @@ void Emu_Stop(void)
 	/* Prints REGS and FRAM */
 	if (LOGGING > 0)
 	{
-		// dump_fram_zone(smtr("-"));
-		// dump_fram_zone(smtr("0"));
-		// dump_fram_zone(smtr("+"));
+		/*
+		 dump_fram_zone(smtr("-"));
+		 dump_fram_zone(smtr("0"));
+		 dump_fram_zone(smtr("+"));
+		*/
 	}
 
 	/* Печать завершения работы "Setun-1958" */
 	if (STEP == 0)
 	{
-		// Новое состояние
+		/* Новое состояние */
 		emu_stat = PAUSE_EMU_ST;
 
 		printf("\r\n[ Stop Setun-1958 ]\r\n");
@@ -8759,22 +6647,20 @@ int Process_Work_Emulation(void)
 			emu_stat = ERROR_MB_NUMBER_EMU_ST;
 		}
 
-		/**/
 		counter_step++;
 		if (STEP > 0)
 			STEP--;
 		if (STEP == 0)
 		{
-			// Новое состояние
+			/* Новое состояние */
 			emu_stat = PAUSE_EMU_ST;
 		}
 
-		/**/
 		if (BREAKPOINT == trs2digit(C) && (BREAKPOINT <= INT32_MAX))
 		{
 			emu_stat = PAUSE_EMU_ST;
 		}
-		/**/
+
 		if (BREAKPOINT_MB == trs2digit(MB) && (BREAKPOINT_MB <= INT32_MAX))
 		{
 			emu_stat = PAUSE_EMU_ST;
@@ -8794,8 +6680,8 @@ int Process_Work_Emulation(void)
 	/* Состояние готов к работе */
 	if (emu_stat == LOOP_WORK_EMU_ST)
 	{
-		/**/
-		if (BREAKPOINT_TRS.l != 0)	
+
+		if (BREAKPOINT_TRS.l != 0)
 		{
 			if (BREAKPOINT == trs2digit(C) && (BREAKPOINT <= INT32_MAX))
 			{
@@ -8805,7 +6691,6 @@ int Process_Work_Emulation(void)
 			}
 		}
 
-		/**/
 		if (BREAKPOINT_MB_TRS.l != 0)
 		{
 			if (BREAKPOINT_MB == trs2digit(MB) && (BREAKPOINT_MB <= INT32_MAX))
@@ -8818,33 +6703,40 @@ int Process_Work_Emulation(void)
 
 		ret_exec = Emu_Step();
 
-		/**/
 		counter_step++;
 
 		if ((ret_exec == STOP))
 		{
 			printf("\r\n<STOP>\r\n");
 			emu_stat = STOP_EMU_ST;
-			// break;
+			/*
+			break;
+			*/
 		}
 		else if (ret_exec == STOP_OVER)
 		{
 			printf("\r\n<STOP_OVER>\r\n");
 			emu_stat = STOP_EMU_ST;
-			// break;
+			/*
+			 break;
+			 */
 		}
 		else if (ret_exec == STOP_ERROR)
 		{
 			printf("\r\nERR#:%i<STOP_ERROR>\r\n", ret_exec);
 			emu_stat = ERROR_EMU_ST;
-			// break;
+			/*
+			 break;
+			*/
 		}
 		else if (ret_exec == STOP_ERROR_MB_NUMBER)
 		{
 			printf("\r\nERR#:%i<STOP_ERROR_MB_NUMBER>\r\n", ret_exec);
 			cli_ascii();
 			emu_stat = ERROR_MB_NUMBER_EMU_ST;
-			// break;
+			/*
+			 break;
+			*/
 		}
 	}
 
@@ -8872,7 +6764,7 @@ int Process_Work_Emulation(void)
 		/* Prints REGS */
 		view_short_regs();
 		printf("\r\n");
-		//
+
 		cli_ascii();
 		emu_stat = WAIT_EMU_ST;
 	} /* if(...) */
@@ -8893,7 +6785,7 @@ int Process_Work_Emulation(void)
  *  CLI командный интерпретатор
  */
 #define ARRAY_SIZE(array) (sizeof(array) / sizeof(array[0]))
-//
+
 #define BUF_SIZE 1024	   /* размер буфера */
 static char buf[BUF_SIZE]; /* буфер для приема сообщений */
 
@@ -8922,7 +6814,6 @@ typedef struct _cmd_data
 
 cmd_data_t cmd_data;
 
-//
 void Emu_Begin(void);
 int Emu_Step(void);
 void Emu_Stop(void);
@@ -8930,7 +6821,6 @@ void Emu_Stop(void);
 static char dump_cmd(char *buf, void *data);
 static char load_cmd(char *buf, void *data);
 static char debug_cmd(char *buf, void *data);
-static char test_cmd(char *buf, void *data);
 static char begin_cmd(char *buf, void *data);
 static char pause_cmd(char *buf, void *data);
 static char run_cmd(char *buf, void *data);
@@ -8943,7 +6833,7 @@ static char fram_cmd(char *buf, void *data);
 static char drum_cmd(char *buf, void *data);
 static char help_cmd(char *buf, void *data);
 static char quit_cmd(char *buf, void *data);
-//
+
 static char calc_cmd(char *buf, void *data);
 
 /*
@@ -8954,105 +6844,98 @@ ascii_message_t command[] =
 		{.name_cmd = "dump",
 		 .parser = dump_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "load",
 		 .parser = load_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "l",
 		 .parser = load_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "debug",
 		 .parser = debug_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "d",
 		 .parser = debug_cmd,
 		 .data = &cmd_data},
-		//
-		{.name_cmd = "test",
-		 .parser = test_cmd,
-		 .data = &cmd_data},
-		{.name_cmd = "t",
-		 .parser = test_cmd,
-		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "begin",
 		 .parser = begin_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "b",
 		 .parser = begin_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "pause",
 		 .parser = pause_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "p",
 		 .parser = pause_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "run",
 		 .parser = run_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "r",
 		 .parser = run_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "step",
 		 .parser = step_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "s",
 		 .parser = step_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "break",
 		 .parser = break_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "br",
 		 .parser = break_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "breakmb",
 		 .parser = break_drum_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "brm",
 		 .parser = break_drum_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "reg",
 		 .parser = reg_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "rg",
 		 .parser = reg_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "view",
 		 .parser = view_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "v",
 		 .parser = view_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "fram",
 		 .parser = fram_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "fr",
 		 .parser = fram_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "drum",
 		 .parser = drum_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "dr",
 		 .parser = drum_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "help",
 		 .parser = help_cmd,
 		 .data = &cmd_data},
 		{.name_cmd = "h",
 		 .parser = help_cmd,
 		 .data = &cmd_data},
-		//
+
 		{.name_cmd = "quit",
 		 .parser = quit_cmd,
 		 .data = &cmd_data},
@@ -9103,7 +6986,6 @@ void help_print(void)
 	printf(" [dump]       [arglist]\r\n");
 	printf(" [load]  [l]  [arglist]\r\n");
 	printf(" [debug] [d]  [arglist]\r\n");
-	printf(" [test]  [t]  [arglist]\r\n");
 	printf(" [view]  [v]\r\n");
 	printf(" [begin] [b]\r\n");
 	printf(" [pause] [p]\r\n");
@@ -9189,63 +7071,6 @@ char debug_cmd(char *buf, void *data)
 	{
 		LOGGING = 0; /* Вывод отладочной информации  */
 		printf("switch debug off\r\n");
-	}
-
-	return 0; /* OK' */
-}
-
-/* Func 'test_cmd' */
-char test_cmd(char *buf, void *data)
-{
-	cmd_data_t *pars = (cmd_data_t *)data;
-
-	if ((pars->count < 1) || (pars->count > 1))
-	{
-		/* Error */
-		printf("dbg: ERR#1\r\n");
-		return 1; /* ERR#1 */
-	}
-
-	int test_numb = 0;
-	sscanf(pars->par2, "%i", &test_numb);
-
-	switch (test_numb)
-	{
-	case 1:
-		Test1_Ariphmetic_Ternary();
-		break;
-	case 2:
-		Test2_Opers_TRITS_32();
-		break;
-	case 3:
-		Test3_Setun_Opers();
-		break;
-	case 4:
-		Test4_Setun_Opers();
-		break;
-	case 5:
-		Test5_Setun_Load();
-		break;
-	case 6:
-		Test6_Setun_Load();
-		break;
-	case 7:
-		Test7_Setun_Load();
-		break;
-	case 8:
-		Test8_Setun_Electrified_Typewriter();
-		break;
-	case 9:
-		Test9_Perforatin_Paper_Line();
-		break;
-	case 10:
-		Test10_LoadSWSetun();
-		break;
-	default:
-		/* Error */
-		printf("no test#%i\r\n", test_numb);
-		return 2; /* ERR#2 */
-		break;
 	}
 
 	return 0; /* OK' */
@@ -9465,7 +7290,7 @@ char view_cmd(char *buf, void *data)
 	case WAIT_EMU_ST:
 		printf("  status: wait\r\n");
 		break;
-	//
+
 	default:
 		break;
 	}
@@ -9684,10 +7509,11 @@ int ascii_parser(char *buf)
 	memset(par2, 0, sizeof(par2));
 	memset(par3, 0, sizeof(par3));
 	memset(par4, 0, sizeof(par4));
-	//
+
 	sscanf(buf, "%s %s %s %s", par1, par2, par3, par4);
-	// viv- old  printf("par1=%s par2=%s par3=%s par3=%s\r\n",par1,par2,par3,par4);
-	//
+	/*
+	 viv- old  printf("par1=%s par2=%s par3=%s par3=%s\r\n",par1,par2,par3,par4);
+	*/
 	for (i = 0; i < ARRAY_SIZE(command); i++)
 	{
 		if ((strncmp(par1, command[i].name_cmd, strlen(command[i].name_cmd)) == 0) &&
@@ -9823,4 +7649,4 @@ int main(void)
 	return 0;
 }
 
-/* EOF 'setun_core.c' */
+/* EOF 'emusetun.c' */
