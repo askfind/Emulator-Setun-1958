@@ -1,5 +1,5 @@
-Эмулятор троичной машины 'СЕТУНЬ' SETUN-1958 VM
-===============================================
+Эмулятор троичной цифровой электронной машины 'СЕТУНЬ' SETUN-1958 VM
+====================================================================
 
 A virtual machine of ternary computer Setun, also known as "Small Automatic Digital Machine" written on C.
 
