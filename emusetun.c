@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   09.01.2025
+ * Edit date:   10.01.2025
  */
-#define Version "1.96"
+#define Version "1.97"
 
 /*
  TODO
@@ -3647,7 +3647,7 @@ int16_t Decoder_String_from_Paper_Line(void)
 	filepl = fopen("software/paper.txt", "r");
 	if (filepl == NULL)
 	{
-		printf("ERR fopen %s\r\n", "software/paper.txt");
+		printf("ERROR fopen %s\r\n", "software/paper.txt");
 		return 0;
 	}
 	printf("open %s\r\n", "software/paper.txt");
@@ -6069,8 +6069,8 @@ const char *get_file_ext(const char *filename)
 
 void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathfiletxt)
 {
-	FILE *file_lst;
-	FILE *file_txt;
+	FILE *file_lst;  /* спискок файлов с командами машины */
+	FILE *file_txt;  /* файл с командами машины */
 
 	/* Переменная, в которую поочередно будут помещаться считываемые строки */
 	char str[1024] = {0};
@@ -6082,14 +6082,14 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 	file_txt = fopen(pathfiletxt, "w");
 	if (file_txt == NULL)
 	{
-		printf("ERR fopen %s\r\n", pathfiletxt);
+		printf("ERROR fopen %s\r\n", pathfiletxt);
 		return;
 	}
 
 	file_lst = fopen(pathfilelst, "r");
 	if (file_lst == NULL)
 	{
-		printf("ERR fopen %s\r\n", pathfilelst);
+		printf("ERROR fopen %s\r\n", pathfilelst);
 		return;
 	}
 	else
@@ -6169,7 +6169,7 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 			file = fopen(path_str, "r");
 			if (file == NULL)
 			{
-				printf("ERR fopen %s\r\n", path_str);
+				printf("ERROR fopen %s\r\n", path_str);
 				return;
 			}
 
@@ -6233,7 +6233,27 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 		}
 	}
 
-	/* Закрыть файлы */
+        //TODO скрипт файл
+        /* Копировать скрипт-файл в каталог './script' */
+       	//FILE *file_src_sst;  /* исходный скрипт-файл продолжение работы машины после останова */
+        //FILE *file_dst_sst;  /* скопированный скрипт-файл продолжение работы машины после останова */
+        //
+        //file_scr_sst = fopen(path_file_src_sst, "r");
+        //file_dst_sst = fopen(path_file_file_dst_sst, "w");
+        //
+	//if (file_sst == NULL)
+	//{
+	//	/* Нет скрипт файла */
+        //
+	//}
+	//else
+	//{
+        //
+        //}
+        //fclose(file_src_sst);
+        //fclose(file_dst_sst);
+
+        /* Закрыть файлы */
 	fclose(file_lst);
 	fclose(file_txt);
 
@@ -6277,7 +6297,7 @@ int ConvertSWtoPaper(char *path_lst, char *path_txt)
 		return EXIT_FAILURE;
 	}
 
-	/* Прочитать файлы из каталога и преобразовать в папер */
+	/* Прочитать файлы из каталога и преобразовать в paper.txt */
 	if (res == 0)
 	{
 		/* Проверить каталог */
@@ -6321,7 +6341,7 @@ int DumpFileTxs(char *pathfiletxs)
 	file_txs = fopen(pathfiletxs, "r");
 	if (file_txs == NULL)
 	{
-		printf("ERR fopen %s\r\n", pathfiletxs);
+		printf("ERROR fopen %s\r\n", pathfiletxs);
 		return 1;
 	}
 
@@ -6417,7 +6437,7 @@ void Emu_Open_Files_ptr1_ptr2(void)
 	ptr1 = fopen("ptr1/paper.txt", "w");
 	if (ptr1 == NULL)
 	{
-		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		printf("ERROR fopen 'ptr1/paper.txt'\r\n");
 		/*
 		 viv~ TODO
 		 return 0;
@@ -6427,7 +6447,7 @@ void Emu_Open_Files_ptr1_ptr2(void)
 	ptr2 = fopen("ptr2/paper.txt", "w");
 	if (ptr2 == NULL)
 	{
-		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		printf("ERROR fopen 'ptr1/paper.txt'\r\n");
 		/*
 		 viv~ TODO
 		 return 0;
@@ -6449,7 +6469,7 @@ void Emu_Open_Files(void)
 	ptr1 = fopen("ptr1/paper.txt", "r");
 	if (ptr1 == NULL)
 	{
-		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		printf("ERROR fopen 'ptr1/paper.txt'\r\n");
 		/*
 		 viv~ TODO
 		 return 0;
@@ -6459,7 +6479,7 @@ void Emu_Open_Files(void)
 	ptr2 = fopen("ptr2/paper.txt", "r");
 	if (ptr2 == NULL)
 	{
-		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		printf("ERROR fopen 'ptr1/paper.txt'\r\n");
 		/*
 		 viv~ TODO
 		 return 0;
@@ -6469,7 +6489,7 @@ void Emu_Open_Files(void)
 	ptp1 = fopen("ptp1/paper.txt", "w");
 	if (ptp1 == NULL)
 	{
-		printf("Error fopen 'ptp1/paper.txt'\r\n");
+		printf("ERROR fopen 'ptp1/paper.txt'\r\n");
 		/*
 		 viv~ TODO
 		 return 0;
@@ -6479,7 +6499,7 @@ void Emu_Open_Files(void)
 	tty1 = fopen("tty1/printout.txt", "w");
 	if (tty1 == NULL)
 	{
-		printf("Error fopen 'tty1/printout.txt'\r\n");
+		printf("ERROR fopen 'tty1/printout.txt'\r\n");
 		/*
 		 viv~ TODO
 		 return 0;
@@ -7037,7 +7057,7 @@ char load_cmd(char *buf, void *data)
 	if (pars->count > 2)
 	{
 		/* Error */
-		printf("Error load_cmd!\r\n");
+		printf("ERROR load_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7087,7 +7107,7 @@ char begin_cmd(char *buf, void *data)
 	if (pars->count > 0)
 	{
 		/* Error */
-		printf("Error begin_cmd!\r\n");
+		printf("ERROR begin_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7105,7 +7125,7 @@ char pause_cmd(char *buf, void *data)
 	if (pars->count > 0)
 	{
 		/* Error */
-		printf("Error pause_cmd!\r\n");
+		printf("ERROR pause_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7123,7 +7143,7 @@ char run_cmd(char *buf, void *data)
 	if (pars->count > 0)
 	{
 		/* Error */
-		printf("Error run_cmd!\r\n");
+		printf("ERROR run_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7141,7 +7161,7 @@ char step_cmd(char *buf, void *data)
 	if (pars->count > 1)
 	{
 		/* Error */
-		printf("Error step_cmd!\r\n");
+		printf("ERROR step_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7160,7 +7180,7 @@ char break_cmd(char *buf, void *data)
 	if (pars->count > 1)
 	{
 		/* Error */
-		printf("Error break_cmd!\r\n");
+		printf("ERROR break_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7186,7 +7206,7 @@ char break_drum_cmd(char *buf, void *data)
 	if (pars->count > 1)
 	{
 		/* Error */
-		printf("Error break_drum_cmd!\r\n");
+		printf("ERROR break_drum_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7212,7 +7232,7 @@ char reg_cmd(char *buf, void *data)
 	if ((pars->count < 1) || (pars->count > 2))
 	{
 		/* Error */
-		printf("Error reg_cmd!\r\n");
+		printf("ERROR reg_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7258,7 +7278,7 @@ char view_cmd(char *buf, void *data)
 	if (pars->count > 0)
 	{
 		/* Error */
-		printf("Error view_cmd!\r\n");
+		printf("ERROR view_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7335,7 +7355,7 @@ char fram_cmd(char *buf, void *data)
 	if (pars->count > 1)
 	{
 		/* Error */
-		printf("Error fram_cmd!\r\n");
+		printf("ERROR fram_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7352,7 +7372,7 @@ char fram_cmd(char *buf, void *data)
 		if (len < 1 || len > 1)
 		{
 			/* Error */
-			printf("Error fram_cmd!\r\n");
+			printf("ERROR fram_cmd!\r\n");
 			return 1; /* ERR#1 */
 		}
 		memcpy(pr, lt2symtrs(*(pars->par2)), 2);
@@ -7371,7 +7391,7 @@ char drum_cmd(char *buf, void *data)
 	if (pars->count > 1)
 	{
 		/* Error */
-		printf("Error drum_cmd!\r\n");
+		printf("ERROR drum_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7389,7 +7409,7 @@ char drum_cmd(char *buf, void *data)
 		if (len < 1 || len > 2)
 		{
 			/* Error */
-			printf("Error drum_cmd!\r\n");
+			printf("ERROR drum_cmd!\r\n");
 			return 1; /* ERR#1 */
 		}
 
@@ -7421,7 +7441,7 @@ char help_cmd(char *buf, void *data)
 	if (pars->count > 0)
 	{
 		/* Error */
-		printf("Error help_cmd!\r\n");
+		printf("ERROR help_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7438,7 +7458,7 @@ char quit_cmd(char *buf, void *data)
 	if (pars->count > 0)
 	{
 		/* Error */
-		printf("Error quit_cmd!\r\n");
+		printf("ERROR quit_cmd!\r\n");
 		return 1; /* ERR#1 */
 	}
 
@@ -7492,7 +7512,7 @@ char calc_cmd(char *buf, void *data)
 		result = num1 / num2;
 		break;
 	default:
-		printf("Error: Invalid operator\n");
+		printf("ERROR: Invalid operator\n");
 		return 1;
 	}
 
