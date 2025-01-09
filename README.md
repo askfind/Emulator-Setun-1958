@@ -1,5 +1,5 @@
-Эмулятор троичной машины 'СЕТУНЬ' SETUN-1958 VM
-===============================================
+Эмулятор троичной цифровой электронной машины 'СЕТУНЬ' SETUN-1958 VM
+====================================================================
 
 A virtual machine of ternary computer Setun, also known as "Small Automatic Digital Machine" written on C.
 
@@ -8,8 +8,8 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 ## 1. История
 
 - Дата создания:            01.11.2018
-- Дата редактирования:      15.11.2024
-- Версия:                   1.94
+- Дата редактирования:      09.01.2025
+- Версия:                   1.96
 - Автор:                    Vladimir V.
 - E-mail:                   askfind@ya.ru
 
@@ -31,29 +31,29 @@ $ ls -al ./setun1958emu
 $ ./setun1958emu
 
  Emulator ternary computer 'Setun-1958':
- Version: 1.89
+ Version: 1.96
  Author:  Vladimir V.
  E-mail:  askfind@ya.ru
 
 setun1958emu:
 help
-Commands control for setun1958emu:
- [dump]       [arglist]
- [load]  [l]  [arglist]
- [debug] [d]  [arglist]
- [view]  [v]
- [begin] [b]
- [pause] [p]
- [run]   [r]
- [step]  [s]  [arglist] 
- [break] [br] [arglist]
- [breakmb] [brm] [arglist]
- [reg]   [rg] [arglist]
- [fram]  [fr] [arglist]
- [drum]  [dr] [arglist]
- [help]  [h]
- [quit]  [q]
- [calc]  
+ Commands control for setun1958emu:
+ dump     [arglist]
+ load     [l]    [arglist]
+ debug    [d]    [arglist]
+ view     [v]
+ begin    [b]
+ pause    [p]
+ run      [r]
+ step     [s]    [arglist] 
+ break    [br]   [arglist]
+ breakmb  [brm]  [arglist]
+ reg      [rg]   [arglist]
+ fram     [fr]   [arglist]
+ drum     [dr]   [arglist]
+ help     [h]
+ quit     [q]
+ calc     [arglist]
  ```
 ## 3.0. 'calc' - калькулятор 'MK-Setun-01', с использованием подпрограммы ИП-2 для эмулятора SETUN-1958
 

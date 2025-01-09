@@ -4,18 +4,15 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   16.11.2024
+ * Edit date:   09.01.2025
  */
-#define Version "1.94"
+#define Version "1.96"
 
 /*
  TODO
- 0. Комментарии как
- 1. Изменить инициализацию struct.
- 2. Переместить тестирование в отдельные файлы как unitests.
- 3. Библиотека ncurser "Новая отладка" для эмулятора.
- 4. Добавить статус палели управления Сетунь.
- 5. Разделить код на работу машину и отладку
+ - Переместить тестирование в отдельные файлы как unitests.
+ - Библиотека gncurser "Новая отладка" для эмулятора.
+ - Добавить статус палели управления Сетунь. 
 */
 
 /**
@@ -6380,7 +6377,7 @@ void print_version(void)
 {
 	printf(" Emulator ternary computer 'Setun-1958':\r\n");
 	printf(" Version: %s\r\n", Version);
-	printf(" Author:  Vladimir V.\r\n");
+	printf(" Author:  Vladimir V.I.\r\n");
 	printf(" E-mail:  askfind@ya.ru\r\n");
 	printf("\r\n");
 }
@@ -6388,9 +6385,11 @@ void print_version(void)
 int version(const char *argv0)
 {
 	printf(" Emulator ternary computer 'Setun-1958': ver.%s\r\n", Version);
-	printf(" Author: Vladimir V.\r\n");
+	printf(" Author: Vladimir V.I.\r\n");
 	printf(" E-mail: askfind@ya.ru\r\n");
 	printf("\r\n");
+
+	fflush(stdout);
 
 	exit(0);
 }
@@ -6406,6 +6405,8 @@ int usage(const char *argv0)
 	printf("\t--breakpoint : view stop setun1958emu\r\n");
 	printf("\t--test : number test setun1958emu\r\n");
 	printf("\r\n");
+
+	fflush(stdout);
 
 	exit(0);
 }
@@ -6963,8 +6964,8 @@ char *ascii_next_field(char *buf)
 /* Func 'cli_ascii' */
 void cli_ascii(void)
 {
-	puts("");
-	printf("setun1958emu:\r\n");
+	printf("\r\n");
+	printf("setun1958emu:\r\n");	
 }
 
 /* Func 'exit_cmd' */
@@ -6974,6 +6975,8 @@ char exit_cmd(char *buf, void *data)
 
 	printf("dbg: exit_cmd() \r\n");
 
+	fflush(stdout);
+
 	exit(0);
 
 	return 0;
@@ -6982,23 +6985,23 @@ char exit_cmd(char *buf, void *data)
 /* Вывод списка команд виртуальной панели управления */
 void help_print(void)
 {
-	printf("Commands control for setun1958emu:\r\n");
-	printf(" [dump]       [arglist]\r\n");
-	printf(" [load]  [l]  [arglist]\r\n");
-	printf(" [debug] [d]  [arglist]\r\n");
-	printf(" [view]  [v]\r\n");
-	printf(" [begin] [b]\r\n");
-	printf(" [pause] [p]\r\n");
-	printf(" [run]   [r]\r\n");
-	printf(" [step]  [s]  [arglist] \r\n");
-	printf(" [break] [br] [arglist]\r\n");
-	printf(" [breakmb] [brm] [arglist]\r\n");
-	printf(" [reg]   [rg] [arglist]\r\n");
-	printf(" [fram]  [fr] [arglist]\r\n");
-	printf(" [drum]  [dr] [arglist]\r\n");
-	printf(" [help]  [h]\r\n");
-	printf(" [quit]  [q]\r\n");
-	printf(" [calc]  \r\n");
+	printf(" Commands control for setun1958emu:\r\n");
+	printf(" dump     [arglist]\r\n");
+	printf(" load     [l]    [arglist]\r\n");
+	printf(" debug    [d]    [arglist]\r\n");
+	printf(" view     [v]\r\n");
+	printf(" begin    [b]\r\n");
+	printf(" pause    [p]\r\n");
+	printf(" run      [r]\r\n");
+	printf(" step     [s]    [arglist] \r\n");
+	printf(" break    [br]   [arglist]\r\n");
+	printf(" breakmb  [brm]  [arglist]\r\n");
+	printf(" reg      [rg]   [arglist]\r\n");
+	printf(" fram     [fr]   [arglist]\r\n");
+	printf(" drum     [dr]   [arglist]\r\n");
+	printf(" help     [h]\r\n");
+	printf(" quit     [q]\r\n");
+	printf(" calc     [arglist]\r\n");
 }
 
 /** -------------------------------
@@ -7441,6 +7444,8 @@ char quit_cmd(char *buf, void *data)
 
 	Emu_Stop();
 
+	fflush(stdout);
+
 	exit(0);
 
 	return 0;
@@ -7600,8 +7605,8 @@ void Process_ascii_string(char c)
 	} /* end switch() */
 }
 
-/** ------
- *  main()
+/** ******************************
+ *  main() 
  */
 int main(void)
 {
@@ -7622,25 +7627,36 @@ int main(void)
 	/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
 	init_tab4();
 
-	/* Сброс виртуальной машины "Сетунь-1958" */
+	/* 
+	* Сброс виртуальной машины "Сетунь-1958"
+	*/
 	reset_setun_1958();
 
-	/* Loop work CLI and setun1958emu */
+	/* 
+	* Loop work CLI and setun1958emu
+	*/
 	while (1)
 	{
 		char bufin[1024];
 
+		/* 
+		* Комендный интерпретатор команд при работе эмулятора setun1958.
+		*/
 		fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
 
 		int numRead = read(0, bufin, 1);
 		if (numRead > 0)
 		{
-			/* Проверить команду CLI */
+			/*
+			* Проверить команду CLI
+			*/
 			Process_ascii_string(bufin[0]);
 		}
 		else
 		{
-			/* Работа виртуальной машины */
+			/* 
+			* Работа виртуальной машины
+			*/
 			Process_Work_Emulation();
 		}
 	}
