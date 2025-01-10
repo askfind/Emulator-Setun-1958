@@ -6,14 +6,7 @@
  * Create date: 01.11.2018
  * Edit date:   10.01.2025
  */
-#define Version "1.97"
-
-/*
- TODO
- - Переместить тестирование в отдельные файлы как unitests.
- - Библиотека gncurser "Новая отладка" для эмулятора.
- - Добавить статус палели управления Сетунь. 
-*/
+#define Version "1.98"
 
 /**
  *  Заголовочные файла
@@ -6067,10 +6060,64 @@ const char *get_file_ext(const char *filename)
 	return dot + 1;
 }
 
+#include <stdio.h>
+
+int copy_file(char *file_scr_sst, char *file_dst_sst)
+{
+	FILE *ptr_src;
+	FILE *ptr_dst;
+
+	int err_src = 0;
+	int err_dst = 0;
+
+	int a;
+
+	ptr_dst = fopen(file_dst_sst, "wb");
+	if (ptr_dst == NULL)
+	{
+		return -1;
+	}
+
+	ptr_src = fopen(file_scr_sst, "rb");
+	if (ptr_src == NULL)
+	{
+		fclose(ptr_src);
+		return -1;
+	}
+
+	while (1)
+	{
+		a = fgetc(ptr_src);
+
+		if (!feof(ptr_src))
+			fputc(a, ptr_dst);
+		else
+			break;
+	}
+
+	fclose(ptr_src);
+	fclose(ptr_dst);
+
+	return 0;
+}
+
+void CopyFileScript(char *path_lst, char *pathfile1, char *pathfile2)
+{
+
+	printf("\r\nScript file source: %s\r\n", pathfile1);
+
+	printf("\r\nScript file destation: %s\r\n", pathfile2);
+
+	if (copy_file(pathfile1, pathfile2) == 0)
+		printf("\r\nCopy file source to file destation.\r\n");
+	else
+		fprintf(stderr, "\r\nERROR Copy!\r\n");
+}
+
 void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathfiletxt)
 {
-	FILE *file_lst;  /* спискок файлов с командами машины */
-	FILE *file_txt;  /* файл с командами машины */
+	FILE *file_lst; /* спискок файлов с командами машины */
+	FILE *file_txt; /* файл с командами машины */
 
 	/* Переменная, в которую поочередно будут помещаться считываемые строки */
 	char str[1024] = {0};
@@ -6233,27 +6280,9 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 		}
 	}
 
-        //TODO скрипт файл
-        /* Копировать скрипт-файл в каталог './script' */
-       	//FILE *file_src_sst;  /* исходный скрипт-файл продолжение работы машины после останова */
-        //FILE *file_dst_sst;  /* скопированный скрипт-файл продолжение работы машины после останова */
-        //
-        //file_scr_sst = fopen(path_file_src_sst, "r");
-        //file_dst_sst = fopen(path_file_file_dst_sst, "w");
-        //
-	//if (file_sst == NULL)
-	//{
-	//	/* Нет скрипт файла */
-        //
-	//}
-	//else
-	//{
-        //
-        //}
-        //fclose(file_src_sst);
-        //fclose(file_dst_sst);
+	// TODO add code  скрипт файл
 
-        /* Закрыть файлы */
+	/* Закрыть файлы */
 	fclose(file_lst);
 	fclose(file_txt);
 
@@ -6329,6 +6358,21 @@ int ConvertSWtoPaper(char *path_lst, char *path_txt)
 		strcat(pathfile2, "paper.txt");
 
 		LoadFileListToPaperTxt(path_lst, pathfile1, pathfile2);
+
+		/* clear */
+		memset(pathfile1, 0, sizeof(pathfile1));
+		memset(pathfile2, 0, sizeof(pathfile2));
+
+		/* path file1 */
+		strcat(pathfile1, path_lst);
+		strcat(pathfile1, "/");
+		strcat(pathfile1, "script.sst");
+		/* path file2 */
+		strcat(pathfile2, "./script");
+		strcat(pathfile2, "/");
+		strcat(pathfile2, "script.sst");
+
+		CopyFileScript(path_lst, pathfile1, pathfile2);
 	}
 
 	return res; /* Ok' */
@@ -6985,7 +7029,7 @@ char *ascii_next_field(char *buf)
 void cli_ascii(void)
 {
 	printf("\r\n");
-	printf("setun1958emu:\r\n");	
+	printf("setun1958emu:\r\n");
 }
 
 /* Func 'exit_cmd' */
@@ -7626,7 +7670,7 @@ void Process_ascii_string(char c)
 }
 
 /** ******************************
- *  main() 
+ *  main()
  */
 int main(void)
 {
@@ -7647,36 +7691,36 @@ int main(void)
 	/* Инициализация таблиц символов ввода и вывода "Сетунь-1958" */
 	init_tab4();
 
-	/* 
-	* Сброс виртуальной машины "Сетунь-1958"
-	*/
+	/*
+	 * Сброс виртуальной машины "Сетунь-1958"
+	 */
 	reset_setun_1958();
 
-	/* 
-	* Loop work CLI and setun1958emu
-	*/
+	/*
+	 * Loop work CLI and setun1958emu
+	 */
 	while (1)
 	{
 		char bufin[1024];
 
-		/* 
-		* Комендный интерпретатор команд при работе эмулятора setun1958.
-		*/
+		/*
+		 * Комендный интерпретатор команд при работе эмулятора setun1958.
+		 */
 		fcntl(0, F_SETFL, fcntl(0, F_GETFL) | O_NONBLOCK);
 
 		int numRead = read(0, bufin, 1);
 		if (numRead > 0)
 		{
 			/*
-			* Проверить команду CLI
-			*/
+			 * Проверить команду CLI
+			 */
 			Process_ascii_string(bufin[0]);
 		}
 		else
 		{
-			/* 
-			* Работа виртуальной машины
-			*/
+			/*
+			 * Работа виртуальной машины
+			 */
 			Process_Work_Emulation();
 		}
 	}

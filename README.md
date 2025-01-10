@@ -8,8 +8,8 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 ## 1. История
 
 - Дата создания:            01.11.2018
-- Дата редактирования:      09.01.2025
-- Версия:                   1.97
+- Дата редактирования:      10.01.2025
+- Версия:                   1.98
 - Автор:                    Vladimir V.
 - E-mail:                   askfind@ya.ru
 
@@ -141,6 +141,12 @@ Read file: test1-fram-zone-1.txs
 Read file: test1-fram-zone-z.txs
 
 Write file: ./ptr1/paper.txt
+
+Script file source: ./software/test1/script.sst
+
+Script file destation: ./script/script.sst
+
+Copy file source to file destation.
 ```
 
 ## 3.3. 'begin' или 'b' - начальный запуск программы с виртуального фотосчитывателя 'ptr1' эмулятора SETUN-1958
