@@ -1,0 +1,5 @@
+024,?,Error CRC input paper,?,S
+0Y1,?,Error CRC input paper,?,S
+Z0X,?,Error Rd/Wr first part FRAM,?,S
+10X,?,Error Rd/Wr second part FRAM,?,S
+14Y,0322X,Success!,000,R

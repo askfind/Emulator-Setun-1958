@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   10.01.2025
+ * Edit date:   13.01.2025
  */
-#define Version "1.98"
+#define Version "1.99"
 
 /**
  *  Заголовочные файла
@@ -219,6 +219,13 @@ long_trs_t TMP = {36, 0, 0}; /* временная переменная для �
 
 trs_t BRPNT = {4, 0, 0}; /* BRPNT(1:5) - точка остановки по значению программного счетчика */
 
+trs_t C_new = {5, 0, 0}; /* C_new(1:5) новое значение программного счетчика в скрипт-файле после остовона машины */
+char action_post = 'S';	 /*
+						  *  action действие после останова
+						  *  action = 'S' - оставаться в состоянии <STOP>
+						  *  action = 'R' - продолжить работу машины с нового адреса C_new
+						  */
+
 /** ------------------------------------------------------
  *  Прототипы функций для виртуальной машины "Сетунь-1958"
  *  ------------------------------------------------------
@@ -294,6 +301,7 @@ trs_t sub_trs(trs_t a, trs_t b);
 trs_t mul_trs(trs_t a, trs_t b);
 trs_t div_trs(trs_t a, trs_t b);
 trs_t shift_trs(trs_t t, int8_t s);
+int cmp_trs(trs_t a, trs_t b);
 
 /* Long trits */
 long_trs_t add_long_trs(long_trs_t a, long_trs_t b);
@@ -343,8 +351,8 @@ trs_t ld_drum(trs_t ea, uint8_t ind);
 void st_drum(trs_t ea, uint8_t ind, trs_t v);
 
 /* Читать / Записать зоны магнитного барабана в файл paper.txt */
-uint8_t Read_from_DRUM(FILE *file);
-uint8_t Write_from_DRUM(FILE *file);
+int Read_Backup_DRUM(char * drum_path);
+int Write_Backup_DRUM(char * drum_path);
 
 /* Операции копирования */
 void fram_to_drum(trs_t ea);
@@ -359,6 +367,13 @@ int8_t execute_trs(trs_t addr, trs_t oper); /* Выполнение кодов �
 /* Функции вывода отладочной информации */
 void view_short_reg(trs_t *t, uint8_t *ch);
 void view_short_regs(void);
+
+/*
+ * Выполнить скрипт-файл './script/scrint.sst'.
+ * Вывод сообщения и продолжить с заданного адреса в
+ * ферритовой памяти FRAM.
+ */
+void view_next_start(void);
 
 /** ---------------------------------------------------
  *  Реализации функций виртуальной машины "Сетунь-1958"
@@ -1534,6 +1549,30 @@ void copy_trs(trs_t *src, trs_t *dst)
 	}
 }
 
+int cmp_trs(trs_t a, trs_t b)
+{
+	trs_t r;
+	r = sub_trs(a, b);
+
+	if (r.l == 0)
+		return 0; /* a == b */
+
+	if (r.l > 0)
+	{
+		int i;
+		int sing = 0;
+		for (i = 1; i < r.l + 1; i++)
+		{
+			sing = get_trit_setun(r, i);
+			if (sing > 0)
+				return +1; /* a > b */
+			if (sing < 0)
+				return -1; /* a < b */
+		}
+	}
+	return 0; /* a == b */
+}
+
 /* Получить часть тритов из троичного числа */
 trs_t slice_trs(trs_t t, int8_t p1, int8_t p2)
 {
@@ -1890,30 +1929,78 @@ void clean_drum(void)
 	}
 }
 
-uint8_t Read_from_DRUM(FILE *file)
+int Write_Backup_DRUM(char * drum_path)
 {
 	trs_t fa;
 
-	/* zone 0 DRUM */
-	/*
-	fa = smtr("0---0");
-	*/
+	int8_t zone;
+	int8_t row;
+	
+
+	FILE *file = fopen(drum_path, "wb");
+	if (file == NULL)
+	{
+		fclose(file);
+		return -1;
+	}
+
+	for (zone = ZONE_DRUM_BEG; zone < NUMBER_ZONE_DRUM + ZONE_DRUM_BEG; zone++)
+	{
+		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
+		{
+			uint8_t l;
+			uint32_t t1;
+			uint32_t t0;
+
+			l = SIZE_WORD_SHORT;
+			t1 = mem_drum[zone][row].t1;
+			t0 = mem_drum[zone][row].t0;
+
+			fprintf(file,"%u%u%u",l,t1,t0);
+		}
+	}
+
+	fclose(file);
 
 	return 0;
-	;
+
 }
 
-uint8_t Write_from_DRUM(FILE *file)
+int Read_Backup_DRUM(char * drum_path)
 {
 	trs_t fa;
 
-	/* zone 0 DRUM */
-	/*
-	fa = smtr("0---0");
-	*/
+	int8_t zone;
+	int8_t row;
+
+
+	FILE *file = fopen(drum_path, "rb");
+	if (file == NULL)
+	{
+		fclose(file);
+		return -1;
+	}
+
+	for (zone = ZONE_DRUM_BEG; zone < NUMBER_ZONE_DRUM + ZONE_DRUM_BEG; zone++)
+	{
+		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
+		{
+			uint32_t l;
+			uint32_t t1;
+			uint32_t t0;
+
+			if ( fscanf(file,"%u%u%u",&l,&t1,&t0) != EOF) {
+				mem_drum[zone][row].l = SIZE_WORD_SHORT;
+				mem_drum[zone][row].t1 = t1;
+				mem_drum[zone][row].t0 = t0;
+			}
+		}
+	}
+
+	fclose(file);
 
 	return 0;
-	;
+
 }
 
 /* Функция "Читать троичное число из ферритовой памяти" */
@@ -2398,6 +2485,35 @@ int32_t trs2digit(trs_t t)
 		l += get_trit(t, i) * pow3(i);
 	}
 	return l;
+}
+
+/**
+ * Девятеричный вид 1YX в троичный код
+ */
+void regC_str_2_trs(uint8_t *syms, trs_t *r)
+{
+	uint8_t i = 0;
+	uint8_t symtrs_str[40] = {0};
+
+	if (strlen(syms) != 3)
+	{
+		r->l = 6;
+		r->t1 = 0;
+		r->t0 = 0;
+		return;
+	}
+
+	sprintf(symtrs_str, "%2s%2s%2s",
+			lt2symtrs(syms[0]),
+			lt2symtrs(syms[1]),
+			lt2symtrs(syms[2]));
+
+	// printf("len=%ld, %s - ", strlen(symtrs_str),symtrs_str);
+
+	for (i = 7; i > 1; i--)
+	{
+		*r = set_trit_setun(*r, i, symtrs2numb(symtrs_str[i - 1]));
+	}
 }
 
 /**
@@ -5218,7 +5334,22 @@ uint8_t Perforation_Symbols_to_PTP1(FILE *file, trs_t fa)
 void reset_setun_1958(void)
 {
 	clean_fram(); /* Очистить  FRAM */
-	clean_drum(); /* Очистить  DRUM */
+	
+	/* Попытка прочитать bacup DRUM */
+	if( Read_Backup_DRUM("./drum/drum.bak") != 0) {
+		/*  
+		* Ошибка чтения
+		* Очистить  DRUM
+		*/
+		clean_drum(); 
+	} 
+	else {
+		/*  
+		* Успешное чтение чтение "./drum/drum.bak"
+		*/
+		//printf("Успешное чтение чтение ./drum/drum.bak\r\n");
+	}
+
 }
 
 /**
@@ -5304,10 +5435,6 @@ trs_t control_trs(trs_t a)
  */
 int8_t execute_trs(trs_t addr, trs_t oper)
 {
-	/*
-	 TODO проверить выполнение команды
-	 для С(5) = -1 выполнить 2-раза старшей половине A(9:18) и сделать inc C
-	*/
 
 	trs_t fa;
 
@@ -5914,7 +6041,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 		case (+0 * 27 - 1 * 9 + 0 * 3 + 0): /* Печать одним цветом в виде символов на пишущей машинке ПМ (ЭУМ-46) */
 			LOGGING_print("   k2..5[0-00]: Печать одним цветом в виде символов на пишущей машинке ПМ (ЭУМ-46)\n");
 
-			/* TODO ERROR! */
+			/* TODO ERROR! Тестировать. Исправить. */
 			uint8_t i = 0;
 			for (i = 0; i < SIZE_ZONE_TRIT_FRAM; i++)
 			{
@@ -6280,8 +6407,6 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 		}
 	}
 
-	// TODO add code  скрипт файл
-
 	/* Закрыть файлы */
 	fclose(file_lst);
 	fclose(file_txt);
@@ -6437,6 +6562,219 @@ int DumpFileTxs(char *pathfiletxs)
 	return 0; /* Ok' */
 }
 
+int parser_user(char *cmd, char fields[6][80], const char ch)
+{
+	int ind;
+	char *p1;
+	char *p2;
+	char *pend;
+	size_t len = 0;
+
+	/* Инициализировать указатели */
+	p1 = cmd;
+	p2 = cmd;
+	len = sizeof(cmd) / (sizeof(cmd[0]));
+	pend = p1 + len;
+
+	printf("len = %ld\r\n", len);
+	printf("fields[0]    %ld\r\n", sizeof(fields[0]));
+	// printf( "fields[0][0] %ld\r\n", sizeof(fields[0][0]) );
+
+	return -1;
+
+	ind = 0;
+	while (p2++ < pend)
+	{
+		if (*p2 == ch)
+		{
+
+			memset((char *)fields[ind], 0, (sizeof(fields[0]) / sizeof(fields[0][0])));
+			// memcpy( (char *)fields[ind], p1, p2-p1+1 ) ;
+			ind++;
+			if (ind > (sizeof(fields[0]) / sizeof(char)))
+			{
+				break;
+			}
+			p1 = p2;
+		}
+	}
+
+	return 0;
+}
+
+/*
+ * Выполнить скрипт-файл './script/scrint.sst'.
+ * Вывод сообщения и продолжить с заданного адреса в
+ * ферритовой памяти FRAM.
+ *
+ * Пример останово машина, если при чтение виртуальной перфоленты
+ * не совпала с контрольной суммы:
+ *  +----------------+-----------+--------------------------+----------------------+---------------+-----------------------------+
+ *  | Field 1        | Field 2   | Field 3                  |Field 4               | Field 5       | Field 6                     |
+ *  +----------------+-----------+--------------------------+----------------------+---------------+-----------------------------+
+ *  | 0Z0            |,          |,'Error CRC input paper.' |,S                    |,              |,<LF><CR> или <CR>           |
+ *  +----------------+-----------+--------------------------+----------------------+---------------+-----------------------------+
+ *  | Адрес останова | Команда   | Коммантарий              | Условие продолежения | Адрес запуска | Терминальные символы строки |
+ *  +----------------+-----------+--------------------------+----------------------+---------------+-----------------------------+
+ */
+void view_next_start(void)
+{
+	int i = 0;
+	long int res = 0;
+
+	/* Файл-скрипт для исполнения  */
+	FILE *script_txt;
+
+	script_txt = fopen("./script/script.sst", "r");
+	if (script_txt == NULL)
+	{ /*
+	  + Нет файла. Продолжить работу.
+	  */
+
+		printf("script_txt = fopen('./script/script.sst', 'r')\r\n");
+
+		/* Закрыть файл */
+		fclose(script_txt);
+		return;
+	}
+
+	fseek(script_txt, 0L, SEEK_END);
+
+	/* Calculating the size of the file  */
+	res = ftell(script_txt);
+
+	if (res == 0)
+	{
+
+		printf("res = ftell(script_txt)\r\n");
+
+		/* Закрыть файл */
+		fclose(script_txt);
+		return;
+	}
+
+	printf("\r\n[ Script file: 'script.sst' ]\r\n");
+
+	fseek(script_txt, 0L, SEEK_SET);
+
+	/* Массив с полями строки скрипта */
+
+	char fields[5][80] = {0};
+	char cmd[5 * 80] = {0};
+	size_t lenfld = sizeof(fields) / sizeof(fields[0]);
+	/* Строка команды из скрипт-файла */
+
+	int n = 0;
+	/* Пока не дойдет до конца, считываем */
+
+	while ((fgets(cmd, 5 * 80, script_txt)) != NULL)
+	{
+		/* Массив строк после разбора */
+		char token_array[80] = {0};
+		char *token = (char *)token_array;
+
+		if (lenfld > 0) /* массив доступен ? */
+		{
+			int j = 0;				  /* счетчик полей разбора */
+			token = strtok(cmd, ","); /* парсинг */
+			memset(fields[j], 0, sizeof(token_array));
+			memcpy(fields[j], token, strlen(token));
+			j++;	  /* следующее поле */
+			while (1) /* цикл */
+			{
+				token = strtok(NULL, ","); /* парсинг */
+				if (token == NULL)
+				{ /* Завершить парсинг */
+					break;
+				}
+				memset(fields[j], 0, sizeof(token_array));
+				memcpy(fields[j], token, strlen(token));
+				j++; /* следующее поле */
+				if (j > lenfld)
+				{ /* Завершить парсинг */
+					break;
+				}
+			}
+		}
+
+		/*  */
+		// printf("n=%d",n);
+		trs_t C_cond;
+		/* Адрес С остонова машины для проверки */
+		C_cond.l = 6;
+		C_cond.t0 = 0;
+		C_cond.t1 = 0;
+		/* Адрес для старта машины при условии fields[3]=R */
+		C_new.l = 6;
+		C_new.t0 = 0;
+		C_new.t1 = 0;
+
+		/*
+		 * Символ действия
+		 * S = STOP
+		 * R = RUN
+		 */
+		action_post = 'S';
+
+		/* Цикл проверки строки из скрипта-файла */
+		for (i = 0; i < lenfld; i++)
+		{
+			// printf("\t%d: %s\r\n", i, fields[i]);
+
+			switch (i)
+			{
+
+			case 0:
+			{
+
+				regC_str_2_trs(fields[0], &C_cond);
+
+				int sing = cmp_trs(C, C_cond);
+				if (sing == 0)
+				{
+					view_short_reg(&C_cond, "  Addres");
+					printf("  Note:   %s\r\n", fields[2]);
+				}
+			}
+			break;
+			case 3:
+			{
+				regC_str_2_trs(fields[3], &C_new);
+			};
+			break;
+			case 4:
+			{
+				sscanf(fields[4], "%c", &action_post);
+			};
+			break;
+			default:
+			{
+			}
+			}
+		}
+
+		n++;
+	}
+
+	char cond_symb;
+	if (action_post == 'S')
+	{
+		cond_symb = 'S';
+	}
+	else if (action_post == 'R')
+	{
+		view_short_reg(&C_new, "  New address");
+		cond_symb = 'R';
+	}
+	else {
+		cond_symb = 'S';
+	}
+	printf("  Action: %c\r\n",cond_symb);
+
+	/* Закрыть файл */
+	fclose(script_txt);
+}
+
 void print_version(void)
 {
 	printf(" Emulator ternary computer 'Setun-1958':\r\n");
@@ -6482,20 +6820,12 @@ void Emu_Open_Files_ptr1_ptr2(void)
 	if (ptr1 == NULL)
 	{
 		printf("ERROR fopen 'ptr1/paper.txt'\r\n");
-		/*
-		 viv~ TODO
-		 return 0;
-		*/
 	}
 
 	ptr2 = fopen("ptr2/paper.txt", "w");
 	if (ptr2 == NULL)
 	{
 		printf("ERROR fopen 'ptr1/paper.txt'\r\n");
-		/*
-		 viv~ TODO
-		 return 0;
-		 */
 	}
 }
 
@@ -6514,40 +6844,24 @@ void Emu_Open_Files(void)
 	if (ptr1 == NULL)
 	{
 		printf("ERROR fopen 'ptr1/paper.txt'\r\n");
-		/*
-		 viv~ TODO
-		 return 0;
-		 */
 	}
 
 	ptr2 = fopen("ptr2/paper.txt", "r");
 	if (ptr2 == NULL)
 	{
 		printf("ERROR fopen 'ptr1/paper.txt'\r\n");
-		/*
-		 viv~ TODO
-		 return 0;
-		 */
 	}
 
 	ptp1 = fopen("ptp1/paper.txt", "w");
 	if (ptp1 == NULL)
 	{
 		printf("ERROR fopen 'ptp1/paper.txt'\r\n");
-		/*
-		 viv~ TODO
-		 return 0;
-		*/
 	}
 
 	tty1 = fopen("tty1/printout.txt", "w");
 	if (tty1 == NULL)
 	{
 		printf("ERROR fopen 'tty1/printout.txt'\r\n");
-		/*
-		 viv~ TODO
-		 return 0;
-		 */
 	}
 }
 
@@ -6777,6 +7091,8 @@ int Process_Work_Emulation(void)
 			/*
 			break;
 			*/
+
+			view_next_start();
 		}
 		else if (ret_exec == STOP_OVER)
 		{
@@ -6785,6 +7101,8 @@ int Process_Work_Emulation(void)
 			/*
 			 break;
 			 */
+
+			view_next_start();
 		}
 		else if (ret_exec == STOP_ERROR)
 		{
@@ -6793,6 +7111,8 @@ int Process_Work_Emulation(void)
 			/*
 			 break;
 			*/
+
+			view_next_start();
 		}
 		else if (ret_exec == STOP_ERROR_MB_NUMBER)
 		{
@@ -6802,6 +7122,8 @@ int Process_Work_Emulation(void)
 			/*
 			 break;
 			*/
+
+			view_next_start();
 		}
 	}
 
@@ -7507,6 +7829,8 @@ char quit_cmd(char *buf, void *data)
 	}
 
 	Emu_Stop();
+
+	Write_Backup_DRUM("./drum/drum.bak");
 
 	fflush(stdout);
 

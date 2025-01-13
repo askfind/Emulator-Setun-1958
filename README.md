@@ -8,8 +8,8 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 ## 1. История
 
 - Дата создания:            01.11.2018
-- Дата редактирования:      10.01.2025
-- Версия:                   1.98
+- Дата редактирования:      14.01.2025
+- Версия:                   1.99
 - Автор:                    Vladimir V.
 - E-mail:                   askfind@ya.ru
 
@@ -128,40 +128,62 @@ KC:
 ```shell
 $ ./setun1958emu
 
+ Emulator ternary computer 'Setun-1958':
+ Version: 1.99
+ Author:  Vladimir V.I.
+ E-mail:  askfind@ya.ru
+
 setun1958emu:
-load ./software/test1 ./ptr1
+load ./software/test2 ./ptr1
 [ Convert software files to file paper.txt ]
 
-Read file list: ./software/test1/test1.lst
+Read file list: ./software/test2/test2.lst
 
-Read file: test1-fram-zone-0.txs
+Read file: test2-fram-zone-b.txs
 
-Read file: test1-fram-zone-1.txs
+Read file: test2-fram-zone-z.txs
 
-Read file: test1-fram-zone-z.txs
+Read file: test2-fram-zone-0.txs
+
+Read file: test2-fram-zone-1.txs
+
 
 Write file: ./ptr1/paper.txt
 
-Script file source: ./software/test1/script.sst
+Script file source: ./software/test2/script.sst
 
 Script file destation: ./script/script.sst
 
 Copy file source to file destation.
-```
-
-## 3.3. 'begin' или 'b' - начальный запуск программы с виртуального фотосчитывателя 'ptr1' эмулятора SETUN-1958
-
-```shell
-$ ./setun1958emu
 
 setun1958emu:
 begin
 
+setun1958emu:
+
 [ Start Setun-1958 ]
 
-TECT1
-TECT1
-TECT1
+TECT2
+<STOP>
+
+[ Script file: 'script.sst' ]
+  Addres: [0+++-+], 14Y, (115)
+  Note:   Success!
+  New address: [000000], 000, (0)
+  Action: R
+
+  K  : [0+0+-+--0], 0322X, (2364)
+  F  : [-----], ZWW, (-121)
+  C  : [+++-+], 14Y, (115)
+  W  : [+], 1, (1)
+  ph1: [0], 0, (0)
+  ph2: [0], 0, (0)
+  S  : [+-0-+00+0-+00+++-0], 2Z31Z314X, (82959585), {1.927199}
+  R  : [-0+0-00-+0-00-++00], X3XZ3XZ40, (-116427177), {-2.704670}
+  MB : [0000], 00, (0)
+
+
+setun1958emu:
 ```
 
 ## 3.4. 'debug' или 'd' - отладочный режим вывода работы эмулятора SETUN-1958
