@@ -4,9 +4,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   13.01.2025
+ * Edit date:   18.01.2025
  */
-#define Version "1.99"
+#define Version "2.00"
 
 /**
  *  Заголовочные файла
@@ -1948,15 +1948,16 @@ int Write_Backup_DRUM(char * drum_path)
 	{
 		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
 		{
-			uint8_t l;
+			uint32_t l;
 			uint32_t t1;
 			uint32_t t0;
 
-			l = SIZE_WORD_SHORT;
+			l = SIZE_WORD_SHORT;			
 			t1 = mem_drum[zone][row].t1;
 			t0 = mem_drum[zone][row].t0;
 
-			fprintf(file,"%u%u%u",l,t1,t0);
+
+			fprintf(file,"%08u %08u %08u\n",l,t1,t0);
 		}
 	}
 
@@ -1989,8 +1990,8 @@ int Read_Backup_DRUM(char * drum_path)
 			uint32_t t1;
 			uint32_t t0;
 
-			if ( fscanf(file,"%u%u%u",&l,&t1,&t0) != EOF) {
-				mem_drum[zone][row].l = SIZE_WORD_SHORT;
+			if ( fscanf(file,"%u %u %u\n",&l,&t1,&t0) != EOF) {
+				mem_drum[zone][row].l =  l;
 				mem_drum[zone][row].t1 = t1;
 				mem_drum[zone][row].t0 = t0;
 			}
@@ -2153,6 +2154,8 @@ trs_t ld_drum(trs_t ea, uint8_t ind)
 	{
 		ind = 0;
 	}
+
+	mem_drum[zind][ind].l = 9;
 	res.l = 9;
 	copy_trs_setun(&mem_drum[zind][ind], &res);
 	return res;
@@ -2174,6 +2177,8 @@ void st_drum(trs_t ea, uint8_t ind, trs_t v)
 	{
 		ind = SIZE_ZONE_TRIT_DRUM - 1;
 	}
+	
+	mem_drum[zind][ind].l = 9;
 	copy_trs_setun(&v, &mem_drum[zind][ind]);
 }
 
@@ -3167,7 +3172,8 @@ void dump_fram_zone(trs_t z)
 		inr = next_address(inr);
 	}
 
-	printf("Zone =% 2i\r\n", sng);
+	printf("\r\n");
+	printf("FRAM Zone = % 2i\r\n", sng);
 	printf("\r\n");
 
 	for (uint8_t i = 0; i < 14; i++)
@@ -3330,6 +3336,10 @@ void dump_fram_zone(trs_t z)
 		inc_trs(&fram_row2);
 		inc_trs(&fram_row2);
 	}
+
+	printf("\r\n");
+	printf("FRAM Zone = % 2i\r\n", sng);
+	printf("\r\n");	
 }
 
 /**
@@ -3348,7 +3358,17 @@ void view_drum_zone(trs_t zone)
 	zind = zone_drum_to_index(zr);
 
 	printf("\r\n[ Dump DRUM Setun-1958: ]\r\n");
-	printf("[ Zone = %2i ]\r\n", zind);
+	
+	printf("\r\n");
+	printf("Zone  [");
+	for (j = 1; j < 5; j++)
+	{
+			printf( "%c", numb2symtrs(get_trit_setun(zr, j)) );
+	};
+	printf("], ");
+	trs2str(zr);
+	printf("\r\n");
+	printf("      index  (%i) \r\n", zind);
 	printf("\r\n");
 
 	for (uint8_t i = 0; i < SIZE_ZONE_TRIT_DRUM; i++)
@@ -3371,6 +3391,19 @@ void view_drum_zone(trs_t zone)
 		printf("\r\n");
 
 	} /* for() */
+
+	printf("\r\n");
+	printf("Zone  [");
+	for (j = 1; j < 5; j++)
+	{
+			printf( "%c", numb2symtrs(get_trit_setun(zr, j)) );
+	};
+	printf("], ");
+	trs2str(zr);
+	printf("\r\n");
+	printf("      index  (%i) \r\n", zind);
+	printf("\r\n");
+
 }
 
 /**
@@ -6208,7 +6241,7 @@ int copy_file(char *file_scr_sst, char *file_dst_sst)
 	ptr_src = fopen(file_scr_sst, "rb");
 	if (ptr_src == NULL)
 	{
-		fclose(ptr_src);
+		fclose(ptr_dst);
 		return -1;
 	}
 
@@ -7045,7 +7078,7 @@ int Process_Work_Emulation(void)
 			emu_stat = PAUSE_EMU_ST;
 		}
 
-		view_short_regs();
+		//viv+ test  view_short_regs();
 
 		/* Новое состояние */
 		emu_stat = WAIT_EMU_ST;
@@ -7453,12 +7486,12 @@ char debug_cmd(char *buf, void *data)
 
 	if (par2_numb > 0)
 	{
-		LOGGING = 1; /* Вывод отладочной информации  */
+		LOGGING = 1; /* Вывод отладочной информации */
 		printf("switch debug on\r\n");
 	}
 	else
 	{
-		LOGGING = 0; /* Вывод отладочной информации  */
+		LOGGING = 0; /* Вывод отладочной информации */
 		printf("switch debug off\r\n");
 	}
 

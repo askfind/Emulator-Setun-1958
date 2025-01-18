@@ -8,8 +8,8 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 ## 1. История
 
 - Дата создания:            01.11.2018
-- Дата редактирования:      14.01.2025
-- Версия:                   1.99
+- Дата редактирования:      18.01.2025
+- Версия:                   2.00
 - Автор:                    Vladimir V.
 - E-mail:                   askfind@ya.ru
 
@@ -290,7 +290,7 @@ reg c 0000+
 $ ./setun1958emu
 
 setun1958emu:
-fram 1
+fram +
 
 [ Dump FRAM Setun-1958: ]
 Zone = 1
@@ -311,19 +311,22 @@ WZ W0  1 20 2W        1W 1X  0 10 2X
 $ ./setun1958emu
 
 setun1958emu:
-drum 1x
+drum 1x  
 
- Dump DRUM Setun-1958: ]
-[ Zone =  4 ]
+[ Dump DRUM Setun-1958: ]
 
-drum[  4:  0 ]  [000000000], 00000
-drum[  4:  1 ]  [000000000], 00000
-drum[  4:  2 ]  [000000000], 00000
-drum[  4:  3 ]  [000000000], 00000
-drum[  4:  4 ]  [000000000], 00000
-drum[  4:  5 ]  [000000000], 00000
-drum[  4:  6 ]  [000000000], 00000
-drum[  4:  7 ]  [000000000], 00000
+Zone  [0+-0], 1X
+      index  (6) 
+
+drum[  6:  0 ]  [--00+0-00], ZX1Z0
+drum[  6:  1 ]  [-0+-0-0+0], Z1XX3
+drum[  6:  2 ]  [-0+---0-0], Z1WXX
+drum[  6:  3 ]  [0000+0000], 00100
+drum[  6:  4 ]  [-++++0-00], Z44Z0
+drum[  6:  5 ]  [--0-+0+00], ZXY10
+drum[  6:  6 ]  [00000-0++], 000X4
+drum[  6:  7 ]  [-+--000+0], Z2X03
+drum[  6:  8 ]  [--+0+0000], ZY100
 ...
 ```
 
