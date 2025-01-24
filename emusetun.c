@@ -36,9 +36,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   24.01.2025
+ * Edit date:   25.01.2025
  */
-#define Version "2.01"
+#define Version "2.02"
 
 /**
  *  Заголовочные файла
@@ -227,8 +227,8 @@ FILE *drum;
 /**
  * Определение памяти машины "Сетунь-1958"
  */
-trs_t mem_fram[SIZE_GR_TRIT_FRAM][SIZE_GRFRAM];						   /* оперативное запоминающее устройство на ферритовых сердечниках */
-trs_t mem_drum[NUMBER_ZONE_DRUM][SIZE_ZONE_TRIT_DRUM]; /* запоминающее устройство на магнитном барабане */
+trs_t mem_fram[SIZE_GR_TRIT_FRAM][SIZE_GRFRAM];			/* оперативное запоминающее устройство на ферритовых сердечниках */
+trs_t mem_drum[NUMBER_ZONE_DRUM][SIZE_ZONE_TRIT_DRUM];	/* запоминающее устройство на магнитном барабане */
 
 /** ***********************************
  *  Определение регистров "Сетунь-1958"
@@ -1977,26 +1977,29 @@ int Write_Backup_DRUM(char * drum_path)
 
 	int8_t zone;
 	int8_t row;
-	
+
 
 	FILE *file = fopen(drum_path, "wb");
 	if (file == NULL)
-	{
-		fclose(file);
+	{		
 		return -1;
 	}
+	
+	fseek(file, 0L, SEEK_SET);
 
 	for (zone = 0; zone < NUMBER_ZONE_DRUM; zone++)
 	{
 		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
 		{
-			uint8_t i;
-			for( i=1;i<10;i++ ) {
-				int8_t g = get_trit_setun(mem_drum[zone][row], i);
-				uint8_t tmp = numb2symtrs(g);
-				putc(tmp, file); 
-			}
+			uint8_t l;
+			uint32_t t1;
+			uint32_t t0;
 
+			l = SIZE_WORD_SHORT;
+			t1 = mem_drum[zone][row].t1;
+			t0 = mem_drum[zone][row].t0;
+
+			fprintf(file,"%u %u\n",t1,t0);
 		}
 	}
 
@@ -2016,25 +2019,25 @@ int Read_Backup_DRUM(char * drum_path)
 
 	FILE *file = fopen(drum_path, "rb");
 	if (file == NULL)
-	{
-		fclose(file);
+	{		
 		return -1;
 	}
 
-    char c;
-	int i;
-	i = 1;
+	fseek(file, 0L, SEEK_SET);
+
 	for (zone = 0; zone < NUMBER_ZONE_DRUM; zone++)
 	{
 		for (row = 0; row < SIZE_ZONE_TRIT_DRUM; row++)
-		{			
-			// считываем посимвольно из файла
-        	while( (c=getc(file)) != EOF )
-        	{
-				set_trit_setun( mem_drum[zone][row], i, symtrs2numb(c) ); 
-				i += 1;
-				if( i>9 ) i = 1;
-        	}
+		{
+			uint32_t l;
+			uint32_t t1;
+			uint32_t t0;
+
+			if ( fscanf(file,"%u %u\n",&t1,&t0) != EOF) {				
+				mem_drum[zone][row].l = SIZE_WORD_SHORT;
+				mem_drum[zone][row].t1 = t1;
+				mem_drum[zone][row].t0 = t0;
+			}
 		}
 	}
 
@@ -2043,6 +2046,7 @@ int Read_Backup_DRUM(char * drum_path)
 	return 0;
 
 }
+
 
 /* Функция "Читать троичное число из ферритовой памяти" */
 trs_t ld_fram(trs_t ea)
@@ -5403,7 +5407,7 @@ void reset_setun_1958(void)
 		* Ошибка чтения
 		* Очистить  DRUM
 		*/
-		clean_drum(); 
+		//clean_drum(); 
 	} 
 	else {
 		/*  
@@ -6854,7 +6858,7 @@ int version(const char *argv0)
 
 	fflush(stdout);
 
-	exit(0);
+	return 0;
 }
 
 int usage(const char *argv0)
@@ -6871,7 +6875,7 @@ int usage(const char *argv0)
 
 	fflush(stdout);
 
-	exit(0);
+	return 0;
 }
 
 void Emu_Open_Files_ptr1_ptr2(void)
@@ -7423,8 +7427,6 @@ char exit_cmd(char *buf, void *data)
 	printf("dbg: exit_cmd() \r\n");
 
 	fflush(stdout);
-
-	exit(0);
 
 	return 0;
 }
