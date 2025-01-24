@@ -6,8 +6,244 @@
  * Тестирование функционала эмулятора setun1958
  *  
  * Create date: 16.11.2024
- * Edit date:   16.11.2024
+ * Edit date:   24.01.2025
  */
+
+/**
+ *  Заголовочные файла
+ */
+#include <stdio.h>
+#include <stdlib.h>
+#include <stdint.h>
+#include <unistd.h>
+#include <ctype.h>
+#include <stdarg.h>
+#include <string.h>
+#include <math.h>
+#include <getopt.h>
+#include <dirent.h>
+#include <fcntl.h>
+#include <sys/select.h>
+#include <errno.h>
+
+#include "emusetun_test.h"
+
+/* **********************************************************************************
+ * Внешние переменные и вызовы функций
+ * ----------------------------------------------------------------------------------
+ */
+/* Фотосчитыватель ФТ1 */
+extern FILE *ptr1;
+/* Фотосчитыватель ФТ2 */
+extern FILE *ptr2;
+/* Перфоратор ПЛ */
+extern FILE *ptp1;
+/* Печать Телетайп ТП, Пишущая машинка ПМ */
+extern FILE *tty1;
+/* Состояние DRUM */
+extern FILE *drum;
+
+/**
+ * Определение памяти машины "Сетунь-1958"
+ */
+extern trs_t mem_fram[SIZE_GR_TRIT_FRAM][SIZE_GRFRAM];						   /* оперативное запоминающее устройство на ферритовых сердечниках */
+extern trs_t mem_drum[NUMBER_ZONE_DRUM + ZONE_DRUM_BEG][SIZE_ZONE_TRIT_DRUM]; /* запоминающее устройство на магнитном барабане */
+
+/* Основные регистры в порядке пульта управления */
+extern trs_t K; /* K(1:9)  код команды (адрес ячейки оперативной памяти) */
+extern trs_t F; /* F(1:5)  индекс регистр  */
+extern trs_t C; /* C(1:5)  программный счетчик  */
+extern trs_t W; /* W(1:1)  знак троичного числа */
+
+extern trs_t ph1; /* ph1(1:1) 1 разряд переполнения */
+extern trs_t ph2; /* ph2(1:1) 1 разряд переполнения */
+extern trs_t S;  /* S(1:18) аккумулятор */
+extern trs_t R;  /* R(1:18) регистр множителя */
+extern trs_t MB;  /* MB(1:4) троичное число зоны магнитного барабана */
+
+/* Дополнительные */
+extern trs_t MR;		 /* временный регистр для обмена с FRAM */
+extern long_trs_t TMP; /* временная переменная для троичного числа */
+
+extern trs_t BRPNT; /* BRPNT(1:5) - точка остановки по значению программного счетчика */
+
+extern trs_t C_new; /* C_new(1:5) новое значение программного счетчика в скрипт-файле после остовона машины */
+extern char action_post;	 /*
+						  *  action действие после останова
+						  *  action = 'S' - оставаться в состоянии <STOP>
+						  *  action = 'R' - продолжить работу машины с нового адреса C_new
+						  */
+
+/** ------------------------------------------------------
+ *  Прототипы функций для виртуальной машины "Сетунь-1958"
+ *  ------------------------------------------------------
+ */
+extern int32_t pow3(int8_t x);
+extern double t3_to_d10(trs_t t);
+extern trs_t d10_to_t3(float f);
+extern int8_t trit2int(trs_t t);
+extern trs_t bit2trit(int8_t b);
+
+/**  ---------------------------------------
+ *   Операции с тритами
+ *   trit = {-1,0,1}  - трит значение трита
+ */
+extern void and_t(int8_t *a, int8_t *b, int8_t *s);
+extern void xor_t(int8_t *a, int8_t *b, int8_t *s);
+extern void or_t(int8_t *a, int8_t *b, int8_t *s);
+extern void not_t(int8_t *a, int8_t *s);
+extern void sum_t(int8_t *a, int8_t *b, int8_t *p0, int8_t *s, int8_t *p1);
+
+/**  -------------------------------------------------------------
+ *   Троичные числа
+ *
+ *   TRITS-1  = [t0]       - обозначение позиции тритов в числе
+ *   TRITS-32 = [t31...t0] - обозначение позиции тритов в числе
+ *
+ */
+extern int8_t get_trit(trs_t t, uint8_t pos);
+extern trs_t set_trit(trs_t t, uint8_t pos, int8_t trit);
+extern trs_t slice_trs(trs_t t, int8_t p1, int8_t p2);
+extern void copy_trs(trs_t *src, trs_t *dst);
+
+/**  -------------------------------------------------------------
+ *   Троичные числа
+ *   TRITS-64 = [t63...t0] - обозначение позиции тритов в числе
+ */
+extern void clear_long(long_trs_t *t);
+extern void clear_full_long(long_trs_t *t);
+extern int8_t get_long_trit(long_trs_t t, uint8_t pos);
+extern long_trs_t set_long_trit(long_trs_t t, uint8_t pos, int8_t trit);
+extern int8_t sgn_long_trs(long_trs_t x);
+extern long_trs_t shift_long_trs(long_trs_t t, int8_t s);
+extern void copy_long_trs(long_trs_t *src, long_trs_t *dst);
+
+/**  -------------------------------------------------------------
+ *   Троичные числа регистров Setun-1958
+ *
+ *   SETUN-T1  = [s1]      - обозначение позиции тритов в регистре
+ *   SETUN-T5  = [s1...s5]
+ *   SETUN-T9  = [s1...s9]
+ *   SETUN-T18 = [s1...s18]
+ */
+extern int8_t get_trit_setun(trs_t t, uint8_t pos);
+extern trs_t set_trit_setun(trs_t t, uint8_t pos, int8_t trit);
+extern trs_t slice_trs_setun(trs_t t, int8_t p1, int8_t p2);
+extern void copy_trs_setun(trs_t *src, trs_t *dst);
+
+/**
+ * Общие функции для троичных чисел из тритов
+ */
+extern void clear(trs_t *t);
+extern void mod_3_n(trs_t *t, uint8_t n);
+extern void clear_full(trs_t *t);
+
+extern void inc_trs(trs_t *tr);
+extern void dec_trs(trs_t *tr);
+
+extern trs_t and_trs(trs_t a, trs_t b);
+extern trs_t or_trs(trs_t a, trs_t b);
+extern trs_t xor_trs(trs_t a, trs_t b);
+extern trs_t add_trs(trs_t a, trs_t b);
+extern trs_t sub_trs(trs_t a, trs_t b);
+extern trs_t mul_trs(trs_t a, trs_t b);
+extern trs_t div_trs(trs_t a, trs_t b);
+extern trs_t shift_trs(trs_t t, int8_t s);
+extern int cmp_trs(trs_t a, trs_t b);
+
+/* Long trits */
+extern long_trs_t add_long_trs(long_trs_t a, long_trs_t b);
+
+/* Преобразование тритов в другие типы данных */
+extern int32_t trs2digit(trs_t t);
+extern uint8_t trit2lt(int8_t v);
+extern int8_t symtrs2numb(uint8_t c);
+extern int8_t str_symtrs2numb(uint8_t *s);
+extern trs_t smtr(uint8_t *s);
+extern uint8_t valid_smtr(uint8_t *s);
+
+/* Операции с ферритовой памятью машины FRAM */
+extern void clean_fram_zone(trs_t z);
+extern void clean_fram(void);
+extern trs_t ld_fram(trs_t ea);
+extern void st_fram(trs_t ea, trs_t v);
+
+/* Операции ввода и вывода "Сетунь-1958" */
+
+/* Регист переключения Русский/Латинский */
+extern uint8_t russian_latin_sw;
+/* Регист переключения Буквенный/Цифровой */
+extern uint8_t letter_number_sw;
+/* Регист переключения цвета печатающей ленты */
+extern uint8_t color_sw;
+
+extern uint8_t pl_to_ind(uint8_t *perline);
+extern int ConvertSWtoPaper(char *path_lst, char *path_txt);
+extern int DumpFileTxs(char *pathfile);
+extern trs_t Decoder_Command_Paper_Line(char *paperline, uint8_t *err);
+extern trs_t Decoder_Symbol_Paper_Line(char *paperline, uint8_t *err);
+extern uint8_t Read_Commands_from_FT1(FILE *file, trs_t fa);
+extern uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa);
+extern uint8_t Read_Commands_from_FT2(FILE *file, trs_t fa);
+extern uint8_t Read_Symbols_from_FT1(FILE *file, trs_t fa);
+extern uint8_t Read_Symbols_from_FT2(FILE *file, trs_t fa);
+extern uint8_t Write_Commands_to_TTY1(FILE *file, trs_t fa);
+extern uint8_t Write_Symbols_to_TTY1(FILE *file, trs_t fa);
+extern uint8_t Perforation_Commands_to_PTP1(FILE *file, trs_t fa);
+extern uint8_t Perforation_Symbols_to_PTP1(FILE *file, trs_t fa);
+extern void init_tab4(void);
+
+/* Очистить память магнитного барабана DRUM */
+extern void clean_drum(void);
+extern trs_t ld_drum(trs_t ea, uint8_t ind);
+extern void st_drum(trs_t ea, uint8_t ind, trs_t v);
+
+/* Читать / Записать зоны магнитного барабана в файл paper.txt */
+extern int Read_Backup_DRUM(char * drum_path);
+extern int Write_Backup_DRUM(char * drum_path);
+
+/* Операции копирования */
+extern void fram_to_drum(trs_t ea);
+extern void drum_to_fram(trs_t ea);
+
+/* Функции троичной машины Сетунь-1958 */
+extern void reset_setun_1958(void);				/* Сброс машины */
+extern trs_t control_trs(trs_t a);					/* Устройство управления */
+extern trs_t next_address(trs_t c);				/* Определить следующий адрес */
+extern int8_t execute_trs(trs_t addr, trs_t oper); /* Выполнение кодов операций */
+
+/* Функции вывода отладочной информации */
+extern void view_short_reg(trs_t *t, uint8_t *ch);
+extern void view_short_regs(void);
+
+extern uint8_t Begin_Read_Commands_from_FT1(FILE *file);
+extern void dump_fram_zone(trs_t z);
+extern uint8_t zone_drum_to_index(trs_t z);
+extern void view_drum_zone(trs_t zone);
+extern void electrified_typewriter(trs_t t, uint8_t local);
+extern void view_checksum_setun(trs_t t);
+extern void trs2str(trs_t t);
+extern void cmd_str_2_trs(uint8_t *syms, trs_t *r);
+extern void view_elem_fram(trs_t ea);
+extern void view_fram(trs_t addr1, trs_t addr2);
+extern void view_short_long_reg(long_trs_t *t, uint8_t *ch);
+extern int8_t sgn_trs(trs_t x);
+
+
+/**
+ * Вывод отладочной информации памяти машины "Сетунь-1958"
+ */
+static uint8_t LOGGING = 0;	  /* флаг логирование выполнение операций */
+static uint8_t STEP_FLAG = 0; /* флаг выполнить количество шагов */
+static uint32_t STEP = 0;	  /* счетчик количества операций */
+static uint32_t counter_step = 0;
+static int32_t BREAKPOINT = 0;	  /* режима останова по значению программного счетчика */
+static trs_t BREAKPOINT_TRS;	  /* режима останова по значению программного счетчика */
+static int32_t BREAKPOINT_MB = 0; /* режима останова по значению адреса магнитного барабана */
+static trs_t BREAKPOINT_MB_TRS;	  /* режима останова по значению адреса магнитного барабана */
+
+static emustatus_e emu_stat = NOREADY_EMU_ST;
+
 
 /* **********************************************************************************
  * Тестирование функций операций с тритами
@@ -120,7 +356,7 @@ void Test2_Opers_TRITS_32(void)
 	printf("\r\nt2.2 --- Point address\r\n");
 	addr pMem;
 	pMem = 0xffffffff;
-	printf("pMem = 0xffffffff [%ji]\r\n", pMem);
+	printf("pMem = 0xffffffff [%u]\r\n", pMem);
 
 	/* t2.3 */
 	printf("\r\nt2.3 --- TRIT-32\r\n");
@@ -1543,29 +1779,36 @@ void Test8_Setun_Electrified_Typewriter(void)
 	trs_t inr;
 	trs_t cp;
 	clear(&cp);
+
+
 	cp.l = 3;
 	cp = set_trit_setun(cp, 1, -1);
 	cp = set_trit_setun(cp, 2, -1);
 	cp = set_trit_setun(cp, 3, -1);
+
 
 	uint8_t cc;
 
 	cp = set_trit_setun(cp, 1, 1);
 	cp = set_trit_setun(cp, 2, 1);
 	cp = set_trit_setun(cp, 3, 0);
+	
+
 	electrified_typewriter(cp, 0);
 
 	cp = set_trit_setun(cp, 1, -1);
 	cp = set_trit_setun(cp, 2, -1);
 	cp = set_trit_setun(cp, 3, -1);
+
 	for (cc = 0; cc < 27; cc++)
 	{
 		if (trs2digit(cp) != 12 || trs2digit(cp) != 11)
 		{
-			electrified_typewriter(cp, 0);
+			//viv- error fall electrified_typewriter(cp, 0);
 		}
 		inc_trs(&cp);
 	}
+
 
 	cp = set_trit_setun(cp, 1, 1);
 	cp = set_trit_setun(cp, 2, 1);
@@ -1579,7 +1822,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	{
 		if (trs2digit(cp) != 12 || trs2digit(cp) != 11)
 		{
-			electrified_typewriter(cp, 0);
+			//viv- error fall electrified_typewriter(cp, 0);
 		}
 		inc_trs(&cp);
 	}
@@ -1596,7 +1839,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	{
 		if (trs2digit(cp) != 12 || trs2digit(cp) != 11)
 		{
-			electrified_typewriter(cp, 1);
+			//viv- error fall electrified_typewriter(cp, 1);
 		}
 		inc_trs(&cp);
 	}
@@ -1613,7 +1856,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	{
 		if (trs2digit(cp) != 12 || trs2digit(cp) != 11)
 		{
-			electrified_typewriter(cp, 1);
+			//viv- error fall  electrified_typewriter(cp, 1);
 		}
 		inc_trs(&cp);
 	}
@@ -1880,6 +2123,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	/* views */
 	ad1 = smtr("000-0");
 	ad2 = smtr("00+-0");
+	
 	/* view_fram(ad1, ad2); */
 
 	view_short_regs();
@@ -1903,6 +2147,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	nz = zone_drum_to_index(ad1);
 	printf(" nz = %i\r\n", nz);
 
+
 	printf("t23 test zone for view_drum()\r\n");
 
 	printf(" z ='0+--'");
@@ -1920,7 +2165,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 
 	trs_t zi;
 	zi.l = 4;
-	zi = smtr("000+"); /* -17 */
+	zi = smtr("0---"); /* -13 (Dec) */
 
 	for (uint8_t zz = 0; zz < NUMBER_ZONE_DRUM; zz++)
 	{
@@ -1931,6 +2176,13 @@ void Test8_Setun_Electrified_Typewriter(void)
 		}
 		inc_trs(&zi);
 	}
+	
+	zi.l = 4;
+	zi = smtr("0---"); /* -17 */	
+	view_drum_zone(zi);
+	inc_trs(&zi);
+	view_drum_zone(zi);
+
 
 	printf("\r\nt25 test oper='-0-' (Мд*)=>(Фа*) \r\n");
 

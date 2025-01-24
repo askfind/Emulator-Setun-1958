@@ -1,0 +1,6 @@
+0W3,0012X,End print table,?,S
+00Y,0W12X,End input numbers,?,S
+134,1442X,Error CRC input numbers,?,S
+04X,0422X,Error CRC input paper,?,S
+02Y,0002X,End input sub new job zone,?,S
+0ZY,Z432X,Error CRC  input sub new job zone,?,S
