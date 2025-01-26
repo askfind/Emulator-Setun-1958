@@ -8,8 +8,8 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 ## 1. История
 
 - Дата создания:            01.11.2018
-- Дата редактирования:      25.01.2025
-- Версия:                   2.02
+- Дата редактирования:      26.01.2025
+- Версия:                   2.03
 - Автор:                    Vladimir V.
 - E-mail:                   askfind@ya.ru
 
@@ -19,10 +19,10 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 ```shell
 $ cd ./Emulator-Setun-1958
 $ make
-gcc -o setun1958emu -g emusetun.c
+gcc -o setun1958emu -g emusetun_test.c emusetun.c
 
 $ ls -al ./setun1958emu
-206224 авг 20 20:46 ./setun1958emu
+./setun1958emu
 ```
 
 ## 3. Список команд виртуального пудьта управления эмулятора SETUN-1958
@@ -31,7 +31,7 @@ $ ls -al ./setun1958emu
 $ ./setun1958emu
 
  Emulator ternary computer 'Setun-1958':
- Version: 2.01
+ Version: 2.03
  Author:  Vladimir V.
  E-mail:  askfind@ya.ru
 
