@@ -1,0 +1,8 @@
+0Z0,?,Error CRC input paper,?,S
+1XX,0W02X,Error (C)+(A*)=>(F),?,S
+1YX,00X2X,Error (S)+(A*)=>(S) or (S)-(A*)=>(S),?,S
+1Z3,Z432X,Error (S)=>(R); S=0; (A*)(R)=>(S) or (S)+(A*)(R)=>(S) or (A*)+(S)(R)=>(S),?,S
+11X,0102X,Error Norm. (S)=>(A*); (N)=>(S),?,S
+113,0032X,Error (C)=>(A*),?,S
+121,0042X,Error Norm. (S)=>(A*); (N)=>(S),?,S
+ZY3,???2X,Error Rd/Wr DRUM,?,S
