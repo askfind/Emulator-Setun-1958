@@ -1,0 +1,33 @@
+dump ./software/ipt_p2/01_ipt_fram_0_setun.txs   CRC-OK'
+
+dump ./software/ipt_p2/02_ipt_fram_1_setun.txs   CRC-Error
+
+dump ./software/ipt_p2/03_ipt_drum_1W_setun.txs  CRC-Ok'
+
+dump ./software/ipt_p2/04_ipt_drum_1X_setun.txs  CRC-Error
+
+dump ./software/ipt_p2/05_ipt_drum_1Y_setun.txs  CRC-OK'
+
+dump ./software/ipt_p2/06_ipt_drum_1Z_setun.txs  CRC-OK'
+
+dump ./software/ipt_p2/07_ipt_drum_10_setun.txs  CRC-OK'
+
+dump ./software/ipt_p2/08_ipt_drum_11_setun.txs  CRC-OK'
+
+dump ./software/ipt_p2/09_ipt_drum_12_setun.txs  CRC-OK'
+
+dump ./software/ipt_p2/10_ipt_drum_13_setun.txs  CRC-OK'
+
+dump ./software/ipt_p2/11_ipt_drum_14_setun.txs  CRC-OK'
+
+dump ./software/ipt_p2/12_ipt_drum_2W_setun.txs  CRC-OK'
+
+dump ./software/ipt_p2/13_ipt_drum_2X_setun.txs  CRC-OK'
+
+dump ./software/ipt_p2/14_ipt_drum_2Y_setun.txs  CRC-OK'
+
+
+load ./software/ipt_p2 ./ptr1
+
+
+

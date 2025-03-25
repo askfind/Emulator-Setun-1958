@@ -38,7 +38,7 @@
  * Create date: 01.11.2018
  * Edit date:   28.01.2025
  */
-#define Version "2.04"
+#define Version "2.05"
 
 /**
  *  Заголовочные файла

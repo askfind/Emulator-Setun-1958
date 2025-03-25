@@ -8,7 +8,7 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 ## 1. История
 
 - Дата создания:            01.11.2018
-- Дата редактирования:      28.01.2025
+- Дата редактирования:      25.03.2025
 - Версия:                   2.04
 - Автор:                    Vladimir V.
 - E-mail:                   askfind@ya.ru
