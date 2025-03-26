@@ -357,7 +357,7 @@ void st_fram(trs_t ea, trs_t v);
 /* Операции ввода и вывода "Сетунь-1958" */
 
 /* Регист переключения Русский/Латинский */
-uint8_t russian_latin_sw = 1;
+uint8_t russian_latin_sw = 0;
 /* Регист переключения Буквенный/Цифровой */
 uint8_t letter_number_sw = 0;
 /* Регист переключения цвета печатающей ленты */
@@ -4286,8 +4286,8 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			switch (letter_number_sw)
 			{
 			case 0: /* letter */
-				printf("%s", "I");
-				fwrite("I", 1, 1, tty1);
+				printf("%s", "Л");
+				fwrite("Л", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "+");
@@ -4299,8 +4299,8 @@ void electrified_typewriter(trs_t t, uint8_t local)
 			switch (letter_number_sw)
 			{
 			case 0: /* letter */
-				printf("%s", "Л");
-				fwrite("Л", 1, 1, tty1);
+				printf("%s", "I");
+				fwrite("I", 1, 1, tty1);
 				break;
 			default: /* number */
 				printf("%s", "+");
