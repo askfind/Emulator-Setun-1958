@@ -1,0 +1,6 @@
+dump ./software/test8/test8-fram-zone-0.txs
+
+dump ./software/test8/test8-fram-zone-1.txs
+
+
+load ./software/test8 ./ptr1

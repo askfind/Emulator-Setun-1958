@@ -1,0 +1,3 @@
+dump ./software/test-print-lat/test-print-lat-fram-zone-0.txs
+
+load ./software/test-print-lat ./ptr1

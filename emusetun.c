@@ -36,9 +36,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   28.01.2025
+ * Edit date:   29.03.2025
  */
-#define Version "2.05"
+#define Version "2.07"
 
 /**
  *  Заголовочные файла
@@ -145,9 +145,9 @@ static void cli_ascii(void);
 #define SIZE_ZONE_TRIT_DRUM (54)
 /* Количество зон на магнитном барабане */
 #define NUMBER_ZONE_DRUM (36)
-#define ZONE_DRUM_BEG    (5) /* троичное значение */
-#define ZONE_DRUM_END    (40)  /* троичное значение */
-#define ZONE_DRUM_OFFSET (-5)  /* offset for index */
+#define ZONE_DRUM_BEG (5)	  /* троичное значение */
+#define ZONE_DRUM_END (40)	  /* троичное значение */
+#define ZONE_DRUM_OFFSET (-5) /* offset for index */
 
 /**
  * Типы данных для виртуальной троичной машины "Сетунь-1958"
@@ -227,8 +227,8 @@ FILE *drum;
 /**
  * Определение памяти машины "Сетунь-1958"
  */
-trs_t mem_fram[SIZE_GR_TRIT_FRAM][SIZE_GRFRAM];			/* оперативное запоминающее устройство на ферритовых сердечниках */
-trs_t mem_drum[NUMBER_ZONE_DRUM][SIZE_ZONE_TRIT_DRUM];	/* запоминающее устройство на магнитном барабане */
+trs_t mem_fram[SIZE_GR_TRIT_FRAM][SIZE_GRFRAM];		   /* оперативное запоминающее устройство на ферритовых сердечниках */
+trs_t mem_drum[NUMBER_ZONE_DRUM][SIZE_ZONE_TRIT_DRUM]; /* запоминающее устройство на магнитном барабане */
 
 /** ***********************************
  *  Определение регистров "Сетунь-1958"
@@ -385,8 +385,8 @@ trs_t ld_drum(trs_t ea, uint8_t ind);
 void st_drum(trs_t ea, uint8_t ind, trs_t v);
 
 /* Читать / Записать зоны магнитного барабана в файл paper.txt */
-int Read_Backup_DRUM(char * drum_path);
-int Write_Backup_DRUM(char * drum_path);
+int Read_Backup_DRUM(char *drum_path);
+int Write_Backup_DRUM(char *drum_path);
 
 /* Операции копирования */
 void fram_to_drum(trs_t ea);
@@ -792,9 +792,9 @@ int8_t sgn_long_trs(long_trs_t x)
 /**
  * Операция сдвига тритов
  * Параметр:
- * if(d > 0) then "Вправо"
+ * if(d > 0) then "Влево"
  * if(d == 0) then "Нет сдвига"
- * if(d < 0) then "Влево"
+ * if(d < 0) then "Вправо"
  * Возврат: Троичное число
  */
 long_trs_t shift_long_trs(long_trs_t t, int8_t d)
@@ -1506,13 +1506,13 @@ trs_t mul_trs(trs_t a, trs_t b)
 	long_trs_t rr;
 
 	/* a => aa */
-	aa.t1 = (uint64_t)a.t1;
-	aa.t0 = (uint64_t)a.t0;
+	aa.t1 = (uint64_t)(a.t1);
+	aa.t0 = (uint64_t)(a.t0);
 	aa.l = a.l;
 
 	/* b => bb */
-	bb.t1 = (uint64_t)b.t1;
-	bb.t0 = (uint64_t)b.t0;
+	bb.t1 = (uint64_t)(b.t1);
+	bb.t0 = (uint64_t)(b.t0);
 	bb.l = b.l;
 
 	/* rr => 0 */
@@ -1524,27 +1524,50 @@ trs_t mul_trs(trs_t a, trs_t b)
 	bb.l = min(bb.l, SIZE_WORD_LONG_LONG);
 	rr.l = SIZE_WORD_LONG_LONG;
 
-	/* Умножение троичных числа */
-	for (i = 0; i < bb.l; i++)
+	if (aa.l >= bb.l)
 	{
-		s = get_long_trit(bb, i);
-		if (s > 0)
+		/* Умножение троичных числа */
+		for (i = 0; i < bb.l; i++)
 		{
-			rr = add_long_trs(rr, shift_long_trs(aa, -i));
+			s = get_long_trit(bb, i);
+			if (s > 0)
+			{
+				rr = add_long_trs(rr, shift_long_trs(aa, i));
+			}
+			else if (s < 0)
+			{
+				rr = sub_long_trs(rr, shift_long_trs(aa, i));
+			}
+			else
+			{	/* s == 0 */
+				/* no calculate */
+			}
 		}
-		else if (s < 0)
+	}
+	else
+	{
+		for (i = 0; i < aa.l; i++)
 		{
-			rr = sub_long_trs(rr, shift_long_trs(aa, -i));
-		}
-		else
-		{	/* s == 0 */
-			/* no calculate */
+			s = get_long_trit(aa, i);
+			if (s > 0)
+			{
+				rr = add_long_trs(rr, shift_long_trs(bb, i));
+			}
+			else if (s < 0)
+			{
+				rr = sub_long_trs(rr, shift_long_trs(bb, i));
+			}
+			else
+			{	/* s == 0 */
+				/* no calculate */
+			}
 		}
 	}
 
-	rr = shift_long_trs(rr, 18);
-	rr.t1 &= ~((~(uint64_t)(0)) << SIZE_WORD_LONG);
-	rr.t0 &= ~((~(uint64_t)(0)) << SIZE_WORD_LONG);
+	rr.t1 &= ~((~(uint64_t)(0)) << (aa.l+bb.l));
+	rr.t0 &= ~((~(uint64_t)(0)) << (aa.l+bb.l));
+
+	rr = shift_long_trs(rr, -16);
 
 	/* b => bb */
 	r.t1 = (uint32_t)rr.t1;
@@ -1797,20 +1820,19 @@ int16_t addr_trit2addr_index(trs_t t)
 	return t.t1 >>= 1;
 }
 
-
-/* 
-*  Дешифратор тритов в индекс адреса памяти
-*
-*  Зоны магниного барабана 
-*  ZW (Non) => -13 (Dec) =  0  (index)  
-*  44 (Non) => +40 (Dec) =  35 (index)  
-*   
-*/
+/*
+ *  Дешифратор тритов в индекс адреса памяти
+ *
+ *  Зоны магниного барабана
+ *  ZW (Non) => -13 (Dec) =  0  (index)
+ *  44 (Non) => +40 (Dec) =  35 (index)
+ *
+ */
 uint8_t zone_drum_to_index(trs_t z)
 {
 	int8_t r;
 
-	r = trs2digit(z) + ZONE_DRUM_OFFSET; /* offset address trits */ 
+	r = trs2digit(z) + ZONE_DRUM_OFFSET; /* offset address trits */
 
 	if (r > NUMBER_ZONE_DRUM - 1)
 	{
@@ -1818,7 +1840,7 @@ uint8_t zone_drum_to_index(trs_t z)
 	}
 	else if (r < 0)
 	{
-		r = 0; 
+		r = 0;
 	}
 
 	return r;
@@ -1971,20 +1993,19 @@ void clean_drum(void)
 	}
 }
 
-int Write_Backup_DRUM(char * drum_path)
+int Write_Backup_DRUM(char *drum_path)
 {
 	trs_t fa;
 
 	int8_t zone;
 	int8_t row;
 
-
 	FILE *file = fopen(drum_path, "wb");
 	if (file == NULL)
-	{		
+	{
 		return -1;
 	}
-	
+
 	fseek(file, 0L, SEEK_SET);
 
 	for (zone = 0; zone < NUMBER_ZONE_DRUM; zone++)
@@ -1999,27 +2020,25 @@ int Write_Backup_DRUM(char * drum_path)
 			t1 = mem_drum[zone][row].t1;
 			t0 = mem_drum[zone][row].t0;
 
-			fprintf(file,"%u %u\n",t1,t0);
+			fprintf(file, "%u %u\n", t1, t0);
 		}
 	}
 
 	fclose(file);
 
 	return 0;
-
 }
 
-int Read_Backup_DRUM(char * drum_path)
+int Read_Backup_DRUM(char *drum_path)
 {
 	trs_t fa;
 
 	int8_t zone;
 	int8_t row;
 
-
 	FILE *file = fopen(drum_path, "rb");
 	if (file == NULL)
-	{		
+	{
 		return -1;
 	}
 
@@ -2033,7 +2052,8 @@ int Read_Backup_DRUM(char * drum_path)
 			uint32_t t1;
 			uint32_t t0;
 
-			if ( fscanf(file,"%u %u\n",&t1,&t0) != EOF) {				
+			if (fscanf(file, "%u %u\n", &t1, &t0) != EOF)
+			{
 				mem_drum[zone][row].l = SIZE_WORD_SHORT;
 				mem_drum[zone][row].t1 = t1;
 				mem_drum[zone][row].t0 = t0;
@@ -2044,9 +2064,7 @@ int Read_Backup_DRUM(char * drum_path)
 	fclose(file);
 
 	return 0;
-
 }
-
 
 /* Функция "Читать троичное число из ферритовой памяти" */
 trs_t ld_fram(trs_t ea)
@@ -2212,7 +2230,7 @@ void st_drum(trs_t ea, uint8_t ind, trs_t v)
 	zr = slice_trs_setun(ea, 1, 4);
 	zr.l = 4;
 	zind = zone_drum_to_index(zr);
-	
+
 	mem_drum[zind][ind].l = 9;
 	copy_trs_setun(&v, &mem_drum[zind][ind]);
 }
@@ -2723,6 +2741,59 @@ void view_short_reg(trs_t *t, uint8_t *ch)
 #endif
 	printf("\r\n");
 }
+
+
+/**
+ * Печать троичного регистра
+ *
+ */
+void view_short_reg_long(long_trs_t *t, uint8_t *ch)
+{
+	int8_t i;
+	int8_t l;
+	int8_t trit;
+	long_trs_t tv = *t;
+
+	printf("%s: ", (char *)ch);
+	if (tv.l <= 0)
+	{
+		printf("\n");
+		return;
+	}
+
+	l = min(tv.l, SIZE_LONG_TRITS_MAX);
+	printf("[");
+	/*
+	 printf("\nt1 % 8x\n",t->t1);
+	 printf("t2 % 8x\n",t->t0);
+	*/
+	for (i = 0; i < l; i++)
+	{
+		tv = *t;
+		trit = get_long_trit(tv, l - 1 - i);
+		printf("%c", numb2symtrs(trit));
+	}
+	printf("], ");
+
+#if 0	
+	tv = *t;
+	trs2str(tv);
+	printf(", ");
+	printf("(%ll)", (long long )trs2digit(*t));
+#endif
+
+#if 0	
+	printf(", {");
+	for (i = 0; i < l; i++)	{
+		tv = *t;
+		trit = get_trit(tv, l - 1 - i);
+		printf("%i", trit);
+	}
+	printf("}");
+#endif
+	printf("\r\n");
+}
+
 
 /**
  * Печать троичного регистра
@@ -3374,7 +3445,7 @@ void dump_fram_zone(trs_t z)
 
 	printf("\r\n");
 	printf("FRAM Zone = % 2i\r\n", sng);
-	printf("\r\n");	
+	printf("\r\n");
 }
 
 /**
@@ -3393,12 +3464,12 @@ void view_drum_zone(trs_t zone)
 	zind = zone_drum_to_index(zr);
 
 	printf("\r\n[ Dump DRUM Setun-1958: ]\r\n");
-	
+
 	printf("\r\n");
 	printf("Zone  [");
 	for (j = 1; j < 5; j++)
 	{
-			printf( "%c", numb2symtrs(get_trit_setun(zr, j)) );
+		printf("%c", numb2symtrs(get_trit_setun(zr, j)));
 	};
 	printf("], ");
 	trs2str(zr);
@@ -3431,14 +3502,13 @@ void view_drum_zone(trs_t zone)
 	printf("Zone  [");
 	for (j = 1; j < 5; j++)
 	{
-			printf( "%c", numb2symtrs(get_trit_setun(zr, j)) );
+		printf("%c", numb2symtrs(get_trit_setun(zr, j)));
 	};
 	printf("], ");
 	trs2str(zr);
 	printf("\r\n");
 	printf("      index  (%i) \r\n", zind);
 	printf("\r\n");
-
 }
 
 /**
@@ -5400,22 +5470,23 @@ uint8_t Perforation_Symbols_to_PTP1(FILE *file, trs_t fa)
 void reset_setun_1958(void)
 {
 	clean_fram(); /* Очистить  FRAM */
-	
-	/* Попытка прочитать bacup DRUM */
-	if( Read_Backup_DRUM("./drum/drum.bak") != 0) {
-		/*  
-		* Ошибка чтения
-		* Очистить  DRUM
-		*/
-		//clean_drum(); 
-	} 
-	else {
-		/*  
-		* Успешное чтение чтение "./drum/drum.bak"
-		*/
-		//printf("Успешное чтение чтение ./drum/drum.bak\r\n");
-	}
 
+	/* Попытка прочитать bacup DRUM */
+	if (Read_Backup_DRUM("./drum/drum.bak") != 0)
+	{
+		/*
+		 * Ошибка чтения
+		 * Очистить  DRUM
+		 */
+		// clean_drum();
+	}
+	else
+	{
+		/*
+		 * Успешное чтение чтение "./drum/drum.bak"
+		 */
+		// printf("Успешное чтение чтение ./drum/drum.bak\r\n");
+	}
 }
 
 /**
@@ -5694,7 +5765,7 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 			mod_3_n(&MR, MR.l); /* очистить неиспользованные триты */
 		}
 		trs_t temp = mul_trs(S, R);
-		S = add_trs(slice_trs(temp, 0, 17), MR);
+		S = add_trs(temp, MR);
 		W = set_trit_setun(W, 1, sgn_trs(S));
 		if (over_check() > 0)
 		{
@@ -6169,10 +6240,10 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	case (-1 * 9 + 0 * 3 + 1):
 	{ /* -0+ : Запись на МБ	(Фа*)=>(Мд*) */
 		LOGGING_print(" k6..8[-0+]: (Фа*)=>(Мд*)\n");
-		
+
 		int32_t zone = trs2digit(slice_trs_setun(k1_5, 2, 5));
 
-		if ( (zone < ZONE_DRUM_BEG) || (zone > ZONE_DRUM_END))
+		if ((zone < ZONE_DRUM_BEG) || (zone > ZONE_DRUM_END))
 		{
 			return STOP_ERROR_MB_NUMBER;
 		}
@@ -6189,8 +6260,8 @@ int8_t execute_trs(trs_t addr, trs_t oper)
 	{ /* 0- : Считывание с МБ	(Мд*)=>(Фа*) */
 		LOGGING_print(" k6..8[-0-]: (Мд*)=>(Фа*)\n");
 		int32_t zone = trs2digit(slice_trs_setun(k1_5, 2, 5));
-		
-		if ( (zone < ZONE_DRUM_BEG) || (zone > ZONE_DRUM_END) )
+
+		if ((zone < ZONE_DRUM_BEG) || (zone > ZONE_DRUM_END))
 		{
 			clean_fram_zone(slice_trs_setun(k1_5, 1, 1));
 		}
@@ -6831,10 +6902,11 @@ void view_next_start(void)
 		view_short_reg(&C_new, "  New address");
 		cond_symb = 'R';
 	}
-	else {
+	else
+	{
 		cond_symb = 'S';
 	}
-	printf("  Action: %c\r\n",cond_symb);
+	printf("  Action: %c\r\n", cond_symb);
 
 	/* Закрыть файл */
 	fclose(script_txt);
@@ -7110,7 +7182,7 @@ int Process_Work_Emulation(void)
 			emu_stat = PAUSE_EMU_ST;
 		}
 
-		//viv+ test  view_short_regs();
+		// viv+ test  view_short_regs();
 
 		/* Новое состояние */
 		emu_stat = WAIT_EMU_ST;
@@ -8083,11 +8155,10 @@ int main(void)
 	 */
 	reset_setun_1958();
 
-
-        //viv+ dbg ------------------------------------------
-		//extern void Test8_Setun_Electrified_Typewriter(void);
-        //Test8_Setun_Electrified_Typewriter();
-		//---------------------------------------------------
+	// viv+ dbg ------------------------------------------
+	// extern void Test8_Setun_Electrified_Typewriter(void);
+	// Test8_Setun_Electrified_Typewriter();
+	//---------------------------------------------------
 
 	/*
 	 * Loop work CLI and setun1958emu

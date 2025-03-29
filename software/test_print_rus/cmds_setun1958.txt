@@ -1,0 +1,3 @@
+dump ./software/test-print-rus/test-print-rus-fram-zone-0.txs
+
+load ./software/test-print-rus ./ptr1

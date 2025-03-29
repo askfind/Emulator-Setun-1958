@@ -1,0 +1,6 @@
+dump ./software/test9/test9-fram-zone-0.txs
+
+dump ./software/test9/test9-fram-zone-1.txs
+
+
+load ./software/test9 ./ptr1

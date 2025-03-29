@@ -1,0 +1,11 @@
+dump ./software/book3_examples/p37/01_ipt_p37_fram_0_setun.txs
+KC     0 00 00
+       0 13 X0
+
+
+dump ./software/book3_examples/p37/02_ipt_p37_fram_1_setun.txs
+KC     0 00 01
+       0 WZ 10
+
+
+load ./software/book3_examples/p37 ./ptr1

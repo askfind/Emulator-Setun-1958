@@ -1,0 +1,10 @@
+dump ./software/book3_examples/p89/01_ipt_p89_fram_0_setun.txs
+KC
+
+dump ./software/book3_examples/p89/02_ipt_p89_drum_2x_setun.txs
+KC     0 00 0Z  Error
+       0 XW X1
+
+
+
+load ./software/book3_examples/p89 ./ptr1

@@ -1,0 +1,8 @@
+dump ./software/test7/test7-fram-zone-0.txs
+
+dump ./software/test7/test7-fram-zone-1.txs
+
+dump ./software/test7/test7-fram-zone-z.txs
+
+
+load ./software/test7 ./ptr1

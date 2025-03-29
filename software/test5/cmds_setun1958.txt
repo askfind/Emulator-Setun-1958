@@ -1,0 +1,6 @@
+dump ./software/test5/test5-fram-zone-0.txs
+
+dump ./software/test5/test5-fram-zone-1.txs
+
+
+load ./software/test5 ./ptr1

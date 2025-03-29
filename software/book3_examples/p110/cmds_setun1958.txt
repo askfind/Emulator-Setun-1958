@@ -1,0 +1,5 @@
+dump ./software/book3_examples/p110/01_ipt_p110_fram_0_setun.txs
+KC
+
+
+load ./software/book3_examples/p110 ./ptr1

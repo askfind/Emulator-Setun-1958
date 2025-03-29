@@ -1,0 +1,9 @@
+dump ./software/book3_examples/p90/01_ipt_p90_fram_0_setun.txs
+KC
+
+dump ./software/book3_examples/p90/02_ipt_p90_drum_2z_setun.txs
+KC     0 00 02
+       1 1Z W0
+
+
+load ./software/book3_examples/p90 ./ptr1

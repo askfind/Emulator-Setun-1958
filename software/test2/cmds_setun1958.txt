@@ -1,0 +1,10 @@
+dump ./software/test2/test2-fram-zone-b.txs
+
+dump ./software/test2/test2-fram-zone-z.txs
+
+dump ./software/test2/test2-fram-zone-0.txs
+
+dump ./software/test2/test2-fram-zone-1.txs
+
+
+load ./software/test2 ./ptr1
