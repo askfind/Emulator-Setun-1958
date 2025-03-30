@@ -1,0 +1,38 @@
+dump ./software/ip2/01_ip2_fram_0_setun.txs
+KC     0 00 02
+       Z W4 WY
+
+dump ./software/ip2/02_ip2_drum_1W_setun.txs
+KC     0 00 Z0
+       1 Y1 4W
+
+dump ./software/ip2/03_ip2_drum_1X_setun.txs
+KC     0 00 ZZ
+       1 0Y 1Y
+
+dump ./software/ip2/04_ip2_drum_1Y_setun.txs
+KC     0 00 Z3
+       Z 0Y WW
+
+dump ./software/ip2/05_ip2_drum_1Z_setun.txs
+KC     0 00 Z4
+       1 Y0 13
+
+dump ./software/ip2/06_ip2_drum_10_setun.txs
+KC     0 00 Z2
+       0 X4 30
+
+dump ./software/ip2/07_ip2_drum_11_setun.txs
+KC     0 00 Z3
+       0 WY XW
+
+dump ./software/ip2/08_ip2_drum_12_setun.txs
+KC     0 00 Z4
+       Z Z0 2X
+
+dump ./software/ip2/09_ip2_drum_13_setun.txs
+KC     0 00 0W
+       1 W0 WX
+
+
+load ./software/ip2 ./ptr1

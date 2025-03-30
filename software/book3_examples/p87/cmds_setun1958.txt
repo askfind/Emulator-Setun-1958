@@ -2,6 +2,7 @@ dump ./software/book3_examples/p87/01_ipt_p87_fram_0_setun.txs
 KC
 
 
+
 dump ./software/book3_examples/p87/02_ipt_p87_drum_2x_setun.txs
 KC     0 00 00  Error
        1 Y0 XX

@@ -1,0 +1,14 @@
+dump ./software/ip2/drum_42_43/01_ip2_fram_0_setun.txs
+KC     0 00 02
+       0 Y2 ZW
+
+dump ./software/ip2/drum_42_43/02_ip2_drum_42_setun.txs
+KC     0 00 0Y
+       0 41 34
+
+dump ./software/ip2/drum_42_43/03_ip2_drum_43_setun.txs
+KC     0 00 00
+       0 W4 1Z
+
+
+load ./software/ip2/drum_42_43 ./ptr1

@@ -1,0 +1,16 @@
+dump ./software/ip2_10_3/01_ip2_10_3_fram_0_setun.txs
+
+dump ./software/ip2_10_3/02_ip2_10_3_drum_42_setun.txs
+KC     0 00 04
+       0 43 XX
+
+dump ./software/ip2_10_3/03_ip2_10_3_drum_43_setun.txs
+KC     0 00 00
+       Z 00 41
+
+dump ./software/ip2_10_3/04_ip2_10_3_drum_44_setun.txs
+KC     0 00 0Y
+       1 W3 12
+
+
+load ./software/ip2_10_3 ./ptr1

@@ -1,0 +1,4 @@
+dump ./software/book3_examples/p84/data/01_ipt_p84_drum_data_1_setun.txs
+KC
+
+load ./software/book3_examples/p84/data ./ptr2

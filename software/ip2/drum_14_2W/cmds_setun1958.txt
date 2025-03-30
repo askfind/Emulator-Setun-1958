@@ -1,0 +1,16 @@
+dump ./software/ip2/drum_14_2W/01_ip2_fram_0_setun.txs
+KC     0 00 02
+       1 32 4Y
+
+dump ./software/ip2/drum_14_2W/02_ip2_drum_14_setun.txs
+KC     0 00 0Y
+       0 X1 YZ
+
+dump ./software/ip2/drum_14_2W/03_ip2_drum_2W_setun.txs
+KC     0 00 0Y
+       1 2X 3Z
+
+
+load ./software/ip2/drum_14_2W ./ptr1
+
+begin Error КС

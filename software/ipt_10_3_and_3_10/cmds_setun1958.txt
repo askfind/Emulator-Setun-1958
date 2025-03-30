@@ -1,0 +1,14 @@
+dump ./software/ipt_10_3_and_3_10/01_ipt_10_3_and_3_10_fram_0_setun.txs
+
+dump ./software/ipt_10_3_and_3_10/02_ipt_10_3_and_3_10_drum_40_setun.txs
+
+dump ./software/ipt_10_3_and_3_10/03_ipt_10_3_and_3_10_drum_41_setun.txs
+
+dump ./software/ipt_10_3_and_3_10/04_ipt_10_3_and_3_10_drum_42_setun.txs
+
+dump ./software/ipt_10_3_and_3_10/05_ipt_10_3_and_3_10_drum_43_setun.txs
+
+dump ./software/ipt_10_3_and_3_10/06_ipt_10_3_and_3_10_drum_44_setun.txs
+
+
+load ./software/ipt_10_3_and_3_10 ./ptr1
