@@ -1,0 +1,4 @@
+dump ./software/book3_examples/p68/01_ipt_p68_fram_0_setun.txs
+KC
+
+load ./software/book3_examples/p68 ./ptr1

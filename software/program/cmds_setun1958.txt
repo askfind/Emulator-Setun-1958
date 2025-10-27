@@ -1,0 +1,5 @@
+dump ./software/program/01_program_fram_0_setun.txs
+KC     0 00 00
+       1 0Y W3
+
+load ./software/program ./ptr1

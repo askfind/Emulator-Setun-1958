@@ -36,9 +36,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   31.03.2025
+ * Edit date:   27.10.2025
  */
-#define Version "2.07.1"
+#define Version "2.09"
 
 /**
  *  Заголовочные файла
@@ -356,7 +356,10 @@ void st_fram(trs_t ea, trs_t v);
 
 /* Операции ввода и вывода "Сетунь-1958" */
 
-/* Регист переключения Русский/Латинский */
+/* Регист переключения Русский/Латинский 
+*  RUS == 0
+*  LAT == 1   
+*/
 uint8_t russian_latin_sw = 0;
 /* Регист переключения Буквенный/Цифровой */
 uint8_t letter_number_sw = 0;
@@ -6550,6 +6553,7 @@ void LoadFileListToPaperTxt(char *pathcataloglst, char *pathfilelst, char *pathf
 	printf("\r\nWrite file: %s\r\n", pathfiletxt);
 }
 
+
 int ConvertSWtoPaper(char *path_lst, char *path_txt)
 {
 
@@ -6638,6 +6642,12 @@ int ConvertSWtoPaper(char *path_lst, char *path_txt)
 
 	return res; /* Ok' */
 }
+
+// -----------------------------------------------------
+//TODO viv+ add codes 
+// 1. Ввод и вывод бинарного файла троичных данных
+// -----------------------------------------------------
+
 
 int DumpFileTxs(char *pathfiletxs)
 {
@@ -7342,6 +7352,7 @@ void Emu_Begin(void);
 int Emu_Step(void);
 void Emu_Stop(void);
 
+static char prn_cmd(char *buf, void *data);
 static char dump_cmd(char *buf, void *data);
 static char load_cmd(char *buf, void *data);
 static char debug_cmd(char *buf, void *data);
@@ -7365,7 +7376,7 @@ static char calc_cmd(char *buf, void *data);
  */
 ascii_message_t command[] =
 	{
-		{.name_cmd = "dump",
+		 {.name_cmd = "dump",
 		 .parser = dump_cmd,
 		 .data = &cmd_data},
 
@@ -7393,8 +7404,13 @@ ascii_message_t command[] =
 		{.name_cmd = "pause",
 		 .parser = pause_cmd,
 		 .data = &cmd_data},
-		{.name_cmd = "p",
+		
+		 {.name_cmd = "p",
 		 .parser = pause_cmd,
+		 .data = &cmd_data},
+
+		{.name_cmd = "prn",
+		 .parser = prn_cmd,
 		 .data = &cmd_data},
 
 		{.name_cmd = "run",
@@ -7509,6 +7525,7 @@ void help_print(void)
 	printf(" Commands control for setun1958emu:\r\n");
 	printf(" dump     [arglist]\r\n");
 	printf(" load     [l]    [arglist]\r\n");
+	printf(" prn      [p]    [arglist]\r\n");
 	printf(" debug    [d]    [arglist]\r\n");
 	printf(" view     [v]\r\n");
 	printf(" begin    [b]\r\n");
@@ -7523,11 +7540,41 @@ void help_print(void)
 	printf(" help     [h]\r\n");
 	printf(" quit     [q]\r\n");
 	printf(" calc     [arglist]\r\n");
+
 }
 
 /** -------------------------------
  *   Реализация команд
  */
+
+/* Func 'prn_cmd' установка языка для печати */
+char prn_cmd(char *buf, void *data)
+{
+	cmd_data_t *pars = (cmd_data_t *)data;
+
+	if ((pars->count < 1) || (pars->count > 1))
+	{
+		/* Error */
+		printf("prn: ERR#1\r\n");
+		return 1; /* ERR#1 */
+	}
+
+	int par2_numb = 0;
+	sscanf(pars->par2, "%i", &par2_numb);
+
+	if (par2_numb > 0)
+	{
+		russian_latin_sw = 1; /* Печать LAT */
+		printf("switch print 'lat'\r\n");
+	}
+	else
+	{
+		russian_latin_sw = 0; /* Печать RUS */
+		printf("switch print 'rus'\r\n");
+	}
+	
+	return 0; /* OK' */
+}
 
 /* Func 'dump_cmd' */
 char dump_cmd(char *buf, void *data)
@@ -7819,6 +7866,14 @@ char view_cmd(char *buf, void *data)
 		break;
 	}
 
+	if (russian_latin_sw)
+	{
+		printf("  print: 'lat'\r\n");
+	}
+	else
+	{
+		printf("  print: 'rus'\r\n");
+	}
 	if (LOGGING)
 	{
 		printf("  debug: on\r\n");

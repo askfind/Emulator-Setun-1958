@@ -8,8 +8,8 @@ A virtual machine of ternary computer Setun, also known as "Small Automatic Digi
 ## 1. История
 
 - Дата создания:            01.11.2018
-- Дата редактирования:      31.03.2025
-- Версия:                   2.07.1
+- Дата редактирования:      27.10.2025
+- Версия:                   2.09
 - Автор:                    Vladimir V.
 - E-mail:                   askfind@ya.ru
 
@@ -31,7 +31,7 @@ $ ls -al ./setun1958emu
 $ ./setun1958emu
 
  Emulator ternary computer 'Setun-1958':
- Version: 2.07.1
+ Version: 2.09
  Author:  Vladimir V.
  E-mail:  askfind@ya.ru
 
@@ -40,6 +40,7 @@ help
  Commands control for setun1958emu:
  dump     [arglist]
  load     [l]    [arglist]
+ prn             [arglist]
  debug    [d]    [arglist]
  view     [v]
  begin    [b]
@@ -129,7 +130,7 @@ KC:
 $ ./setun1958emu
 
  Emulator ternary computer 'Setun-1958':
- Version: 2.07.1
+ Version: 2.09
  Author:  Vladimir V.I.
  E-mail:  askfind@ya.ru
 
@@ -222,9 +223,11 @@ view
 
 [ Tools ]
   status: wait
-  debug: on
-  breakpoint: [000+0], 003, (3)
-  steps: 0
+  print: 'lat'
+  debug: off
+  breakpoint fram: no used
+  breakpoint drum: no used
+  steps: 4153623
 ```
 
 ## 3.6. 'pause' или 'p' - остановить выполнение программы эмулятора SETUN-1958
@@ -362,6 +365,21 @@ quit
 
 
 [ Stop Setun-1958 ]
+```
+
+## 3.15. 'prt' - установить символы печати на электрофицированную печатающую машиу
+
+```shell
+$ ./setun1958emu
+
+setun1958emu:
+prn 0
+switch print 'rus'
+
+
+setun1958emu:
+prn 1
+switch print 'lat'
 ```
 
 # 4. Каталоги виртуальных устройств ввода и вывода эмулятора SETUN-1958
