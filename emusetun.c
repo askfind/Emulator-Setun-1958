@@ -36,9 +36,9 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   27.10.2025
+ * Edit date:   04.01.2026
  */
-#define Version "2.09"
+#define Version "2.10"
 
 /**
  *  Заголовочные файла
@@ -4086,839 +4086,115 @@ trs_t Decoder_Symbol_Paper_Line(char *paperline, uint8_t *err)
  */
 void electrified_typewriter(trs_t t, uint8_t local)
 {
+    int32_t code;
+    
+    russian_latin_sw = local;
+    code = trs2digit(t);
+    color_sw += 0;
 
-	int32_t code;
-
-	russian_latin_sw = local;
-	code = trs2digit(t);
-
-	color_sw += 0;
-
-	switch (code)
-	{
-	case 6: /* t = 1-10 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "А");
-				fwrite("А", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "6");
-				fwrite("6", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "A");
-				fwrite("А", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "6");
-				fwrite("6", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 7: /* t = 1-11 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "В");
-				fwrite("В", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "7");
-				fwrite("7", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "B");
-				fwrite("В", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "7");
-				fwrite("7", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 8: /* t = 10-1 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "С");
-				fwrite("С", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "8");
-				fwrite("8", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "C");
-				fwrite("C", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "8");
-				fwrite("8", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 9: /* t = 100 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Д");
-				fwrite("Д", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "9");
-				fwrite("9", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "D");
-				fwrite("D", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "9");
-				fwrite("9", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 10: /* t = 101 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Е");
-				fwrite("Е", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", " ");
-				fwrite(" ", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "E");
-				fwrite("E", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", " ");
-				fwrite(" ", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -12: /* t = -1-10 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Б");
-				fwrite("Б", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "-");
-				fwrite("-", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "F");
-				fwrite("F", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "-");
-				fwrite("-", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -9: /* t = -100 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Щ");
-				fwrite("Щ", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "Ю");
-				fwrite("Ю", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "G");
-				fwrite("G", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "/");
-				fwrite("/", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -8: /* t = -101 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Н");
-				fwrite("Н", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", ",");
-				fwrite(",", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "H");
-				fwrite("H", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", ".");
-				fwrite(".", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -6: /* t = -110  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Л");
-				fwrite("Л", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "+");
-				fwrite("+", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "I");
-				fwrite("I", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "+");
-				fwrite("+", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -5: /* t = -111 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Ы");
-				fwrite("Ы", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "Э");
-				fwrite("Э", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "J");
-				fwrite("J", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "V");
-				fwrite("V", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -4: /* t = 0-1-1 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "К");
-				fwrite("К", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "Ж");
-				fwrite("Ж", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "K");
-				fwrite("K", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "W");
-				fwrite("W", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -3: /* t = 0-10  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Г");
-				fwrite("Г", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "Х");
-				fwrite("Х", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "L");
-				fwrite("L", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "X");
-				fwrite("X", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -2: /* t = 0-11  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "М");
-				fwrite("М", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "У");
-				fwrite("У", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "M");
-				fwrite("M", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "Y");
-				fwrite("Y", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -1: /* t = 00-1  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "И");
-				fwrite("И", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "Ц");
-				fwrite("Ц", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "N");
-				fwrite("N", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "Z");
-				fwrite("Z", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 0: /* t = 000  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Р");
-				fwrite("P", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "О");
-				fwrite("О", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "P");
-				fwrite("P", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "O");
-				fwrite("O", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 1: /* t = 001  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Й");
-				fwrite("Й", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "1");
-				fwrite("1", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Q");
-				fwrite("Q", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "1");
-				fwrite("1", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 2: /* t = 01-1  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Я");
-				fwrite("Я", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "2");
-				fwrite("2", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "R");
-				fwrite("R", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "2");
-				fwrite("2", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 3: /* t = 010  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Ь");
-				fwrite("Ь", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "3");
-				fwrite("3", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "S");
-				fwrite("S", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "3");
-				fwrite("3", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 4: /* t = 011  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Т");
-				fwrite("Т", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "4");
-				fwrite("4", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "T");
-				fwrite("T", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "4");
-				fwrite("4", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 5: /* t = 1-1-1 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "П");
-				fwrite("П", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "5");
-				fwrite("5", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "U");
-				fwrite("U", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "5");
-				fwrite("5", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 13: /* t = 111 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "Ш");
-				fwrite("Ш", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "Ф");
-				fwrite("Ф", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "(");
-				fwrite("(", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", ")");
-				fwrite(")", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -7: /* t = -11-1 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "=");
-				fwrite("=", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "х");
-				fwrite("х", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "=");
-				fwrite("=", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "x");
-				fwrite("x", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -11: /* t = -1-11 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-					/* переключить цвет черный */
-				break;
-			default: /* number */
-					 /* переключить цвет красный */
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "?");
-				fwrite("?", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "?");
-				fwrite("?", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 12: /* t = 110  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				letter_number_sw = 0;
-				break;
-			default: /* number */
-				letter_number_sw = 0;
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				letter_number_sw = 0;
-				break;
-			default: /* number */
-				letter_number_sw = 0;
-				break;
-			}
-			break;
-		}
-		break;
-
-	case 11: /* t = 11-1  */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				letter_number_sw = 1;
-				break;
-			default: /* number */
-				letter_number_sw = 1;
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				letter_number_sw = 1;
-				break;
-			default: /* number */
-				letter_number_sw = 1;
-				break;
-			}
-			break;
-		}
-		break;
-
-	case -10: /* t = -10-1 */
-		switch (russian_latin_sw)
-		{
-		case 0: /* russian */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "\r\n");
-				fwrite("\n", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "\r\n");
-				fwrite("\n", 1, 1, tty1);
-				break;
-			}
-			break;
-		default: /* latin */
-			switch (letter_number_sw)
-			{
-			case 0: /* letter */
-				printf("%s", "\r\n");
-				fwrite("\n", 1, 1, tty1);
-				break;
-			default: /* number */
-				printf("%s", "\r\n");
-				fwrite("\r\n", 1, 1, tty1);
-				break;
-			}
-			break;
-		}
-		break;
-	}
+    // Таблицы символов для каждого режима
+    static const char* russian_letters[] = {
+        /* -12 */ "Б", /* -11 */ "",   /* -10 */ "",   /* -9 */ "Щ", /* -8 */ "Н",
+        /* -7 */ "=",  /* -6 */ "Л",   /* -5 */ "Ы",   /* -4 */ "К", /* -3 */ "Г",
+        /* -2 */ "М",  /* -1 */ "И",   /* 0 */ "Р",    /* 1 */ "Й",  /* 2 */ "Я",
+        /* 3 */ "Ь",   /* 4 */ "Т",    /* 5 */ "П",    /* 6 */ "А",  /* 7 */ "В",
+        /* 8 */ "С",   /* 9 */ "Д",    /* 10 */ "Е",   /* 11 */ "",  /* 12 */ "",
+        /* 13 */ "Ш"
+    };
+    
+    static const char* russian_numbers[] = {
+        /* -12 */ "-", /* -11 */ "",   /* -10 */ "",   /* -9 */ "Ю", /* -8 */ ",",
+        /* -7 */ "х",  /* -6 */ "+",   /* -5 */ "Э",   /* -4 */ "Ж", /* -3 */ "Х",
+        /* -2 */ "У",  /* -1 */ "Ц",   /* 0 */ "О",    /* 1 */ "1",  /* 2 */ "2",
+        /* 3 */ "3",   /* 4 */ "4",    /* 5 */ "5",    /* 6 */ "6",  /* 7 */ "7",
+        /* 8 */ "8",   /* 9 */ "9",    /* 10 */ " ",   /* 11 */ "",  /* 12 */ "",
+        /* 13 */ "Ф"
+    };
+    
+    static const char* latin_letters[] = {
+        /* -12 */ "F", /* -11 */ "?",  /* -10 */ "",   /* -9 */ "G", /* -8 */ "H",
+        /* -7 */ "=",  /* -6 */ "I",   /* -5 */ "J",   /* -4 */ "K", /* -3 */ "L",
+        /* -2 */ "M",  /* -1 */ "N",   /* 0 */ "P",    /* 1 */ "Q",  /* 2 */ "R",
+        /* 3 */ "S",   /* 4 */ "T",    /* 5 */ "U",    /* 6 */ "A",  /* 7 */ "B",
+        /* 8 */ "C",   /* 9 */ "D",    /* 10 */ "E",   /* 11 */ "",  /* 12 */ "",
+        /* 13 */ "("
+    };
+    
+    static const char* latin_numbers[] = {
+        /* -12 */ "-", /* -11 */ "?",  /* -10 */ "",   /* -9 */ "/", /* -8 */ ".",
+        /* -7 */ "x",  /* -6 */ "+",   /* -5 */ "V",   /* -4 */ "W", /* -3 */ "X",
+        /* -2 */ "Y",  /* -1 */ "Z",   /* 0 */ "O",    /* 1 */ "1",  /* 2 */ "2",
+        /* 3 */ "3",   /* 4 */ "4",    /* 5 */ "5",    /* 6 */ "6",  /* 7 */ "7",
+        /* 8 */ "8",   /* 9 */ "9",    /* 10 */ " ",   /* 11 */ "",  /* 12 */ "",
+        /* 13 */ ")"
+    };
+    
+    // Преобразование кода в индекс таблицы (код от -12 до 13, массив от 0 до 25)
+    int index = code + 12;
+    
+    // Проверка границ массива
+    if (index < 0 || index > 25) {
+        return; // Недопустимый код
+    }
+    
+    // Обработка специальных случаев
+    switch (code) {
+        case -11: // Переключение цвета
+            if (russian_latin_sw == 0) { // russian
+                // переключить цвет черный/красный - реализация зависит от системы
+            }
+            // В латинском режиме просто печатает "?"
+            break;
+            
+        case 12: // t = 110 - переключение на буквы
+            letter_number_sw = 0;
+            return;
+            
+        case 11: // t = 11-1 - переключение на цифры
+            letter_number_sw = 1;
+            return;
+            
+        case -10: // Перевод строки
+            printf("%s", "\r\n");
+            if (russian_latin_sw == 0) { // russian
+                fwrite("\n", 1, 1, tty1);
+            } else { // latin
+                fwrite("\r\n", 1, 2, tty1);
+            }
+            return;
+    }
+    
+    // Выбор символа из соответствующей таблицы
+    const char* symbol = NULL;
+    
+    if (russian_latin_sw == 0) { // russian
+        if (letter_number_sw == 0) { // letter
+            symbol = russian_letters[index];
+        } else { // number
+            symbol = russian_numbers[index];
+        }
+    } else { // latin
+        if (letter_number_sw == 0) { // letter
+            symbol = latin_letters[index];
+        } else { // number
+            symbol = latin_numbers[index];
+        }
+    }
+    
+    // Печать символа, если он существует
+    if (symbol && symbol[0] != '\0') {
+        printf("%s", symbol);
+        // Для однобайтовых символов (ASCII)
+        if (strlen(symbol) == 1) {
+            fwrite(symbol, 1, 1, tty1);
+        }
+        // Для многобайтовых символов (кириллица)
+        else {
+            fwrite(symbol, strlen(symbol), 1, tty1);
+        }
+    }
 }
+
 
 uint8_t Begin_Read_Commands_from_FT1(FILE *file)
 {
