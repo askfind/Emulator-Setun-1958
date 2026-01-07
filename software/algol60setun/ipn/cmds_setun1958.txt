@@ -1,0 +1,78 @@
+dump ./software/algol60setun/ipn/01_ipn_fram_0_setun.txs
+KC     0 00 0Y
+       1 43 WX
+
+dump ./software/algol60setun/ipn/02_ipn_fram_z_setun.txs
+KC     0 00 00
+       1 WW Y0
+
+dump ./software/algol60setun/ipn/03_ipn_drum_1w_setun.txs
+KC     0 00 Z0
+       1 33 ZX
+
+dump ./software/algol60setun/ipn/04_ipn_drum_1x_setun.txs
+KC     0 00 0Z
+       0 30 02
+
+dump ./software/algol60setun/ipn/05_ipn_drum_1y_setun.txs
+KC     0 00 0Y
+       0 00 YW
+
+dump ./software/algol60setun/ipn/06_ipn_drum_1z_setun.txs
+KC     0 00 00
+       0 00 00
+
+dump ./software/algol60setun/ipn/07_ipn_drum_10_setun.txs
+KC     0 00 00
+       0 Z2 3Y
+
+dump ./software/algol60setun/ipn/08_ipn_drum_11_setun.txs
+KC     0 00 0Y
+       0 40 13
+
+dump ./software/algol60setun/ipn/09_ipn_drum_12_setun.txs
+KC     0 00 02
+       Z 43 ZY
+
+dump ./software/algol60setun/ipn/10_ipn_drum_13_setun.txs
+KC     0 00 0X
+       Z 00 Y0
+
+dump ./software/algol60setun/ipn/11_ipn_drum_14_setun.txs
+KC     0 00 0X
+       Z 02 10
+
+dump ./software/algol60setun/ipn/12_ipn_drum_2w_setun.txs
+KC     0 00 0X
+       1 W1 WX
+
+dump ./software/algol60setun/ipn/13_ipn_drum_2x_setun.txs
+KC     0 00 1X
+       1 14 00
+
+dump ./software/algol60setun/ipn/14_ipn_drum_2y_setun.txs
+KC     0 00 0Z
+       Z 4W 3Y
+
+dump ./software/algol60setun/ipn/15_ipn_drum_2z_setun.txs
+KC     0 00 1W
+       1 YZ 12
+
+dump ./software/algol60setun/ipn/16_ipn_drum_20_setun.txs
+KC     0 00 00
+       1 0Z 41
+
+dump ./software/algol60setun/ipn/17_ipn_drum_21_setun.txs
+KC     0 00 0W
+       Z 4X 4W
+
+dump ./software/algol60setun/ipn/18_ipn_drum_22_setun.txs
+KC     0 00 0Z
+       Z X2 13
+
+dump ./software/algol60setun/ipn/19_ipn_drum_23_setun.txs
+KC     0 00 Z4
+       0 0W 23
+
+
+load ./software/algol60setun/ipn ./ptr1

@@ -1,0 +1,14 @@
+dump ./software/algol60setun/algol60_read_43_44/01_algol60_fram_0_setun.txs
+KC     0 00 0Y
+       1 Y1 01
+
+dump ./software/algol60setun/algol60_read_43_44/02_algol60_drum_43_setun.txs
+KC     0 00 0Y
+       0 ZY Z1
+
+dump ./software/algol60setun/algol60_read_43_44/03_algol60_drum_44_setun.txs
+KC     0 00 1Y
+       Z ZW 0Y
+
+
+load ./software/algol60setun/algol60_read_43_44 ./ptr1

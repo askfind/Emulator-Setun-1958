@@ -1,0 +1,58 @@
+dump ./software/algol60setun/algol60_pass3/01_algol60_fram_0_setun.txs
+KC     0 00 0Y
+       0 YZ 0X
+
+dump ./software/algol60setun/algol60_pass3/02_algol60_fram_z_setun.txs
+KC     0 00 0Z
+       Z 4W 41
+
+dump ./software/algol60setun/algol60_pass3/03_algol60_drum_1w_setun.txs
+KC
+       0 00 0W
+       0 WX 10
+
+dump ./software/algol60setun/algol60_pass3/04_algol60_drum_1x_setun.txs
+KC     0 00 0Z
+       Z WX 22
+
+dump ./software/algol60setun/algol60_pass3/05_algol60_drum_1y_setun.txs
+KC     0 00 1W
+       1 41 ZZ
+
+dump ./software/algol60setun/algol60_pass3/06_algol60_drum_1z_setun.txs
+KC     0 00 0W
+       Z W1 32
+
+dump ./software/algol60setun/algol60_pass3/07_algol60_drum_10_setun.txs
+KC     0 00 0W
+       0 3Z Z1
+
+dump ./software/algol60setun/algol60_pass3/08_algol60_drum_11_setun.txs
+KC     0 00 02
+       Z 3X 3Z
+
+dump ./software/algol60setun/algol60_pass3/09_algol60_drum_12_setun.txs
+KC     0 00 0Z
+       1 XX XY
+
+dump ./software/algol60setun/algol60_pass3/10_algol60_drum_13_setun.txs
+KC     0 00 0X
+       0 20 Z0
+
+dump ./software/algol60setun/algol60_pass3/11_algol60_drum_14_setun.txs
+KC     0 00 0Z
+       Z 34 W0
+
+dump ./software/algol60setun/algol60_pass3/12_algol60_drum_20_setun.txs
+KC     0 00 0Z
+       Z 43 1W
+
+dump ./software/algol60setun/algol60_pass3/13_algol60_drum_21_setun.txs
+KC     0 00 1W
+       0 20 33
+
+dump ./software/algol60setun/algol60_pass3/14_algol60_drum_22_setun.txs
+KC     0 00 0W
+       0 12 0X
+
+load ./software/algol60setun/algol60_pass3 ./ptr1
