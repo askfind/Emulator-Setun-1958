@@ -38,7 +38,7 @@
  * Create date: 01.11.2018
  * Edit date:   04.01.2026
  */
-#define Version "2.10"
+#define Version "2.11"
 
 /**
  *  Заголовочные файла
@@ -1497,6 +1497,67 @@ trs_t shift_trs(trs_t t, int8_t d)
 
 /* Троичное умножение тритов */
 trs_t mul_trs(trs_t a, trs_t b)
+{
+	int8_t i;
+
+	int8_t s;
+	int8_t l;
+	trs_t r;
+
+	long_trs_t aa;
+	long_trs_t bb;
+	long_trs_t rr;
+
+	/* a => aa */
+	aa.t1 = (uint64_t)a.t1;
+	aa.t0 = (uint64_t)a.t0;
+	aa.l = a.l;
+
+	/* b => bb */
+	bb.t1 = (uint64_t)b.t1;
+	bb.t0 = (uint64_t)b.t0;
+	bb.l = b.l;
+
+	/* rr => 0 */
+	rr.t1 = 0;
+	rr.t0 = 0;
+
+	/* Уменьшить количество операций */
+	aa.l = min(aa.l, SIZE_WORD_LONG_LONG);
+	bb.l = min(bb.l, SIZE_WORD_LONG_LONG);
+	rr.l = SIZE_WORD_LONG_LONG;
+
+	/* Умножение троичных числа */
+	for (i = 0; i < bb.l; i++)
+	{
+		s = get_long_trit(bb, i);
+		if (s > 0)
+		{
+			rr = add_long_trs(rr, shift_long_trs(aa, -i));
+		}
+		else if (s < 0)
+		{
+			rr = sub_long_trs(rr, shift_long_trs(aa, -i));
+		}
+		else
+		{	/* s == 0 */
+			/* no calculate */
+		}
+	}
+
+	rr = shift_long_trs(rr, 18);
+	rr.t1 &= ~((~(uint64_t)(0)) << SIZE_WORD_LONG);
+	rr.t0 &= ~((~(uint64_t)(0)) << SIZE_WORD_LONG);
+
+	/* b => bb */
+	r.t1 = (uint32_t)rr.t1;
+	r.t0 = (uint32_t)rr.t0;
+	r.l = SIZE_WORD_LONG;
+	return r;
+}
+
+/* Троичное умножение тритов */
+trs_t mul_trs_dbg(trs_t a, trs_t b)
 {
 	int8_t i;
 
