@@ -1,13 +1,13 @@
 /**
   ******************************************************************************
-  * @file    emusetun_test.h
+  * @file    setun1958_vm_test.h
   *
   * @brief
   ******************************************************************************
   */
 
-#ifndef EMUSETUN_TEST_H_
-#define EMUSETUN_TEST_H_
+#ifndef SETUN1958_VM_TEST_H_
+#define SETUN1958_VM_TEST_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -115,4 +115,4 @@ typedef enum
 }
 #endif /* __cplusplus */
 
-#endif /* EMUSETUN_TEST_H_ */
+#endif /* SETUN1958_VM_TEST_H_ */

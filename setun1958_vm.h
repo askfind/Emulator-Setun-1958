@@ -1,13 +1,13 @@
 /**
   ******************************************************************************
-  * @file    emusetun.h
+  * @file    setun1958_vm.h
   *
   * @brief
   ******************************************************************************
   */
 
-#ifndef EMUSETUN_H_
-#define EMUSETUN_H_
+#ifndef SETUN1958_VM_H_
+#define SETUN1958_VM_H_
 
 #ifdef __cplusplus
 extern "C" {
@@ -30,5 +30,5 @@ extern "C" {
 }
 #endif // __cplusplus
 
-#endif /* EMUSETUN_H_ */
+#endif /* SETUN1958_VM_H_ */
 

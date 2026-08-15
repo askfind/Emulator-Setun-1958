@@ -1,0 +1,47 @@
+# Makefile для unit-test runner проекта Emulator-Setun-1958
+
+CC = gcc
+#CFLAGS = -Wall -Wextra -O2 -std=gnu11 -I.
+CFLAGS =  -Wextra -O2 -std=gnu11 -I.
+
+# Исходные файлы эмулятора
+EMU_SRC = setun1958_vm.c setun1958_vm_test.c
+# Файлы unit-test framework
+UT_SRC  = unittest_framework.c unittest_main.c
+
+# Цель: сборка unit-test runner
+.PHONY: all unittest clean test
+
+all: unittest
+
+unittest: $(EMU_SRC) $(UT_SRC) unittest_framework.h setun1958_vm_test.h setun1958_vm.h
+	$(CC) $(CFLAGS) $(EMU_SRC) $(UT_SRC) -o $@ -lm
+
+# Запуск всех тестов
+test: unittest
+	./unittest
+
+# Запуск конкретного теста (пример: make test1)
+test1: unittest
+	./unittest Test1_Ariphmetic_Ternary
+test2: unittest
+	./unittest Test2_Opers_TRITS_32
+test3: unittest
+	./unittest Test3_Setun_Opers
+test4: unittest
+	./unittest Test4_Setun_Opers
+test5: unittest
+	./unittest Test5_Setun_Load
+test6: unittest
+	./unittest Test6_Setun_Load
+test7: unittest
+	./unittest Test7_Setun_Load
+test8: unittest
+	./unittest Test8_Setun_Electrified_Typewriter
+test9: unittest
+	./unittest Test9_Perforatin_Paper_Line
+test10: unittest
+	./unittest Test10_LoadSWSetun
+
+clean:
+	rm -f unittest

@@ -6,7 +6,7 @@
  * Тестирование функционала эмулятора setun1958
  *  
  * Create date: 16.11.2024
- * Edit date:   24.01.2025
+ * Edit date:   08.08.2025
  */
 
 /**
@@ -26,7 +26,7 @@
 #include <sys/select.h>
 #include <errno.h>
 
-#include "emusetun_test.h"
+#include "setun1958_vm_test.h"
 
 /* **********************************************************************************
  * Внешние переменные и вызовы функций
@@ -210,7 +210,7 @@ extern void drum_to_fram(trs_t ea);
 extern void reset_setun_1958(void);				/* Сброс машины */
 extern trs_t control_trs(trs_t a);					/* Устройство управления */
 extern trs_t next_address(trs_t c);				/* Определить следующий адрес */
-extern int8_t execute_trs(trs_t addr, trs_t oper); /* Выполнение кодов операций */
+extern int8_t execute_trs_lut(trs_t addr, trs_t oper); /* Выполнение кодов операций */
 
 /* Функции вывода отладочной информации */
 extern void view_short_reg(trs_t *t, uint8_t *ch);
@@ -233,16 +233,16 @@ extern int8_t sgn_trs(trs_t x);
 /**
  * Вывод отладочной информации памяти машины "Сетунь-1958"
  */
-static uint8_t LOGGING = 0;	  /* флаг логирование выполнение операций */
-static uint8_t STEP_FLAG = 0; /* флаг выполнить количество шагов */
-static uint32_t STEP = 0;	  /* счетчик количества операций */
-static uint32_t counter_step = 0;
-static int32_t BREAKPOINT = 0;	  /* режима останова по значению программного счетчика */
-static trs_t BREAKPOINT_TRS;	  /* режима останова по значению программного счетчика */
-static int32_t BREAKPOINT_MB = 0; /* режима останова по значению адреса магнитного барабана */
-static trs_t BREAKPOINT_MB_TRS;	  /* режима останова по значению адреса магнитного барабана */
+extern uint8_t LOGGING;	  /* флаг логирование выполнение операций */
+extern uint8_t STEP_FLAG; /* флаг выполнить количество шагов */
+extern uint32_t STEP;	  /* счетчик количества операций */
+extern uint32_t counter_step;
+extern int32_t BREAKPOINT;	  /* режима останова по значению программного счетчика */
+extern trs_t BREAKPOINT_TRS;	  /* режима останова по значению программного счетчика */
+extern int32_t BREAKPOINT_MB; /* режима останова по значению адреса магнитного барабана */
+extern trs_t BREAKPOINT_MB_TRS;	  /* режима останова по значению адреса магнитного барабана */
 
-static emustatus_e emu_stat = NOREADY_EMU_ST;
+extern emustatus_e emu_stat;
 
 
 /* **********************************************************************************
@@ -809,7 +809,7 @@ void Test3_Setun_Opers(void)
 
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -840,7 +840,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -878,7 +878,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -912,7 +912,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -943,7 +943,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -978,7 +978,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -1018,7 +1018,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -1055,7 +1055,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -1092,7 +1092,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -1132,7 +1132,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -1172,7 +1172,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -1214,7 +1214,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -1254,7 +1254,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -1294,7 +1294,7 @@ void Test3_Setun_Opers(void)
 	view_short_reg(&K, "K=");
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -1368,7 +1368,7 @@ void Test4_Setun_Opers(void)
 
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("\r\n [status: OK']\r\n");
@@ -1524,15 +1524,15 @@ void Test6_Setun_Load(void)
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
 	char *estr;
 
-	file_lst = fopen("software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst", "r");
+	file_lst = fopen("../software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst", "r");
 	if (file_lst == NULL)
 	{
-		printf("ERR fopen software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst\r\n");
+		printf("ERR fopen ../software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst\r\n");
 		return;
 	}
 	else
 	{
-		printf("fopen: software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst\r\n");
+		printf("fopen: ../software/ip5_in_out_10_3/00_ip5_in_out_10_3.lst\r\n");
 
 		/* Чтение (построчно) данных из файла в бесконечном цикле */
 		while (1)
@@ -1657,15 +1657,15 @@ void Test7_Setun_Load(void)
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
 	char *estr;
 
-	file_lst = fopen("software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst", "r");
+	file_lst = fopen("../software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst", "r");
 	if (file_lst == NULL)
 	{
-		printf("ERR fopen software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\r\n");
+		printf("ERR fopen ../software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\r\n");
 		return;
 	}
 	else
 	{
-		printf("fopen: software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\r\n");
+		printf("fopen: ../software/ip5_in_out_3_10/00_ip5_in_out_3_10.lst\r\n");
 
 		/* Чтение (построчно) данных из файла в бесконечном цикле */
 		while (1)
@@ -1924,7 +1924,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	exK = control_trs(K);
 	view_short_reg(&K, "K=");
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	printf("ret_exec = %i\r\n", ret_exec);
 	printf("\r\n");
 
@@ -1944,7 +1944,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	exK = control_trs(K);
 	view_short_reg(&K, "K=");
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	printf("ret_exec = %i\r\n", ret_exec);
 	printf("\r\n");
 
@@ -1965,7 +1965,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	exK = control_trs(K);
 	view_short_reg(&K, "K=");
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	printf("ret_exec = %i\r\n", ret_exec);
 	printf("\r\n");
 
@@ -1990,7 +1990,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	exK = control_trs(K);
 	view_short_reg(&K, "K=");
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	printf("ret_exec = %i\r\n", ret_exec);
 	printf("\r\n");
 
@@ -2060,7 +2060,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	exK = control_trs(K);
 	view_short_reg(&K, "K=");
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	printf("ret_exec = %i\r\n", ret_exec);
 	printf("\r\n");
 
@@ -2116,7 +2116,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	exK = control_trs(K);
 	view_short_reg(&K, "K=");
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	printf("ret_exec = %i\r\n", ret_exec);
 	printf("\r\n");
 
@@ -2205,7 +2205,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	exK = control_trs(K);
 	view_short_reg(&K, "K=");
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	printf("ret_exec = %i\r\n", ret_exec);
 
 	C = smtr("0000+");
@@ -2217,7 +2217,7 @@ void Test8_Setun_Electrified_Typewriter(void)
 	exK = control_trs(K);
 	view_short_reg(&K, "K=");
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	printf("ret_exec = %i\r\n", ret_exec);
 
 	printf("DRUM zone='0+--'");
@@ -2260,38 +2260,38 @@ void Test9_Perforatin_Paper_Line(void)
 	/* ---------------------------------------
 	 *  Открыть файлы для виртуальных устройств
 	 */
-	ptr1 = fopen("ptr1/paper.txt", "r");
+	ptr1 = fopen("../ptr1/paper.txt", "r");
 	if (ptr1 == NULL)
 	{
-		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		printf("Error fopen '../ptr1/paper.txt'\r\n");
 		return;
 	}
 
-	ptr2 = fopen("ptr2/paper.txt", "r");
+	ptr2 = fopen("../ptr2/paper.txt", "r");
 	if (ptr2 == NULL)
 	{
-		printf("Error fopen 'ptr1/paper.txt'\r\n");
+		printf("Error fopen '../ptr1/paper.txt'\r\n");
 		return;
 	}
 
-	ptp1 = fopen("ptp1/paper.txt", "w");
+	ptp1 = fopen("../ptp1/paper.txt", "w");
 	if (ptp1 == NULL)
 	{
-		printf("Error fopen 'ptp1/paper.txt'\r\n");
+		printf("Error fopen '../ptp1/paper.txt'\r\n");
 		return;
 	}
 
-	tty1 = fopen("tty1/printout.txt", "w");
+	tty1 = fopen("../tty1/printout.txt", "w");
 	if (tty1 == NULL)
 	{
-		printf("Error fopen 'tty1/printout.txt'\r\n");
+		printf("Error fopen '../tty1/printout.txt'\r\n");
 		return;
 	}
 
-	drum = fopen("drum/paper.txt", "wr");
+	drum = fopen("../drum/paper.txt", "wr");
 	if (drum == NULL)
 	{
-		printf("Error fopen 'drum/paper.txt'\r\n");
+		printf("Error fopen '../drum/paper.txt'\r\n");
 		return;
 	}
 
@@ -2321,7 +2321,7 @@ void Test9_Perforatin_Paper_Line(void)
 
 	exK = control_trs(K);
 	oper = slice_trs_setun(K, 6, 8);
-	ret_exec = execute_trs(exK, oper);
+	ret_exec = execute_trs_lut(exK, oper);
 	
 	if (ret_exec == 0)
 		printf("[status: OK']\r\n");
@@ -2352,15 +2352,15 @@ void Test10_LoadSWSetun(void)
 	/* строка, или NULL если достигнут коней файла или произошла ошибка */
 	char *estr;
 
-	file_lst = fopen("software/tests/01-test-fram.lst", "r");
+	file_lst = fopen("../software/test1/test1.lst", "r");
 	if (file_lst == NULL)
 	{
-		printf("ERR fopen software/tests/01-test-fram.lst\r\n");
+		printf("ERR fopen ../software/test1/test1.lst\r\n");
 		return;
 	}
 	else
 	{
-		printf("fopen: software/tests/01-test-fram.lst\r\n");
+		printf("fopen: ../software/test1/test1.lst\r\n");
 
 		/* Чтение (построчно) данных из файла в бесконечном цикле */
 		while (1)
@@ -2393,7 +2393,7 @@ void Test10_LoadSWSetun(void)
 			 * Загрузить из файла тест-программу
 			 * ---------------------------------
 			 */
-			printf("\r\n Load software/tests/%s\r\n", str);
+			printf("\r\n Load ../software/test1/%s\r\n", str);
 
 			FILE *file;
 			char path_str[160] = {0};
@@ -2418,7 +2418,7 @@ void Test10_LoadSWSetun(void)
 			MR.l = 18;
 			int i = 0;
 
-			strcat(path_str, "software/tests/");
+			strcat(path_str, "../software/test1/");
 			if (str[strlen(str) - 1] == 0x0A)
 			{
 				str[strlen(str) - 1] = 0;
