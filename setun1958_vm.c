@@ -4,10 +4,10 @@
  * Project: Виртуальная машина МЦВМ "Сетунь" 1958 года на языке Си
  *
  * Create date: 01.11.2018
- * Edit date:   14.08.2026
- * Version: 	2.16
+ * Edit date:   31.08.2026
+ * Version: 	2.17
  */
-#define Version "2.16"
+#define Version "2.17"
 
 /**
  *  Заголовочные файла
@@ -55,16 +55,16 @@
 /* максимальная количество тритов в длинном троичном числе */
 #define SIZE_LONG_TRITS_MAX (64)
 
-/* *******************************************
- * Реализация виртуальной машины "Сетунь-1958"
- * -------------------------------------------
+/** -------------------------------------------
+ *  Реализация виртуальной машины "Сетунь-1958"
+ *  -------------------------------------------
  */
 static void cli_prompt(void);
 
-/**
+/** -----------------------------------------
  *  Троичные типы данных памяти "Сетунь-1958"
  */
-
+ 
 /**
  *  Описание тритов в троичном числе в поле бит
  *
@@ -122,7 +122,6 @@ static void cli_prompt(void);
 /**
  * Типы данных для виртуальной троичной машины "Сетунь-1958"
  */
-//viv- error typedef unsigned int addr;
 
 typedef struct trs
 {
@@ -163,7 +162,9 @@ enum
 	STOP_ERROR_MB_NUMBER /* Номер зоны DRUM не поддерживается */
 } status_operation_e;
 
-/* Состояние работы эмулятора */
+/**
+ * Состояние работы эмулятора
+ */
 typedef enum
 {
 	NOREADY_EMU_ST = 0, /* Не готов после сброса питания */
@@ -200,7 +201,7 @@ FILE *drum;
 trs_t mem_fram[SIZE_GR_TRIT_FRAM][SIZE_GRFRAM];		   /* оперативное запоминающее устройство на ферритовых сердечниках */
 trs_t mem_drum[NUMBER_ZONE_DRUM][SIZE_ZONE_TRIT_DRUM]; /* запоминающее устройство на магнитном барабане */
 
-/** ***********************************
+/** -----------------------------------
  *  Определение регистров "Сетунь-1958"
  *  -----------------------------------
  */
@@ -249,21 +250,20 @@ void or_t(int8_t *a, int8_t *b, int8_t *s);
 void not_t(int8_t *a, int8_t *s);
 void sum_t(int8_t *a, int8_t *b, int8_t *p0, int8_t *s, int8_t *p1);
 
-/**  -------------------------------------------------------------
- *   Троичные числа
+/** -------------------------------------------------------------
+ *  Троичные числа
  *
- *   TRITS-1  = [t0]       - обозначение позиции тритов в числе
- *   TRITS-32 = [t31...t0] - обозначение позиции тритов в числе
- *
+ *  TRITS-1  = [t0]       - обозначение позиции тритов в числе
+ *  TRITS-32 = [t31...t0] - обозначение позиции тритов в числе
  */
 int8_t get_trit(trs_t t, uint8_t pos);
 trs_t set_trit(trs_t t, uint8_t pos, int8_t trit);
 trs_t slice_trs(trs_t t, int8_t p1, int8_t p2);
 void copy_trs(trs_t *src, trs_t *dst);
 
-/**  -------------------------------------------------------------
- *   Троичные числа
- *   TRITS-64 = [t63...t0] - обозначение позиции тритов в числе
+/** -------------------------------------------------------------
+ *  Троичные числа
+ *  TRITS-64 = [t63...t0] - обозначение позиции тритов в числе
  */
 void clear_long(long_trs_t *t);
 void clear_full_long(long_trs_t *t);
@@ -273,13 +273,13 @@ int8_t sgn_long_trs(long_trs_t x);
 long_trs_t shift_long_trs(long_trs_t t, int8_t s);
 void copy_long_trs(long_trs_t *src, long_trs_t *dst);
 
-/**  -------------------------------------------------------------
- *   Троичные числа регистров Setun-1958
+/** -------------------------------------------------------------
+ *  Троичные числа регистров Setun-1958
  *
- *   SETUN-T1  = [s1]      - обозначение позиции тритов в регистре
- *   SETUN-T5  = [s1...s5]
- *   SETUN-T9  = [s1...s9]
- *   SETUN-T18 = [s1...s18]
+ *  SETUN-T1  = [s1]      - обозначение позиции тритов в регистре
+ *  SETUN-T5  = [s1...s5]
+ *  SETUN-T9  = [s1...s9]
+ *  SETUN-T18 = [s1...s18]
  */
 int8_t get_trit_setun(trs_t t, uint8_t pos);
 trs_t set_trit_setun(trs_t t, uint8_t pos, int8_t trit);
@@ -296,12 +296,15 @@ void clear_full(trs_t *t);
 void inc_trs(trs_t *tr);
 void dec_trs(trs_t *tr);
 
+/* Проверка переполнения */
+int8_t over_check(void);
 trs_t and_trs(trs_t a, trs_t b);
 trs_t or_trs(trs_t a, trs_t b);
 trs_t xor_trs(trs_t a, trs_t b);
 trs_t add_trs(trs_t a, trs_t b);
 trs_t sub_trs(trs_t a, trs_t b);
 trs_t mul_trs(trs_t a, trs_t b);
+trs_t tmul_trs(trs_t a, trs_t b);
 trs_t div_trs(trs_t a, trs_t b);
 trs_t shift_trs(trs_t t, int8_t s);
 int cmp_trs(trs_t a, trs_t b);
@@ -324,9 +327,12 @@ void clean_fram(void);
 trs_t ld_fram(trs_t ea);
 void st_fram(trs_t ea, trs_t v);
 
-/* Операции ввода и вывода "Сетунь-1958" */
+/** -------------------------------------
+ *  Операции ввода и вывода "Сетунь-1958"
+ */
 
-/* Регист переключения Русский/Латинский
+/**
+ *  Регист переключения Русский/Латинский
  *  RUS == 0
  *  LAT == 1
  */
@@ -375,7 +381,7 @@ int8_t execute_trs_lut(trs_t addr, trs_t oper); /* Выполнение кодо
 void view_short_reg(trs_t *t, char *ch);
 void view_short_regs(void);
 
-/*
+/**
  * Выполнить скрипт-файл './script/scrint.sst'.
  * Вывод сообщения и продолжить с заданного адреса в
  * ферритовой памяти FRAM.
@@ -446,7 +452,7 @@ static inline int32_t pow3_inline(int8_t x)
 /**
  * Преобразование 3 -> 10 (использует pow3)
  */
-double t3_to_d10(trs_t t)
+double ERROR_t3_to_d10(trs_t t)
 {
     if (t.l == 0 || (t.t1 == 0 && t.t0 == 0))
         return 0.0;
@@ -467,6 +473,29 @@ double t3_to_d10(trs_t t)
     }
     return val;
 }
+
+/**
+ * Преобразование 3 -> 10
+ */
+double t3_to_d10(trs_t t)
+{
+	int i;
+	double lf = 0.0;
+	double lfp = 0.0;
+
+	lf += 3 * get_trit_setun(t, 1);
+	lf += 1 * get_trit_setun(t, 2);
+
+	for (i = 3; i <= 18; i++)
+	{
+		if (get_trit_setun(t, i) != 0)
+		{
+			lfp += 1.0 / (double)(pow3(i - 2) * get_trit_setun(t, i));
+		}
+	}
+
+	return (lf + lfp);
+} 
 
 /**
  * Преобразование 10 -> 3 (для 18 трит)
@@ -563,7 +592,6 @@ inline void mod_3_n(trs_t *t, uint8_t n)
     t->t0 &= MASKS[n & 0x1F];
 }
 
-
 /**
  * Очистить длину троичного числа и поле битов троичного числа
  */
@@ -602,7 +630,6 @@ inline int8_t trit2int(trs_t t)
     return TABLE[(t.t0 & 1) | ((t.t1 & 1) << 1)];
 }
 
-
 /**  ---------------------------------------
  *   Операции с тритами
  *   trit = {-1,0,1}  - трит значение трита
@@ -623,7 +650,7 @@ static const int8_t SUM_T_P1[3][3][3] = {
 
 void sum_t(int8_t *a, int8_t *b, int8_t *p0, int8_t *s, int8_t *p1)
 {
-	const int ia = (int)(*a) + 1; // {-1,0,1} → {0,1,2}
+	const int ia = (int)(*a) + 1; // {-1,0,1}
 	const int ib = (int)(*b) + 1;
 	const int ip = (int)(*p0) + 1;
 
@@ -631,7 +658,7 @@ void sum_t(int8_t *a, int8_t *b, int8_t *p0, int8_t *s, int8_t *p1)
 	*p1 = SUM_T_P1[ia][ib][ip];
 }
 
-/*
+/**
  * Троичное умножение тритов (AND) с таблицей
  */
 inline void and_t(int8_t *a, int8_t *b, int8_t *s)
@@ -679,7 +706,7 @@ inline void or_t(int8_t *a, int8_t *b, int8_t *s)
     *s = TABLE[(*a) + 1][(*b) + 1];
 }
 
-/**  -------------------------------------------------------------
+/**  ----------------------------------------------------------
  *   Троичные числа
  *
  *   TRITS-64 = [t63...t0] - обозначение позиции тритов в числе
@@ -782,7 +809,7 @@ inline void copy_long_trs(long_trs_t *src, long_trs_t *dst)
     }
 }
 
-/**  -------------------------------------------------------------
+/**  ----------------------------------------------------------
  *   Троичные числа
  *
  *   TRITS-32 = [t31...t0] - обозначение позиции тритов в числе
@@ -1448,7 +1475,7 @@ trs_t shift_trs(trs_t t, int8_t d)
 }
 
 /**
- * Троичное умножение тритов
+ * Троичное умножение тритов 
  */
 trs_t mul_trs(trs_t a, trs_t b)
 {
@@ -1474,15 +1501,160 @@ trs_t mul_trs(trs_t a, trs_t b)
     return r;
 }
 
-/* Троичное деление тритов */
-trs_t div_trs(trs_t a, trs_t b)
+/**
+ * Троичное деление с остатком
+ * 
+ * Возвращает структуру с частным и остатком
+ */
+typedef struct {
+    trs_t quotient;   /* Частное */
+    trs_t remainder;  /* Остаток */
+} div_result_t;
+
+div_result_t div_mod_trs(trs_t a, trs_t b)
 {
-//viv+ TODO ass code 
-	trs_t r;
-	r.l = 0;
-	r.t1 = 0;
-	r.t0 = 0;
-	return r;
+    div_result_t result;
+    
+    /* Инициализация полей структуры */
+    clear_full(&result.quotient);
+    clear_full(&result.remainder);
+    result.quotient.l = SIZE_WORD_LONG;
+    result.remainder.l = SIZE_WORD_LONG;
+    
+    /* Проверка на деление на ноль */
+    if ((b.t0 == 0 && b.t1 == 0) || b.l == 0) {
+        printf("ERROR: Division by zero!\n");
+        return result;
+    }
+    
+    /* Проверка на деление нуля */
+    if ((a.t0 == 0 && a.t1 == 0) || a.l == 0) {
+        return result;
+    }
+    
+    /* Определяем знаки операндов */
+    int8_t sign_a = sgn_trs(a);
+    int8_t sign_b = sgn_trs(b);
+    int8_t sign_result = (sign_a == sign_b) ? 1 : -1;
+    int8_t sign_rem = sign_a;  /* Остаток имеет знак делимого */
+    
+    /* Берем абсолютные значения */
+    trs_t abs_a = a;
+    trs_t abs_b = b;
+    
+    abs_a.l = SIZE_WORD_LONG;
+    abs_b.l = SIZE_WORD_LONG;
+    
+    if (sign_a < 0) {
+        abs_a = neg_trs(abs_a);
+        mod_3_n(&abs_a, SIZE_WORD_LONG);
+    }
+    if (sign_b < 0) {
+        abs_b = neg_trs(abs_b);
+        mod_3_n(&abs_b, SIZE_WORD_LONG);
+    }
+    
+    /* Проверка: делимое меньше делителя? */
+    int cmp = cmp_trs(abs_a, abs_b);
+    if (cmp < 0) {
+        /* a < b, частное = 0, остаток = a */
+        result.remainder = a;
+        return result;
+    }
+    if (cmp == 0) {
+        /* a == b, частное = 1, остаток = 0 */
+        clear_full(&result.quotient);
+        result.quotient.l = SIZE_WORD_LONG;
+        result.quotient.t1 = 1;  /* +1 в троичной системе */
+        result.quotient.t0 = 1;
+        if (sign_result < 0) {
+            result.quotient = neg_trs(result.quotient);
+            mod_3_n(&result.quotient, SIZE_WORD_LONG);
+        }
+        return result;
+    }
+    
+    /* Подготовка к делению */
+    clear_full(&result.quotient);
+    result.quotient.l = SIZE_WORD_LONG;
+    
+    trs_t remainder = abs_a;
+    trs_t divisor = abs_b;
+    
+    /* Находим старший значащий разряд для оптимизации */
+    int8_t shift = 0;
+    trs_t temp = abs_b;
+    while (cmp_trs(shift_trs(temp, 1), abs_a) <= 0 && shift < 16) {
+        temp = shift_trs(temp, 1);
+        shift++;
+    }
+    
+    /* Основной цикл деления */
+    for (int8_t i = shift; i >= 0; i--) {
+        /* Сдвигаем делитель на i разрядов влево */
+        trs_t shifted_divisor = shift_trs(divisor, i);
+        mod_3_n(&shifted_divisor, SIZE_WORD_LONG);
+        
+        /* Пробуем цифру частного: -1, 0, 1 */
+        int8_t digit = 0;
+        
+        /* Проверяем, можно ли вычесть сдвинутый делитель */
+        trs_t test_remainder = sub_trs(remainder, shifted_divisor);
+        mod_3_n(&test_remainder, SIZE_WORD_LONG);
+        
+        if (sgn_trs(test_remainder) >= 0) {
+            /* Можно вычесть (цифра +1) */
+            digit = 1;
+            remainder = test_remainder;
+        } else {
+            /* Проверяем, можно ли прибавить сдвинутый делитель */
+            test_remainder = add_trs(remainder, shifted_divisor);
+            mod_3_n(&test_remainder, SIZE_WORD_LONG);
+            
+            if (sgn_trs(test_remainder) <= 0 && sgn_trs(remainder) < 0) {
+                /* Можно прибавить (цифра -1) */
+                digit = -1;
+                remainder = test_remainder;
+            }
+        }
+        
+        /* Устанавливаем цифру в частное */
+        if (digit != 0) {
+            uint32_t mask = 1u << i;
+            if (digit > 0) {
+                result.quotient.t1 |= mask;
+                result.quotient.t0 |= mask;
+            } else {
+                result.quotient.t1 &= ~mask;
+                result.quotient.t0 |= mask;
+            }
+        }
+    }
+    
+    /* Применяем знак к частному */
+    if (sign_result < 0) {
+        result.quotient = neg_trs(result.quotient);
+        mod_3_n(&result.quotient, SIZE_WORD_LONG);
+    }
+    
+    /* Применяем знак к остатку */
+    if (sign_rem < 0) {
+        remainder = neg_trs(remainder);
+        mod_3_n(&remainder, SIZE_WORD_LONG);
+    }
+    
+    /* Очищаем неиспользуемые разряды */
+    result.quotient.t1 &= 0x3FFFF;  /* 18 бит */
+    result.quotient.t0 &= 0x3FFFF;
+    result.quotient.l = SIZE_WORD_LONG;
+    
+    remainder.t1 &= 0x3FFFF;
+    remainder.t0 &= 0x3FFFF;
+    remainder.l = SIZE_WORD_LONG;
+    
+    result.remainder = remainder;
+    
+    return result;
 }
 
 /**
@@ -1501,6 +1673,9 @@ void copy_trs(trs_t *src, trs_t *dst)
     }
 }
 
+/**
+ * Троичное сравнение троичных чисел
+ */
 int cmp_trs(trs_t a, trs_t b)
 {
 	trs_t r;
@@ -1562,7 +1737,6 @@ trs_t slice_trs(trs_t t, int8_t p1, int8_t p2)
  * SETUN-T9  = [s1...s9]
  * SETUN-T18 = [s1...s18]
  */
-
 int8_t get_trit_setun(trs_t t, uint8_t pos)
 {
     if (pos == 0 || pos > t.l || t.l > SIZE_WORD_LONG) return 0;
@@ -1619,7 +1793,6 @@ trs_t slice_trs_setun(trs_t t, int8_t p1, int8_t p2)
     return r;
 }
 
-
 /**
  * Операция присваивания троичных чисел в регистры (Setun порядок)
  */
@@ -1674,7 +1847,9 @@ int8_t over_word_long(trs_t x)
 	}
 }
 
-/* Преобразование трита в номер зоны */
+/**
+ *  Преобразование трита в номер зоны
+ */
 int8_t trit2grfram(trs_t t)
 {
 	if ((t.t0 & (1 << 0)) > 0)
@@ -1691,14 +1866,16 @@ int8_t trit2grfram(trs_t t)
 	return 0;
 }
 
-/* Дешифратор тритов в индекс строки зоны памяти */
+/**
+ * Дешифратор тритов в индекс строки зоны памяти
+ */
 int16_t addr_trit2addr_index(trs_t t)
 {
 	t.t1 &= (uint32_t)0x3FFFF;
 	return t.t1 >>= 1;
 }
 
-/*
+/**
  *  Дешифратор тритов в индекс адреса памяти
  *
  *  Зоны магниного барабана
@@ -1814,6 +1991,9 @@ trs_t next_ind(trs_t c)
 	return r;
 }
 
+/**
+ * Очистить зону FRAM
+ */
 void clean_fram_zone(trs_t z)
 {
 
@@ -1843,7 +2023,7 @@ void clean_fram_zone(trs_t z)
 	}
 }
 
-/*
+/**
  * Операция очистить память ферритовую
  */
 void clean_fram(void)
@@ -2209,8 +2389,7 @@ uint8_t trit2lt(int8_t v)
 
 /**
  *  Вид '-','0','+' в десятичный код
- */
-/**
+ *
  * Преобразование символа '-','0','+' в десятичный код
  */
 int8_t symtrs2numb(char c)
@@ -2225,8 +2404,7 @@ int8_t symtrs2numb(char c)
 
 /**
  *  Bp  Вид '-','0','+'
- */
-/**
+ *
  * Преобразование десятичного кода в символ '-','0','+'
  */
 uint8_t numb2symtrs(int8_t v)
@@ -2239,9 +2417,8 @@ uint8_t numb2symtrs(int8_t v)
 }
 
 /**
- *  Вид '-','0','+' строка в десятичный код
- */
-/**
+ * Вид '-','0','+' строка в десятичный код
+ * 
  * Преобразование строки вида '-','0','+' в десятичный код
  */
 int8_t str_symtrs2numb(char *s)
@@ -2293,8 +2470,7 @@ trs_t smtr(char *s)
 
 /**
  * Валидация строки 
- */
-/**
+ *
  * Проверка строки на допустимые символы '-','0','+'
  * Возвращает: 0 - строка валидна, 1 - есть недопустимые символы
  */
@@ -2398,6 +2574,12 @@ uint8_t trit_to_lt(int8_t v)
 }
 
  
+/**
+ *  Преобразовать из десятичного кода
+ *  в девятиричную систему
+ *
+ *  С символами: W, X, Y, Z, 0, 1, 2, 3, 4.
+ */
 trs_t digit2trs(int8_t n)
 {
 //viv+ Проверить. Не используется.
@@ -2586,7 +2768,6 @@ void trit2symtrs(trs_t t)
 
 /**
  * Печать троичного регистра
- *
  */
 void view_short_reg(trs_t *t, char *ch)
 {
@@ -2634,7 +2815,6 @@ void view_short_reg(trs_t *t, char *ch)
 
 /**
  * Печать троичного регистра
- *
  */
 void view_short_reg_long(long_trs_t *t, uint8_t *ch)
 {
@@ -2685,7 +2865,6 @@ void view_short_reg_long(long_trs_t *t, uint8_t *ch)
 
 /**
  * Печать троичного регистра
- *
  */
 void view_short_reg_fixpoint(trs_t *t, char *ch)
 {
@@ -2738,7 +2917,6 @@ void view_short_reg_fixpoint(trs_t *t, char *ch)
 
 /**
  * Печать троичного регистра
- *
  */
 void view_step_short_reg(trs_t *t, char *ch)
 {
@@ -2824,7 +3002,6 @@ void view_step_short_reg(trs_t *t, char *ch)
 
 /**
  * Печать троичного регистра
- *
  */
 void view_step_new_addres(trs_t *t, char *ch)
 {
@@ -2902,7 +3079,6 @@ void view_step_new_addres(trs_t *t, char *ch)
 
 /**
  * Печать троичного регистра
- *
  */
 void view_short_long_reg(long_trs_t *t, uint8_t *ch)
 {
@@ -3048,6 +3224,9 @@ void view_elem_fram(trs_t ea)
 	printf("\r\n");
 }
 
+/**
+ * Печать памяти FRAM машины Сетунь-1958 с addr1, addr2
+ */
 void view_fram(trs_t addr1, trs_t addr2)
 {
 	trs_t ad1 = addr1;
@@ -3729,8 +3908,7 @@ void init_tab4(void)
 
 /**
  * Декодирование строки в индекс таблицы
- */
-/**
+ * 
  * Преобразование строки перфоленты в индекс таблицы
  * Формат: 6 символов с точкой в позиции 3
  * Пример: "_OO.O_"
@@ -4730,9 +4908,9 @@ static int8_t op_minus0plus(trs_t addr, trs_t oper __attribute__((unused)));
 static int8_t op_minus0minus(trs_t addr, trs_t oper __attribute__((unused)));
 static int8_t op_error(trs_t addr, trs_t oper);
 
-/*------------------------------------------------------------------
- * Инициализация LUT
- *------------------------------------------------------------------
+/** --------------------------
+ *  Инициализация LUT
+ *  --------------------------
  */
 void init_operation_lut(void)
 {
@@ -4775,9 +4953,9 @@ void init_operation_lut(void)
 	lut_initialized = true;
 }
 
-/** ------------------------------------------------------------------
+/** -----------------------------------
  *  Получение индекса по коду операции
- *  ------------------------------------------------------------------
+ *  -----------------------------------
  */
 int8_t get_operation_index(int8_t code)
 {
@@ -4908,9 +5086,9 @@ int8_t execute_trs_lut(trs_t addr, trs_t oper)
 	}
 }
 
-/** ------------------------------------------------------------------
+/** ------------------------------
  *  РЕАЛИЗАЦИЯ ОПЕРАЦИЙ
- *  ------------------------------------------------------------------
+ *  ------------------------------
  */
 /* +00 : Посылка в S (A*)=>(S) */
 static int8_t op_plus00(trs_t addr, trs_t oper __attribute__((unused)))
@@ -6075,6 +6253,9 @@ int DumpFileTxs(char *pathfiletxs)
 	return 0; /* Ok' */
 }
 
+/**
+ *  Парсер
+ */
 int parser_user(char *cmd, char fields[][80], char ch)
 {
 	int ind = 0;
@@ -6709,7 +6890,6 @@ int Process_Work_Emulation(void)
 /** --------------------------------------------------------
  *  CLI командный интерпретатор (порт с C++ Command class)
  */
-
 static void help_print(void)
 {
 	printf(" Commands control for setun1958emu:\r\n");

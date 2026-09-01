@@ -1,5 +1,8 @@
 # Changelog
 
+## 01.09.2026 ver.2.17
+- [Х] FIX ERROR - Печать double троичного регистра в функции view.
+
 ## 15.08.2026 ver.2.16
 - [Х] Оптимизация фцнкций.
 - [Х] Сборка и и тестирование setun1958emu.
@@ -40,7 +43,6 @@
   setun1958emu:
   begin
 
-
 ## 07.01.2026 ver.2.10
 - [Х] Добавлены исходные кода транслятора с языка программирования ALGOL-60
       "./software/algol60setun/".
@@ -76,7 +78,6 @@ struct PaperTSBDesc {
     uint16_t len;       // the size of the digital punched tape
     uint16_t * file;    // the size of the digital punched tape
 }
-
 	------------------------------------------
 	Таб 1. Кодирование комбинация бит и тритов
 	------------------------------------------
